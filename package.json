@@ -1,0 +1,36 @@
+{
+  "name": "verso",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --parallel -r run dev",
+    "dev:server": "pnpm --filter @verso/server dev",
+    "dev:web": "pnpm --filter @verso/web dev",
+    "build": "pnpm -r run build",
+    "build:shared": "pnpm --filter @verso/shared build",
+    "build:server": "pnpm --filter @verso/server build",
+    "build:web": "pnpm --filter @verso/web build",
+    "db:generate": "pnpm --filter @verso/server drizzle-kit generate",
+    "db:migrate": "pnpm --filter @verso/server drizzle-kit migrate",
+    "db:push": "pnpm --filter @verso/server drizzle-kit push",
+    "test": "pnpm -r run test",
+    "test:server": "pnpm --filter @verso/server test",
+    "lint": "pnpm -r run lint",
+    "clean": "pnpm -r run clean"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "bcrypt",
+      "better-sqlite3",
+      "esbuild",
+      "sharp"
+    ]
+  }
+}
