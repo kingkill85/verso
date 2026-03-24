@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 import { getAccessToken, setTokens, clearTokens, isTokenExpired } from "@/lib/auth";
 import type { SafeUser, AuthResponse } from "@verso/shared";
 
@@ -12,29 +12,31 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+function getUserFromToken(): SafeUser | null {
+  const token = getAccessToken();
+  if (!token || isTokenExpired(token)) {
+    clearTokens();
+    return null;
+  }
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return {
+      id: payload.sub,
+      email: payload.email,
+      displayName: payload.email, // JWT doesn't have displayName, use email as fallback
+      role: payload.role,
+      avatarUrl: null,
+      createdAt: "",
+      lastLoginAt: null,
+    };
+  } catch {
+    clearTokens();
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<SafeUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const token = getAccessToken();
-    if (!token || isTokenExpired(token)) {
-      setIsLoading(false);
-      return;
-    }
-
-    fetch("/trpc/auth.me", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.result?.data?.json) {
-          setUser(data.result.data.json);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
-  }, []);
+  const [user, setUser] = useState<SafeUser | null>(() => getUserFromToken());
 
   const login = useCallback((response: AuthResponse) => {
     setTokens(response.accessToken, response.refreshToken);
@@ -47,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading: false, isAuthenticated: !!user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
