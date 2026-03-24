@@ -17,6 +17,11 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
           Library
         </div>
         <SidebarItem to="/" label="All Books" emoji="📚" active={isActive("/")} onClick={onClose} />
+
+        <div className="px-3 mb-2 mt-6 text-[10px] font-medium uppercase tracking-[1.5px]" style={{ color: "var(--text-faint)" }}>
+          Actions
+        </div>
+        <SidebarItem to="/upload" label="Upload" emoji="📤" active={isActive("/upload")} onClick={onClose} />
       </nav>
 
       <div className="p-4 border-t" style={{ borderColor: "var(--border)" }}>
