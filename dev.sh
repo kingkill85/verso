@@ -50,6 +50,9 @@ PROFILE_DIR="$HOME/.verso-chrome-profile"
 if [ -x "$CHROME" ]; then
   "$CHROME" \
     --user-data-dir="$PROFILE_DIR" \
+    --no-first-run \
+    --no-default-browser-check \
+    --disable-default-apps \
     --auto-open-devtools-for-tabs \
     --window-size=1400,900 \
     "$VITE_URL" &
