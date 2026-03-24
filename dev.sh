@@ -14,6 +14,10 @@ cleanup() {
 }
 trap cleanup SIGINT SIGTERM
 
+# Kill any existing dev processes
+lsof -ti:3000 -ti:5173 | xargs kill -9 2>/dev/null
+sleep 1
+
 # Optional: reset database
 if [ "$1" = "--reset" ]; then
   rm -f packages/server/data/db.sqlite*
