@@ -1,6 +1,8 @@
 import { router } from "./index.js";
+import { authRouter } from "./routers/auth.js";
 
-// Routers will be added as they're implemented
-export const appRouter = router({});
+export const appRouter = router({
+  auth: authRouter,
+});
 
 export type AppRouter = typeof appRouter;
