@@ -14,6 +14,13 @@ cleanup() {
 }
 trap cleanup SIGINT SIGTERM
 
+# Optional: reset database
+if [ "$1" = "--reset" ]; then
+  rm -f packages/server/data/db.sqlite*
+  rm -rf "$HOME/.verso-chrome-profile"
+  echo "Database and Chrome profile reset."
+fi
+
 # Start server
 pnpm dev:server &
 SERVER_PID=$!
