@@ -43,13 +43,14 @@ function LibraryPage() {
     [utils],
   );
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, isDragActive } = useDropzone({
     onDrop: handleUpload,
     accept: {
       "application/epub+zip": [".epub"],
       "application/pdf": [".pdf"],
     },
     noClick: true,
+    noKeyboard: true,
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,7 +64,6 @@ function LibraryPage() {
 
   return (
     <div {...getRootProps()} className="relative min-h-full">
-      <input {...getInputProps()} />
 
       {/* Drag overlay */}
       {isDragActive && (
