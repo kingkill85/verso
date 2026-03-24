@@ -13,19 +13,22 @@ function AuthLayout() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const noUsers = hasUsersQuery.data?.hasUsers === false;
+
   useEffect(() => {
     if (isLoading || hasUsersQuery.isLoading) return;
     if (isAuthenticated) {
       navigate({ to: "/", replace: true });
       return;
     }
-    if (hasUsersQuery.data && !hasUsersQuery.data.hasUsers && location.pathname !== "/setup") {
+    if (noUsers && location.pathname !== "/setup") {
       navigate({ to: "/setup", replace: true });
     }
-  }, [isAuthenticated, isLoading, hasUsersQuery.isLoading, hasUsersQuery.data, location.pathname, navigate]);
+  }, [isAuthenticated, isLoading, hasUsersQuery.isLoading, noUsers, location.pathname, navigate]);
 
   if (isLoading || hasUsersQuery.isLoading) return null;
   if (isAuthenticated) return null;
+  if (noUsers && location.pathname !== "/setup") return null;
 
   return (
     <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: "var(--bg)" }}>
