@@ -37,15 +37,15 @@ until curl -s "$VITE_URL" > /dev/null 2>&1; do
 done
 echo "Vite ready."
 
-# Open Chrome in app mode (independent session with temp profile)
+# Open Chrome with separate profile (normal window, not app mode)
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+PROFILE_DIR="$HOME/.verso-chrome-profile"
 if [ -x "$CHROME" ]; then
-  PROFILE_DIR=$(mktemp -d)
   "$CHROME" \
-    --app="$VITE_URL" \
     --user-data-dir="$PROFILE_DIR" \
     --auto-open-devtools-for-tabs \
-    --window-size=1400,900 &
+    --window-size=1400,900 \
+    "$VITE_URL" &
   echo "Chrome opened at $VITE_URL (devtools enabled)"
 else
   echo "Chrome not found — open $VITE_URL manually"
