@@ -2,21 +2,24 @@
 
 Build in vertical slices — each session produces a runnable, testable application.
 
-## Session 1: "Upload a book and see it"
+## Session 1: "Upload a book and see it" ✅ COMPLETE
 
 Foundation + first end-to-end feature. Go from zero to a working app.
 
-- Monorepo scaffolding (pnpm workspaces, tsconfig, shared package)
-- Drizzle ORM schema + SQLite migrations
-- Fastify server with config, env loading
-- Local auth: register, login, JWT access/refresh tokens, auth middleware
-- Book upload endpoint (multipart) + EPUB/PDF parsing + local file storage
-- Book CRUD via tRPC (list, get, delete)
-- React app shell: TanStack Router, layout with sidebar, Tailwind + shadcn/ui
-- Design system foundations: typography (Libre Baskerville + Outfit), color tokens, dark/light mode
-- Library grid page with generated book covers (gradient palettes)
-- Book detail page
-- Login/register pages
+- ✅ Monorepo scaffolding (pnpm workspaces, tsconfig, shared package)
+- ✅ Drizzle ORM schema + SQLite migrations
+- ✅ Fastify server with config, env loading
+- ✅ Local auth: register, login, JWT access/refresh tokens, auth middleware
+- ✅ Book upload endpoint (multipart) + EPUB/PDF parsing + local file storage
+- ✅ Book CRUD via tRPC (list, get, delete)
+- ✅ React app shell: TanStack Router, layout with sidebar, Tailwind + shadcn/ui
+- ✅ Design system foundations: typography (Libre Baskerville + Outfit), color tokens, dark/light mode
+- ✅ Library grid page with generated book covers (gradient palettes)
+- ✅ Book detail page
+- ✅ Login/register/setup pages
+- ✅ Dedicated upload page with drop zone and file list
+- ✅ Unit tests: 46 tests, 86% coverage on testable code
+- ✅ Dev script (dev.sh) with --reset flag
 
 **Result:** Sign up, upload books, browse your library, view book details.
 

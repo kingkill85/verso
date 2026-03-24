@@ -15,6 +15,7 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AuthSetupRouteImport } from './routes/_auth/setup'
 import { Route as AuthRegisterRouteImport } from './routes/_auth/register'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
+import { Route as AppUploadRouteImport } from './routes/_app/upload'
 import { Route as AppBooksIdRouteImport } from './routes/_app/books/$id'
 
 const AuthRoute = AuthRouteImport.update({
@@ -45,6 +46,11 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => AuthRoute,
 } as any)
+const AppUploadRoute = AppUploadRouteImport.update({
+  id: '/upload',
+  path: '/upload',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppBooksIdRoute = AppBooksIdRouteImport.update({
   id: '/books/$id',
   path: '/books/$id',
@@ -53,6 +59,7 @@ const AppBooksIdRoute = AppBooksIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/upload': typeof AppUploadRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
   '/setup': typeof AuthSetupRoute
@@ -60,6 +67,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
+  '/upload': typeof AppUploadRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
   '/setup': typeof AuthSetupRoute
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/_auth': typeof AuthRouteWithChildren
+  '/_app/upload': typeof AppUploadRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/register': typeof AuthRegisterRoute
   '/_auth/setup': typeof AuthSetupRoute
@@ -77,13 +86,14 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/register' | '/setup' | '/books/$id'
+  fullPaths: '/' | '/upload' | '/login' | '/register' | '/setup' | '/books/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/register' | '/setup' | '/books/$id'
+  to: '/' | '/upload' | '/login' | '/register' | '/setup' | '/books/$id'
   id:
     | '__root__'
     | '/_app'
     | '/_auth'
+    | '/_app/upload'
     | '/_auth/login'
     | '/_auth/register'
     | '/_auth/setup'
@@ -140,6 +150,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_app/upload': {
+      id: '/_app/upload'
+      path: '/upload'
+      fullPath: '/upload'
+      preLoaderRoute: typeof AppUploadRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/books/$id': {
       id: '/_app/books/$id'
       path: '/books/$id'
@@ -151,11 +168,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppUploadRoute: typeof AppUploadRoute
   AppIndexRoute: typeof AppIndexRoute
   AppBooksIdRoute: typeof AppBooksIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppUploadRoute: AppUploadRoute,
   AppIndexRoute: AppIndexRoute,
   AppBooksIdRoute: AppBooksIdRoute,
 }
