@@ -18,6 +18,8 @@ import {
   protectedProcedure,
   signAccessToken,
 } from "../index.js";
+import type { AppDatabase } from "../../db/client.js";
+import type { Config } from "../../config.js";
 
 const BCRYPT_ROUNDS = 12;
 
@@ -45,11 +47,9 @@ function parseDuration(duration: string): number {
 }
 
 async function createSession(
-  db: Parameters<typeof publicProcedure.query>[0] extends (opts: infer O) => unknown
-    ? never
-    : any,
+  db: AppDatabase,
   userId: string,
-  config: { JWT_SECRET: string; JWT_ACCESS_EXPIRES: string; JWT_REFRESH_EXPIRES: string },
+  config: Config,
   userPayload: { email: string; role: string }
 ) {
   const refreshToken = randomBytes(32).toString("hex");
@@ -74,7 +74,7 @@ async function createSession(
       role: userPayload.role,
       sessionId: session.id,
     },
-    config as any
+    config
   );
 
   return { accessToken, refreshToken };
