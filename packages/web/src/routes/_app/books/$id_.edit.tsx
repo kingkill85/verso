@@ -146,14 +146,21 @@ function BookEditPage() {
           </svg>
           Back to {book.title}
         </Link>
-        <button
-          onClick={handleSave}
-          disabled={!isDirty || updateMutation.isPending}
-          className="px-5 py-2 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-50"
-          style={{ backgroundColor: "var(--warm)" }}
-        >
-          {updateMutation.isPending ? "Saving..." : "Save"}
-        </button>
+        <div className="flex gap-3">
+          <Link to="/books/$id/metadata" params={{ id }}
+            className="px-5 py-2 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
+            style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}>
+            Find Metadata
+          </Link>
+          <button
+            onClick={handleSave}
+            disabled={!isDirty || updateMutation.isPending}
+            className="px-5 py-2 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-50"
+            style={{ backgroundColor: "var(--warm)" }}
+          >
+            {updateMutation.isPending ? "Saving..." : "Save"}
+          </button>
+        </div>
       </div>
 
       {updateMutation.isError && (
@@ -186,16 +193,6 @@ function BookEditPage() {
             );
           })}
 
-          <Link
-            to="/books/$id/metadata" params={{ id }}
-            className="flex items-center justify-center gap-2 rounded-xl p-4 text-sm font-medium transition-colors hover:opacity-80 border border-dashed"
-            style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            Find Metadata Online
-          </Link>
         </div>
       </div>
     </div>

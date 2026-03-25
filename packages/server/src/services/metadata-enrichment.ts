@@ -351,12 +351,10 @@ function parseGoodreadsBookPage(html: string, url: string): ExternalBook | null 
     seriesIndex = parseInt(seriesMatch[3], 10) || undefined;
   }
 
-  // Authors — first one is the primary author
+  // Authors — only the first person (subsequent ones are typically translators/editors)
   const authors = Array.isArray(ld.author) ? ld.author : ld.author ? [ld.author] : [];
-  const author = authors
-    .filter((a: any) => a["@type"] === "Person")
-    .map((a: any) => a.name)
-    .join(", ");
+  const firstAuthor = authors.find((a: any) => a["@type"] === "Person");
+  const author = firstAuthor?.name ?? "";
 
   // Extract year from "First published ..." text
   const yearMatch = html.match(/First published\s+\w+\s+\d+,\s+(\d{4})/);
