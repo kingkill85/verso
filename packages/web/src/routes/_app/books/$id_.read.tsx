@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { trpc } from "@/trpc";
 import { useEpubReader } from "@/hooks/use-epub-reader";
 import { useProgressSync } from "@/hooks/use-progress-sync";
@@ -77,10 +77,10 @@ function ReaderPage() {
     if (!rendition || !annotationsQuery.data) return;
 
     const colorMap: Record<string, string> = {
-      yellow: "rgba(254,240,138,0.4)",
-      green: "rgba(187,247,208,0.4)",
-      blue: "rgba(191,219,254,0.4)",
-      pink: "rgba(251,207,232,0.4)",
+      yellow: "rgba(250,204,21,0.5)",
+      green: "rgba(34,197,94,0.45)",
+      blue: "rgba(59,130,246,0.45)",
+      pink: "rgba(236,72,153,0.4)",
     };
 
     for (const ann of annotationsQuery.data) {
@@ -106,14 +106,6 @@ function ReaderPage() {
     }
   }, [annotationsQuery.data, isLoaded]);
 
-  // Track mouse position for toolbar placement
-  const lastMousePos = useRef({ x: 0, y: 0 });
-  useEffect(() => {
-    const onMouse = (e: MouseEvent) => { lastMousePos.current = { x: e.clientX, y: e.clientY }; };
-    window.addEventListener("mouseup", onMouse);
-    return () => window.removeEventListener("mouseup", onMouse);
-  }, []);
-
   // Listen for text selection in epub
   useEffect(() => {
     const rendition = renditionRef.current;
@@ -126,9 +118,17 @@ function ReaderPage() {
       const text = selection.toString().trim();
       if (!text) return;
 
+      // Get selection rect from inside the iframe
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+
+      // Convert iframe-relative coords to page coords
+      const iframe = contents.document?.defaultView?.frameElement;
+      const iframeRect = iframe?.getBoundingClientRect() || { left: 0, top: 0 };
+
       setToolbarPos({
-        x: lastMousePos.current.x,
-        y: lastMousePos.current.y - 20,
+        x: iframeRect.left + rect.left + rect.width / 2,
+        y: iframeRect.top + rect.top - 20,
       });
       setSelectionData({ text, cfiRange });
     };
