@@ -126,15 +126,25 @@ Two procedures for Session 2:
 
 **`progress.sync`** — mutation
 - Input: `{ bookId: string, percentage: number, cfiPosition?: string, currentPage?: number }`
+- Note: `timeSpentMinutes` from the full API spec is intentionally deferred to Session 4 (reading time tracking)
 - Upserts `reading_progress` row (unique on `user_id + book_id`)
 - Auto-sets `started_at` to now on first call (when no existing row)
 - Auto-sets `finished_at` to now when `percentage >= 98`
 - Updates `last_read_at` to now on every call
 - Returns updated `ReadingProgress`
 
+### Books Router Addition
+
+**`books.currentlyReading`** — query (new procedure in existing books router)
+- Input: none
+- Output: `(Book & ReadingProgress)[]`
+- Joins `books` with `reading_progress` where `started_at` is set and `finished_at` is null for the current user
+- Sorted by `last_read_at` desc
+- Used by the "Continue Reading" row on the library page
+
 ### File Streaming
 
-The existing `GET /api/books/:id/file` endpoint already streams the EPUB file. epub.js will fetch from this URL with the auth token in the header.
+The existing `GET /api/books/:id/file` endpoint already streams the EPUB file. Note: epub.js `Book.open()` doesn't support custom auth headers natively, so we pre-fetch the EPUB as an ArrayBuffer with the auth token and pass it to epub.js directly.
 
 ## Frontend Updates
 
@@ -166,5 +176,6 @@ The existing `GET /api/books/:id/file` endpoint already streams the EPUB file. e
 
 ### Modified Files
 - `packages/server/src/trpc/router.ts` — add progress router
+- `packages/server/src/trpc/routers/books.ts` — add `currentlyReading` query
 - `packages/web/src/routes/_app/books/$id.tsx` — add reading CTA + progress card
 - `packages/web/src/routes/_app/index.tsx` — add Continue Reading row
