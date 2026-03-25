@@ -4,6 +4,7 @@ import { booksRouter } from "./routers/books.js";
 import { progressRouter } from "./routers/progress.js";
 import { shelvesRouter } from "./routers/shelves.js";
 import { metadataRouter } from "./routers/metadata.js";
+import { annotationsRouter } from "./routers/annotations.js";
 
 export const appRouter = router({
   auth: authRouter,
@@ -11,6 +12,7 @@ export const appRouter = router({
   progress: progressRouter,
   shelves: shelvesRouter,
   metadata: metadataRouter,
+  annotations: annotationsRouter,
 });
 
 export type AppRouter = typeof appRouter;
