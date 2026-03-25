@@ -61,6 +61,21 @@ export function registerCoversRoute(app: FastifyInstance, db: AppDatabase, stora
       updatedAt: new Date().toISOString(),
     }).where(eq(books.id, bookId));
 
+    // Embed cover in EPUB too
+    if (book.fileFormat === "epub") {
+      try {
+        const filePath = storage.fullPath(book.filePath);
+        await updateEpubMetadata(filePath, {
+          coverImageBuffer: processed,
+          coverMimeType: "image/jpeg",
+        }, book.fileHash ?? undefined);
+        const newHash = await getEpubFileHash(filePath);
+        await db.update(books).set({ fileHash: newHash }).where(eq(books.id, bookId));
+      } catch (err) {
+        console.error("Failed to embed cover in EPUB:", err);
+      }
+    }
+
     return { success: true, coverPath };
   });
 

@@ -427,8 +427,27 @@ export async function updateEpubMetadata(
       }
     }
 
+    // If adding a cover to an EPUB that doesn't have one, we need to
+    // insert a manifest item and meta tag into the OPF
+    let opfWithCoverAdded = originalOpf;
+    const addingNewCover = updates.coverImageBuffer && !coverPath;
+    const newCoverFilename = addingNewCover ? "cover.jpg" : undefined;
+    const newCoverPath = addingNewCover ? (opfDir ? `${opfDir}/${newCoverFilename}` : newCoverFilename!) : undefined;
+
+    if (addingNewCover) {
+      // Add manifest item and meta tag for the new cover
+      opfWithCoverAdded = opfWithCoverAdded.replace(
+        /<\/manifest>/i,
+        `  <item id="cover-image" href="${newCoverFilename}" media-type="image/${updates.coverMimeType === "image/png" ? "png" : "jpeg"}"/>\n  </manifest>`,
+      );
+      opfWithCoverAdded = opfWithCoverAdded.replace(
+        /<\/metadata>/i,
+        `    <meta name="cover" content="cover-image"/>\n  </metadata>`,
+      );
+    }
+
     // 4. Modify OPF
-    const modifiedOpf = applyMetadataToOpf(originalOpf, updates);
+    const modifiedOpf = applyMetadataToOpf(opfWithCoverAdded, updates);
 
     // 5. Rebuild ZIP
     const newZip = new yazl.ZipFile();
@@ -457,6 +476,11 @@ export async function updateEpubMetadata(
         const buf = await readEntryBuffer(zipFile, entry);
         newZip.addBuffer(buf, entry.filename, options);
       }
+    }
+
+    // Add new cover image file if EPUB didn't have one before
+    if (addingNewCover && newCoverPath && updates.coverImageBuffer) {
+      newZip.addBuffer(updates.coverImageBuffer, newCoverPath, { compress: true });
     }
 
     newZip.end();
