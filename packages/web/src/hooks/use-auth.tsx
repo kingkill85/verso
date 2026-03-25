@@ -50,14 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (meQuery.data) {
       setUser(meQuery.data);
     }
-    if (meQuery.error) {
-      const httpStatus = (meQuery.error.data as any)?.httpStatus;
-      if (httpStatus === 401 || httpStatus === 403) {
-        clearTokens();
-        setUser(null);
-      }
-    }
-  }, [meQuery.data, meQuery.error, setUser]);
+    // Never auto-clear tokens here. Only the logout button clears tokens.
+    // The proactive refresh in trpc.ts handles token renewal.
+  }, [meQuery.data, setUser]);
 
   const login = useCallback((response: AuthResponse) => {
     setTokens(response.accessToken, response.refreshToken);
