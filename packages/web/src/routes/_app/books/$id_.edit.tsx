@@ -2,13 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { createFileRoute, Link, useNavigate, useBlocker } from "@tanstack/react-router";
 import { trpc } from "@/trpc";
 import { BookCover } from "@/components/books/book-cover";
-import { SourceBadge } from "@/components/metadata/source-badge";
-import type { ExternalBook } from "@verso/shared";
 
 export const Route = createFileRoute("/_app/books/$id_/edit")({
-  validateSearch: (search: Record<string, unknown>): { metadata?: string } => ({
-    metadata: typeof search.metadata === "string" ? search.metadata : undefined,
-  }),
   component: BookEditPage,
 });
 
@@ -28,26 +23,6 @@ const FIELDS: { key: string; label: string; type: "text" | "number" | "textarea"
 
 const NUM_FIELDS = new Set(["year", "pageCount", "seriesIndex"]);
 
-type FieldKey = "title" | "author" | "description" | "genre" | "publisher" | "year" | "isbn" | "language" | "pageCount" | "series" | "seriesIndex";
-
-const DIFF_FIELDS: { key: FieldKey; label: string }[] = [
-  { key: "title", label: "Title" },
-  { key: "author", label: "Author" },
-  { key: "description", label: "Description" },
-  { key: "genre", label: "Genre" },
-  { key: "publisher", label: "Publisher" },
-  { key: "year", label: "Year" },
-  { key: "isbn", label: "ISBN" },
-  { key: "language", label: "Language" },
-  { key: "pageCount", label: "Pages" },
-  { key: "series", label: "Series" },
-  { key: "seriesIndex", label: "Series #" },
-];
-
-function str(val: unknown): string {
-  return val != null ? String(val) : "";
-}
-
 function BookEditPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
@@ -55,20 +30,7 @@ function BookEditPage() {
   const bookQuery = trpc.books.byId.useQuery({ id });
 
   const [values, setValues] = useState<Record<string, string>>({});
-  const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [initialValues, setInitialValues] = useState<Record<string, string>>({});
-
-  const [metadataExpanded, setMetadataExpanded] = useState(false);
-  const [searchInput, setSearchInput] = useState("");
-  const [manualQuery, setManualQuery] = useState<string | undefined>(undefined);
-  const [selected, setSelected] = useState<ExternalBook | null>(null);
-  const [checkedFields, setCheckedFields] = useState<Record<string, boolean>>({});
-  const [coverChecked, setCoverChecked] = useState(false);
-
-  const { metadata } = Route.useSearch();
-  useEffect(() => {
-    if (metadata === "1") setMetadataExpanded(true);
-  }, [metadata]);
 
   useEffect(() => {
     if (!bookQuery.data) return;
@@ -79,13 +41,11 @@ function BookEditPage() {
     }
     setValues(v);
     setInitialValues(v);
-    setSearchInput(`${bookQuery.data.title} ${bookQuery.data.author}`.trim());
   }, [bookQuery.data]);
 
   const isDirty = useMemo(() => {
-    if (coverUrl) return true;
     return Object.keys(values).some((k) => values[k] !== initialValues[k]);
-  }, [values, initialValues, coverUrl]);
+  }, [values, initialValues]);
 
   useEffect(() => {
     if (!isDirty) return;
@@ -96,11 +56,6 @@ function BookEditPage() {
 
   useBlocker({ condition: isDirty });
 
-  const searchQuery = trpc.metadata.search.useQuery(
-    { bookId: id, query: manualQuery },
-    { enabled: metadataExpanded && !!manualQuery },
-  );
-
   const updateMutation = trpc.books.update.useMutation({
     onSuccess: () => {
       utils.books.byId.invalidate({ id });
@@ -108,43 +63,6 @@ function BookEditPage() {
       navigate({ to: "/books/$id", params: { id } });
     },
   });
-
-  useEffect(() => {
-    if (!selected || !bookQuery.data) return;
-    const checked: Record<string, boolean> = {};
-    for (const { key } of DIFF_FIELDS) {
-      const currentStr = str((bookQuery.data as any)[key]);
-      const newStr = str(selected[key as keyof ExternalBook]);
-      if (currentStr === newStr || (!currentStr && !newStr)) {
-        checked[key] = false;
-      } else if (!currentStr && newStr) {
-        checked[key] = true;
-      } else {
-        checked[key] = false;
-      }
-    }
-    setCheckedFields(checked);
-    setCoverChecked(!!selected.coverUrl);
-  }, [selected, bookQuery.data]);
-
-  const checkedCount = useMemo(() => {
-    return Object.values(checkedFields).filter(Boolean).length + (coverChecked ? 1 : 0);
-  }, [checkedFields, coverChecked]);
-
-  const handleApplyMetadata = () => {
-    if (!selected) return;
-    const updated = { ...values };
-    for (const { key } of DIFF_FIELDS) {
-      if (!checkedFields[key]) continue;
-      const val = str(selected[key as keyof ExternalBook]);
-      updated[key] = val;
-    }
-    setValues(updated);
-    if (coverChecked && selected.coverUrl) {
-      setCoverUrl(selected.coverUrl);
-    }
-    setSelected(null);
-  };
 
   const handleSave = () => {
     if (!bookQuery.data) return;
@@ -163,7 +81,6 @@ function BookEditPage() {
         fields[key] = val;
       }
     }
-    if (coverUrl) fields.coverUrl = coverUrl;
     updateMutation.mutate(fields as any);
   };
 
@@ -216,12 +133,8 @@ function BookEditPage() {
       <h1 className="font-display text-xl font-bold mb-6" style={{ color: "var(--text)" }}>Edit Book</h1>
 
       <div className="flex flex-col md:flex-row gap-8">
-        <div className="shrink-0 self-center md:self-start md:sticky md:top-20">
-          {coverUrl ? (
-            <img src={coverUrl} alt="" className="w-[180px] rounded-lg object-cover" />
-          ) : (
-            <BookCover bookId={book.id} title={book.title} author={book.author} coverPath={book.coverPath} updatedAt={book.updatedAt} size="xl" />
-          )}
+        <div className="shrink-0 self-center md:self-start">
+          <BookCover bookId={book.id} title={book.title} author={book.author} coverPath={book.coverPath} updatedAt={book.updatedAt} size="xl" />
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col gap-6">
@@ -236,143 +149,6 @@ function BookEditPage() {
               </div>
             );
           })}
-
-          <div className="rounded-xl" style={{ backgroundColor: "var(--card)" }}>
-            <button
-              onClick={() => setMetadataExpanded((p) => !p)}
-              className="w-full flex items-center justify-between p-5 text-left"
-            >
-              <p className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Find Metadata</p>
-              <svg className={`w-4 h-4 transition-transform ${metadataExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: "var(--text-faint)" }}>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {metadataExpanded && (
-              <div className="px-5 pb-5">
-                {!selected ? (
-                  <>
-                    <div className="flex gap-2 mb-4">
-                      <input
-                        type="text"
-                        value={searchInput}
-                        onChange={(e) => setSearchInput(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (searchInput.trim()) setManualQuery(searchInput.trim()); } }}
-                        placeholder="Search by title, author, ISBN..."
-                        className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none"
-                        style={{ backgroundColor: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }}
-                      />
-                      <button
-                        onClick={() => { if (searchInput.trim()) setManualQuery(searchInput.trim()); }}
-                        className="px-4 py-2 rounded-lg text-sm font-medium text-white"
-                        style={{ backgroundColor: "var(--warm)" }}
-                      >
-                        Search
-                      </button>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      {searchQuery.isLoading && <p className="text-sm py-6 text-center" style={{ color: "var(--text-dim)" }}>Searching...</p>}
-                      {searchQuery.isError && <p className="text-sm py-6 text-center" style={{ color: "var(--text-dim)" }}>Search failed. Try again.</p>}
-                      {!searchQuery.isLoading && !searchQuery.isError && searchQuery.data?.length === 0 && (
-                        <p className="text-sm py-6 text-center" style={{ color: "var(--text-dim)" }}>No results. Try a different search.</p>
-                      )}
-                      {(searchQuery.data ?? []).map((result, i) => (
-                        <button
-                          key={`${result.source}-${result.sourceId}-${i}`}
-                          onClick={() => setSelected(result)}
-                          className="flex items-start gap-3 rounded-xl p-3 text-left transition-colors hover:opacity-90"
-                          style={{ backgroundColor: "var(--bg)" }}
-                        >
-                          {result.coverUrl ? (
-                            <img src={result.coverUrl} alt="" className="w-10 h-14 object-cover rounded-[2px] shrink-0" />
-                          ) : (
-                            <div className="w-10 h-14 rounded-[2px] shrink-0 flex items-center justify-center text-[8px]" style={{ backgroundColor: "var(--surface)", color: "var(--text-faint)" }}>No cover</div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>{result.title}</p>
-                            <p className="text-xs truncate" style={{ color: "var(--text-dim)" }}>{result.author}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              {result.year && <span className="text-[11px]" style={{ color: "var(--text-faint)" }}>{result.year}</span>}
-                              {result.pageCount && <span className="text-[11px]" style={{ color: "var(--text-faint)" }}>{result.pageCount}p</span>}
-                              <SourceBadge source={result.source} />
-                              <span className="text-[11px] font-medium" style={{ color: "var(--text-faint)" }}>{Math.round(result.confidence * 100)}%</span>
-                            </div>
-                          </div>
-                          <svg className="w-4 h-4 mt-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: "var(--text-faint)" }}>
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-semibold" style={{ color: "var(--text)" }}>Review Changes</h3>
-                      <SourceBadge source={selected.source} />
-                    </div>
-
-                    {selected.coverUrl && (
-                      <label className="flex items-center gap-4 rounded-xl p-3 mb-3 cursor-pointer" style={{ backgroundColor: "var(--bg)" }}>
-                        <input type="checkbox" checked={coverChecked} onChange={() => setCoverChecked((p) => !p)} className="shrink-0" />
-                        <div className="flex items-center gap-3">
-                          <div className="text-center">
-                            <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--text-faint)" }}>Current</p>
-                            <BookCover bookId={id} title={book.title} author={book.author} coverPath={book.coverPath} updatedAt={book.updatedAt} size="sm" />
-                          </div>
-                          <span style={{ color: "var(--text-faint)" }}>→</span>
-                          <div className="text-center">
-                            <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--text-faint)" }}>New</p>
-                            <img src={selected.coverUrl} alt="" className="w-[52px] h-[76px] object-cover rounded-[3px]" />
-                          </div>
-                        </div>
-                        <span className="text-xs ml-auto" style={{ color: "var(--text-dim)" }}>Cover</span>
-                      </label>
-                    )}
-
-                    <div className="flex flex-col gap-1">
-                      {DIFF_FIELDS.map(({ key, label }) => {
-                        const currentStr = str((book as any)[key]);
-                        const newStr = str(selected[key as keyof ExternalBook]);
-                        const isMatching = currentStr === newStr;
-                        const bothEmpty = !currentStr && !newStr;
-                        if (bothEmpty) return null;
-                        const isEmpty = !currentStr && !!newStr;
-                        const isDifferent = !!currentStr && !!newStr && !isMatching;
-
-                        return (
-                          <label key={key} className="flex items-center gap-3 rounded-lg px-3 py-2 cursor-pointer" style={{
-                            opacity: isMatching ? 0.4 : 1,
-                            backgroundColor: isMatching ? "transparent" : isEmpty ? "rgba(34,197,94,0.08)" : isDifferent ? "rgba(234,179,8,0.08)" : "transparent",
-                          }}>
-                            <input type="checkbox" checked={!!checkedFields[key]} onChange={() => { if (!isMatching) setCheckedFields((p) => ({ ...p, [key]: !p[key] })); }} disabled={isMatching} className="shrink-0" />
-                            <span className="text-xs font-medium w-20 shrink-0" style={{ color: "var(--text-dim)" }}>{label}</span>
-                            <span className="text-xs w-2/5 truncate shrink-0" style={{ color: "var(--text-faint)" }} title={currentStr || "(empty)"}>{currentStr || <em>(empty)</em>}</span>
-                            {!isMatching && (
-                              <>
-                                <span className="text-xs shrink-0" style={{ color: "var(--text-faint)" }}>→</span>
-                                <span className="text-xs flex-1 truncate" style={{ color: "var(--text)" }} title={newStr}>{newStr || <em>(empty)</em>}</span>
-                              </>
-                            )}
-                          </label>
-                        );
-                      })}
-                    </div>
-
-                    <div className="flex items-center justify-between mt-4">
-                      <button onClick={() => setSelected(null)} className="px-4 py-2 rounded-full text-sm font-medium border hover:opacity-80" style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}>
-                        Back to results
-                      </button>
-                      <button onClick={handleApplyMetadata} disabled={checkedCount === 0} className="px-5 py-2 rounded-full text-sm font-semibold text-white hover:scale-[1.02] disabled:opacity-50" style={{ backgroundColor: "var(--warm)" }}>
-                        Apply {checkedCount} change{checkedCount !== 1 ? "s" : ""}
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </div>

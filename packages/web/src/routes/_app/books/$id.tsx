@@ -207,7 +207,7 @@ function BookDetailPage() {
                 style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}>
                 Edit
               </Link>
-              <Link to="/books/$id/edit" params={{ id }} search={{ metadata: "1" }}
+              <Link to="/books/$id/metadata" params={{ id }}
                 className="px-5 py-2.5 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
                 style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}>
                 Find Metadata
