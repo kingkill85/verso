@@ -15,6 +15,13 @@
       "when": 1774422452955,
       "tag": "0001_solid_toro",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1774435407319,
+      "tag": "0002_fearless_vampiro",
+      "breakpoints": true
     }
   ]
 }

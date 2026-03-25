@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/trpc";
@@ -85,8 +86,9 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
         </div>
       </div>
 
-      {shelfDialogOpen && (
-        <ShelfDialog onClose={() => setShelfDialogOpen(false)} />
+      {shelfDialogOpen && createPortal(
+        <ShelfDialog onClose={() => setShelfDialogOpen(false)} />,
+        document.body,
       )}
     </aside>
   );
