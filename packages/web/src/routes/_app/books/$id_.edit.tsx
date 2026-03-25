@@ -23,17 +23,39 @@ const FIELDS: { key: string; label: string; type: "text" | "number" | "textarea"
 
 const NUM_FIELDS = new Set(["year", "pageCount", "seriesIndex"]);
 
+// Read and consume metadata selections from sessionStorage (one-shot on mount)
+function consumeMetadataApply(bookId: string): { fields: Record<string, string>; coverUrl: string | null } | null {
+  const storageKey = `verso-metadata-apply-${bookId}`;
+  const raw = sessionStorage.getItem(storageKey);
+  if (!raw) return null;
+  sessionStorage.removeItem(storageKey);
+  try {
+    const applied = JSON.parse(raw) as Record<string, string>;
+    let coverUrl: string | null = null;
+    if (applied.coverUrl) {
+      coverUrl = applied.coverUrl;
+      delete applied.coverUrl;
+    }
+    return { fields: applied, coverUrl };
+  } catch {
+    return null;
+  }
+}
+
 function BookEditPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const utils = trpc.useUtils();
   const bookQuery = trpc.books.byId.useQuery({ id });
 
+  // Consume metadata on mount — before any effects run
+  const [metadataApply] = useState(() => consumeMetadataApply(id));
+
   const [values, setValues] = useState<Record<string, string>>({});
-  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(metadataApply?.coverUrl ?? null);
   const [initialValues, setInitialValues] = useState<Record<string, string>>({});
 
-  // Initialize form from book data, then apply any metadata selections from sessionStorage
+  // Initialize form from book data, merge metadata selections on top
   useEffect(() => {
     if (!bookQuery.data) return;
     const v: Record<string, string> = {};
@@ -42,26 +64,8 @@ function BookEditPage() {
       v[key] = val != null ? String(val) : "";
     }
     setInitialValues(v);
-
-    // Check for metadata applied from the metadata page
-    const storageKey = `verso-metadata-apply-${id}`;
-    const raw = sessionStorage.getItem(storageKey);
-    if (raw) {
-      sessionStorage.removeItem(storageKey);
-      try {
-        const applied = JSON.parse(raw) as Record<string, string>;
-        if (applied.coverUrl) {
-          setCoverUrl(applied.coverUrl);
-          delete applied.coverUrl;
-        }
-        setValues({ ...v, ...applied });
-      } catch {
-        setValues(v);
-      }
-    } else {
-      setValues(v);
-    }
-  }, [bookQuery.data, id]);
+    setValues(metadataApply ? { ...v, ...metadataApply.fields } : v);
+  }, [bookQuery.data, metadataApply]);
 
   const isDirty = useMemo(() => {
     if (coverUrl) return true;
@@ -155,28 +159,18 @@ function BookEditPage() {
       <h1 className="font-display text-xl font-bold mb-6" style={{ color: "var(--text)" }}>Edit Book</h1>
 
       <div className="flex flex-col md:flex-row gap-8">
-        <div className="shrink-0 self-center md:self-start flex flex-col items-center gap-3">
+        <div className="shrink-0 self-center md:self-start flex flex-col items-center gap-2">
           {coverUrl ? (
-            <img src={coverUrl} alt="" className="w-45 rounded-lg object-cover" />
+            <>
+              <img src={coverUrl} alt="" className="w-45 rounded-lg object-cover" />
+              <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>New cover from metadata</p>
+              <button onClick={() => setCoverUrl(null)} className="text-xs hover:opacity-80" style={{ color: "var(--text-faint)" }}>
+                Reset
+              </button>
+            </>
           ) : (
             <BookCover bookId={book.id} title={book.title} author={book.author} coverPath={book.coverPath} updatedAt={book.updatedAt} size="xl" />
           )}
-          {coverUrl && (
-            <button onClick={() => setCoverUrl(null)} className="text-xs hover:opacity-80" style={{ color: "var(--text-faint)" }}>
-              Reset cover
-            </button>
-          )}
-          <div className="w-full">
-            <label className="block text-[10px] font-medium uppercase tracking-wider mb-1 text-center" style={{ color: "var(--text-faint)" }}>Cover URL</label>
-            <input
-              type="text"
-              value={coverUrl ?? ""}
-              onChange={(e) => setCoverUrl(e.target.value.trim() || null)}
-              placeholder="https://..."
-              className="w-full rounded-lg border px-2 py-1.5 text-xs outline-none"
-              style={{ backgroundColor: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }}
-            />
-          </div>
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col gap-6">
