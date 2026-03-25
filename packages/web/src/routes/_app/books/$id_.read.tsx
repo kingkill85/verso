@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { trpc } from "@/trpc";
 import { useEpubReader } from "@/hooks/use-epub-reader";
 import { useProgressSync } from "@/hooks/use-progress-sync";
+import { useReadingTimer } from "@/hooks/use-reading-timer";
 import { ReaderTopBar } from "@/components/reader/reader-top-bar";
 import { ReaderBottomBar } from "@/components/reader/reader-bottom-bar";
 import { TapZones } from "@/components/reader/tap-zones";
@@ -41,11 +42,14 @@ function ReaderPage() {
     enabled: dataReady,
   });
 
+  const { consumeMinutes } = useReadingTimer();
+
   const { syncNow } = useProgressSync({
     bookId: id,
     percentage,
     cfiPosition: currentCfi,
     enabled: isLoaded,
+    getTimeMinutes: consumeMinutes,
   });
 
   const [controlsVisible, setControlsVisible] = useState(true);

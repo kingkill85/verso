@@ -31,6 +31,7 @@ export const progressRouter = router({
           percentage: input.percentage,
           cfiPosition: input.cfiPosition ?? existing.cfiPosition,
           currentPage: input.currentPage ?? existing.currentPage,
+          timeSpentMinutes: (existing.timeSpentMinutes ?? 0) + (input.timeSpentMinutes ?? 0),
           lastReadAt: now,
           finishedAt: existing.finishedAt ?? finishedAt,
         })
@@ -47,6 +48,7 @@ export const progressRouter = router({
         percentage: input.percentage,
         cfiPosition: input.cfiPosition,
         currentPage: input.currentPage,
+        timeSpentMinutes: input.timeSpentMinutes ?? 0,
         startedAt: now,
         lastReadAt: now,
         finishedAt,

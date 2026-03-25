@@ -7,6 +7,7 @@ type UseProgressSyncOptions = {
   percentage: number;
   cfiPosition: string | null;
   enabled: boolean;
+  getTimeMinutes?: () => number;
 };
 
 const DEBOUNCE_MS = 30_000; // 30 seconds
@@ -16,6 +17,7 @@ export function useProgressSync({
   percentage,
   cfiPosition,
   enabled,
+  getTimeMinutes,
 }: UseProgressSyncOptions) {
   const syncMutation = trpc.progress.sync.useMutation();
   const mutateRef = useRef(syncMutation.mutate);
@@ -26,11 +28,16 @@ export function useProgressSync({
     cfi: null,
   });
 
+  const getTimeRef = useRef(getTimeMinutes);
+  getTimeRef.current = getTimeMinutes;
+
   const doSync = useCallback(() => {
     if (!enabled || percentage === 0) return;
+    const timeSpentMinutes = getTimeRef.current ? Math.round(getTimeRef.current()) : undefined;
     if (
       percentage === lastSyncedRef.current.percentage &&
-      cfiPosition === lastSyncedRef.current.cfi
+      cfiPosition === lastSyncedRef.current.cfi &&
+      !timeSpentMinutes
     ) return;
 
     lastSyncedRef.current = { percentage, cfi: cfiPosition };
@@ -38,6 +45,7 @@ export function useProgressSync({
       bookId,
       percentage,
       ...(cfiPosition ? { cfiPosition } : {}),
+      ...(timeSpentMinutes ? { timeSpentMinutes } : {}),
     });
   }, [bookId, percentage, cfiPosition, enabled]);
 
@@ -60,7 +68,8 @@ export function useProgressSync({
   // Sync on unmount — use fetch with keepalive for reliability
   useEffect(() => {
     return () => {
-      if (lastSyncedRef.current.percentage !== percentage || lastSyncedRef.current.cfi !== cfiPosition) {
+      const timeSpentMinutes = getTimeRef.current ? Math.round(getTimeRef.current()) : undefined;
+      if (lastSyncedRef.current.percentage !== percentage || lastSyncedRef.current.cfi !== cfiPosition || timeSpentMinutes) {
         if (enabled && percentage > 0) {
           const token = getAccessToken();
           fetch("/trpc/progress.sync", {
@@ -70,7 +79,12 @@ export function useProgressSync({
               ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
             body: JSON.stringify({
-              json: { bookId, percentage, ...(cfiPosition ? { cfiPosition } : {}) },
+              json: {
+                bookId,
+                percentage,
+                ...(cfiPosition ? { cfiPosition } : {}),
+                ...(timeSpentMinutes ? { timeSpentMinutes } : {}),
+              },
             }),
             keepalive: true,
           }).catch(() => {});
