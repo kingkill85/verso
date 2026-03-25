@@ -118,7 +118,10 @@ export function FindMetadataDialog({ bookId, book, open, onClose, onSaved }: Pro
     for (const { key } of DIFF_FIELDS) {
       if (!checkedFields[key]) continue;
       const val = str(selected[key as keyof ExternalBook]);
-      if (!val) continue;
+      if (!val) {
+        fields[key] = null;
+        continue;
+      }
       if (NUM_FIELDS.has(key)) {
         const num = parseFloat(val);
         if (!isNaN(num)) fields[key] = num;
