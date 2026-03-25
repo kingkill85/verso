@@ -2,7 +2,17 @@ import { shelves } from "@verso/shared";
 import type { AppDatabase } from "../../db/client.js";
 
 const DEFAULT_SHELVES = [
-  { name: "Currently Reading", emoji: "📖", isSmart: false, isDefault: true, position: 0 },
+  {
+    name: "Currently Reading",
+    emoji: "📖",
+    isSmart: true,
+    isDefault: true,
+    position: 0,
+    smartFilter: JSON.stringify({
+      operator: "AND",
+      conditions: [{ field: "_currentlyReading", op: "eq", value: "true" }],
+    }),
+  },
   { name: "Want to Read", emoji: "🔖", isSmart: false, isDefault: true, position: 1 },
   { name: "Favorites", emoji: "⭐", isSmart: false, isDefault: true, position: 2 },
   {

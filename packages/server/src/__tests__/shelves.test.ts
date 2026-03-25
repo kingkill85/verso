@@ -97,7 +97,7 @@ describe("shelves router", () => {
   describe("byId", () => {
     it("returns a manual shelf with its books", async () => {
       const list = await authedCaller.shelves.list();
-      const manualShelf = list.find((s) => s.name === "Currently Reading")!;
+      const manualShelf = list.find((s) => s.name === "Favorites")!;
 
       const book = await insertBook({ title: "My Book" });
       await authedCaller.shelves.addBook({
@@ -106,7 +106,7 @@ describe("shelves router", () => {
       });
 
       const result = await authedCaller.shelves.byId({ id: manualShelf.id });
-      expect(result.name).toBe("Currently Reading");
+      expect(result.name).toBe("Favorites");
       expect(result.books).toHaveLength(1);
       expect(result.books[0].title).toBe("My Book");
     });

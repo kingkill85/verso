@@ -1,9 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { eq, and, sql, desc } from "drizzle-orm";
+import { isNotNull, isNull } from "drizzle-orm";
 import {
   shelves,
   shelfBooks,
   books,
+  readingProgress,
   shelfCreateInput,
   shelfUpdateInput,
   shelfByIdInput,
@@ -53,13 +55,52 @@ export const shelvesRouter = router({
       // Smart shelf: evaluate filter
       const filter = JSON.parse(shelf.smartFilter!) as SmartFilter;
 
-      // Check for _recentlyAdded sentinel
+      // Check for special sentinels
+      const hasCurrentlyReading = filter.conditions.some(
+        (c: any) => c.field === "_currentlyReading"
+      );
       const hasRecentlyAdded = filter.conditions.some(
         (c: any) => c.field === "_recentlyAdded"
       );
 
       let shelfBooks;
-      if (hasRecentlyAdded) {
+      if (hasCurrentlyReading) {
+        // Books with active reading progress (started but not finished)
+        shelfBooks = await ctx.db
+          .select({
+            id: books.id,
+            title: books.title,
+            author: books.author,
+            isbn: books.isbn,
+            publisher: books.publisher,
+            year: books.year,
+            language: books.language,
+            description: books.description,
+            genre: books.genre,
+            tags: books.tags,
+            coverPath: books.coverPath,
+            filePath: books.filePath,
+            fileFormat: books.fileFormat,
+            fileSize: books.fileSize,
+            fileHash: books.fileHash,
+            pageCount: books.pageCount,
+            addedBy: books.addedBy,
+            metadataSource: books.metadataSource,
+            metadataLocked: books.metadataLocked,
+            createdAt: books.createdAt,
+            updatedAt: books.updatedAt,
+          })
+          .from(readingProgress)
+          .innerJoin(books, eq(books.id, readingProgress.bookId))
+          .where(
+            and(
+              eq(readingProgress.userId, ctx.user.sub),
+              isNotNull(readingProgress.startedAt),
+              isNull(readingProgress.finishedAt),
+            )
+          )
+          .orderBy(desc(readingProgress.lastReadAt));
+      } else if (hasRecentlyAdded) {
         const days = filter.conditions.find(
           (c: any) => c.field === "_recentlyAdded"
         )!.value;
