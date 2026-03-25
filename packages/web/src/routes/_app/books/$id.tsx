@@ -251,7 +251,7 @@ function BookDetailPage() {
             Description
           </h2>
           <p
-            className="font-display italic leading-relaxed text-sm"
+            className="font-display italic leading-relaxed text-sm whitespace-pre-line"
             style={{ color: "var(--text-dim)" }}
           >
             {book.description}
