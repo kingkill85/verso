@@ -17,9 +17,9 @@ import { Route as AuthRegisterRouteImport } from './routes/_auth/register'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AppUploadRouteImport } from './routes/_app/upload'
 import { Route as AppSearchRouteImport } from './routes/_app/search'
+import { Route as AppShelvesIdRouteImport } from './routes/_app/shelves/$id'
 import { Route as AppBooksIdRouteImport } from './routes/_app/books/$id'
 import { Route as AppBooksIdReadRouteImport } from './routes/_app/books/$id_.read'
-import { Route as AppShelvesIdRouteImport } from './routes/_app/shelves/$id'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
@@ -59,6 +59,11 @@ const AppSearchRoute = AppSearchRouteImport.update({
   path: '/search',
   getParentRoute: () => AppRoute,
 } as any)
+const AppShelvesIdRoute = AppShelvesIdRouteImport.update({
+  id: '/shelves/$id',
+  path: '/shelves/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppBooksIdRoute = AppBooksIdRouteImport.update({
   id: '/books/$id',
   path: '/books/$id',
@@ -69,84 +74,79 @@ const AppBooksIdReadRoute = AppBooksIdReadRouteImport.update({
   path: '/books/$id/read',
   getParentRoute: () => AppRoute,
 } as any)
-const AppShelvesIdRoute = AppShelvesIdRouteImport.update({
-  id: '/shelves/$id',
-  path: '/shelves/$id',
-  getParentRoute: () => AppRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
-  '/upload': typeof AppUploadRoute
   '/search': typeof AppSearchRoute
+  '/upload': typeof AppUploadRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
   '/setup': typeof AuthSetupRoute
   '/books/$id': typeof AppBooksIdRoute
-  '/books/$id/read': typeof AppBooksIdReadRoute
   '/shelves/$id': typeof AppShelvesIdRoute
+  '/books/$id/read': typeof AppBooksIdReadRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
-  '/upload': typeof AppUploadRoute
   '/search': typeof AppSearchRoute
+  '/upload': typeof AppUploadRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
   '/setup': typeof AuthSetupRoute
   '/books/$id': typeof AppBooksIdRoute
-  '/books/$id/read': typeof AppBooksIdReadRoute
   '/shelves/$id': typeof AppShelvesIdRoute
+  '/books/$id/read': typeof AppBooksIdReadRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/_auth': typeof AuthRouteWithChildren
-  '/_app/upload': typeof AppUploadRoute
   '/_app/search': typeof AppSearchRoute
+  '/_app/upload': typeof AppUploadRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/register': typeof AuthRegisterRoute
   '/_auth/setup': typeof AuthSetupRoute
   '/_app/': typeof AppIndexRoute
   '/_app/books/$id': typeof AppBooksIdRoute
-  '/_app/books/$id_/read': typeof AppBooksIdReadRoute
   '/_app/shelves/$id': typeof AppShelvesIdRoute
+  '/_app/books/$id_/read': typeof AppBooksIdReadRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/upload'
     | '/search'
+    | '/upload'
     | '/login'
     | '/register'
     | '/setup'
     | '/books/$id'
-    | '/books/$id/read'
     | '/shelves/$id'
+    | '/books/$id/read'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/upload'
     | '/search'
+    | '/upload'
     | '/login'
     | '/register'
     | '/setup'
     | '/books/$id'
-    | '/books/$id/read'
     | '/shelves/$id'
+    | '/books/$id/read'
   id:
     | '__root__'
     | '/_app'
     | '/_auth'
-    | '/_app/upload'
     | '/_app/search'
+    | '/_app/upload'
     | '/_auth/login'
     | '/_auth/register'
     | '/_auth/setup'
     | '/_app/'
     | '/_app/books/$id'
-    | '/_app/books/$id_/read'
     | '/_app/shelves/$id'
+    | '/_app/books/$id_/read'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -212,6 +212,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSearchRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/shelves/$id': {
+      id: '/_app/shelves/$id'
+      path: '/shelves/$id'
+      fullPath: '/shelves/$id'
+      preLoaderRoute: typeof AppShelvesIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/books/$id': {
       id: '/_app/books/$id'
       path: '/books/$id'
@@ -226,32 +233,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBooksIdReadRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/shelves/$id': {
-      id: '/_app/shelves/$id'
-      path: '/shelves/$id'
-      fullPath: '/shelves/$id'
-      preLoaderRoute: typeof AppShelvesIdRouteImport
-      parentRoute: typeof AppRoute
-    }
   }
 }
 
 interface AppRouteChildren {
-  AppUploadRoute: typeof AppUploadRoute
   AppSearchRoute: typeof AppSearchRoute
+  AppUploadRoute: typeof AppUploadRoute
   AppIndexRoute: typeof AppIndexRoute
   AppBooksIdRoute: typeof AppBooksIdRoute
-  AppBooksIdReadRoute: typeof AppBooksIdReadRoute
   AppShelvesIdRoute: typeof AppShelvesIdRoute
+  AppBooksIdReadRoute: typeof AppBooksIdReadRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppUploadRoute: AppUploadRoute,
   AppSearchRoute: AppSearchRoute,
+  AppUploadRoute: AppUploadRoute,
   AppIndexRoute: AppIndexRoute,
   AppBooksIdRoute: AppBooksIdRoute,
-  AppBooksIdReadRoute: AppBooksIdReadRoute,
   AppShelvesIdRoute: AppShelvesIdRoute,
+  AppBooksIdReadRoute: AppBooksIdReadRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
