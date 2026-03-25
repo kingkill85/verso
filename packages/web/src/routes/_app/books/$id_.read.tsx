@@ -90,7 +90,7 @@ function ReaderPage() {
             ann.cfiPosition,
             { id: ann.id },
             undefined,
-            "hl",
+            `hl hl-${ann.id}`,
             { fill: colorMap[ann.color || "yellow"] || colorMap.yellow }
           );
         } catch {
@@ -98,7 +98,77 @@ function ReaderPage() {
         }
       }
     }
+
+    // Tag highlight elements with annotation IDs for click detection
+    const tagHighlights = () => {
+      const iframes = (rendition as any).manager?.container?.querySelectorAll("iframe") || [];
+      for (const iframe of iframes) {
+        try {
+          for (const ann of annotationsQuery.data!) {
+            const els = iframe.contentDocument?.querySelectorAll(`.hl-${ann.id}`) || [];
+            for (const el of els) {
+              (el as HTMLElement).dataset.annotationId = ann.id;
+            }
+          }
+        } catch { /* cross-origin */ }
+      }
+    };
+    setTimeout(tagHighlights, 100);
+    rendition.on("rendered", () => setTimeout(tagHighlights, 100));
   }, [annotationsQuery.data, isLoaded]);
+
+  // Listen for clicks on existing highlights inside the iframe
+  useEffect(() => {
+    const rendition = renditionRef.current;
+    if (!rendition || !isLoaded || !annotationsQuery.data?.length) return;
+
+    const handleClick = (e: Event) => {
+      const el = e.target as HTMLElement;
+      if (!el?.classList?.contains("hl")) return;
+
+      // Find which annotation was clicked by matching the element's data or CFI
+      const dataset = el.dataset;
+      const annId = dataset?.annotationId;
+      const ann = annId
+        ? annotationsQuery.data?.find((a) => a.id === annId)
+        : annotationsQuery.data?.[0]; // fallback
+
+      if (!ann) return;
+
+      const iframe = (rendition as any).manager?.container?.querySelector("iframe");
+      const iframeRect = iframe?.getBoundingClientRect() || { left: 0, top: 0 };
+      const rect = el.getBoundingClientRect();
+
+      setPopoverAnnotation(ann);
+      setPopoverPos({
+        x: iframeRect.left + rect.left + rect.width / 2,
+        y: iframeRect.top + rect.top - 10,
+      });
+    };
+
+    // Attach to each iframe's content document
+    const attachListeners = () => {
+      const iframes = (rendition as any).manager?.container?.querySelectorAll("iframe") || [];
+      for (const iframe of iframes) {
+        try {
+          iframe.contentDocument?.addEventListener("click", handleClick);
+        } catch { /* cross-origin */ }
+      }
+    };
+
+    attachListeners();
+    rendition.on("rendered", attachListeners);
+
+    return () => {
+      rendition.off("rendered", attachListeners);
+      const iframes = (rendition as any).manager?.container?.querySelectorAll("iframe") || [];
+      for (const iframe of iframes) {
+        try {
+          iframe.contentDocument?.removeEventListener("click", handleClick);
+        } catch { /* cross-origin */ }
+      }
+    };
+  }, [isLoaded, annotationsQuery.data]);
 
   // Listen for text selection in epub
   useEffect(() => {
