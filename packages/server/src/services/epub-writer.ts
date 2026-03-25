@@ -271,6 +271,11 @@ export function applyMetadataToOpf(
     // Remove the cover image manifest <item> entirely
     xml = xml.replace(/\s*<item[^>]+id="[^"]*cover-image[^"]*"[^>]*\/>/gi, "");
     xml = xml.replace(/\s*<item[^>]+id="[^"]*cover-image[^"]*"[^>]*>[^<]*<\/item>/gi, "");
+    // Remove cover HTML manifest item (id="cover" with xhtml type)
+    xml = xml.replace(/\s*<item[^>]+id="cover"[^>]+media-type="application\/xhtml\+xml"[^>]*\/>/gi, "");
+    xml = xml.replace(/\s*<item[^>]+id="cover"[^>]+media-type="application\/xhtml\+xml"[^>]*>[^<]*<\/item>/gi, "");
+    // Remove cover from spine
+    xml = xml.replace(/\s*<itemref[^>]+idref="cover"[^>]*\/>/gi, "");
   }
 
   return xml;
@@ -410,8 +415,9 @@ export async function updateEpubMetadata(
     const opfBuf = await readEntryBuffer(zipFile, opfEntry);
     const originalOpf = opfBuf.toString("utf-8");
 
-    // Use epub2 to reliably find the cover image path (same as upload parser)
+    // Use epub2 to reliably find cover paths (same library as upload parser)
     let coverPath: string | undefined;
+    let coverHtmlPath: string | undefined;
     if (updates.coverImageBuffer || updates.removeCover) {
       try {
         const epub = await EPub.createAsync(filePath);
@@ -419,10 +425,19 @@ export async function updateEpubMetadata(
         if (coverId && epub.manifest[coverId]) {
           const item = epub.manifest[coverId] as Record<string, string>;
           coverPath = item.href;
-          // epub2 prepends the OPF dir to href already
+        }
+        // Also find cover HTML page (often id="cover" with xhtml media type)
+        if (updates.removeCover) {
+          for (const [id, item] of Object.entries(epub.manifest)) {
+            const mi = item as Record<string, string>;
+            const mediaType = mi["media-type"] || mi.mediaType || "";
+            if (id.toLowerCase() === "cover" && mediaType.includes("xhtml")) {
+              coverHtmlPath = mi.href;
+              break;
+            }
+          }
         }
       } catch {
-        // Fallback to regex if epub2 fails
         coverPath = findCoverImageHref(originalOpf, opfDir);
       }
     }
@@ -431,18 +446,28 @@ export async function updateEpubMetadata(
     // insert a manifest item and meta tag into the OPF
     let opfWithCoverAdded = originalOpf;
     const addingNewCover = updates.coverImageBuffer && !coverPath;
-    const newCoverFilename = addingNewCover ? "cover.jpg" : undefined;
-    const newCoverPath = addingNewCover ? (opfDir ? `${opfDir}/${newCoverFilename}` : newCoverFilename!) : undefined;
+    const coverImgFilename = addingNewCover ? "cover.jpg" : undefined;
+    const coverHtmlFilename = addingNewCover ? "cover.xhtml" : undefined;
+    const newCoverImgPath = addingNewCover ? (opfDir ? `${opfDir}/${coverImgFilename}` : coverImgFilename!) : undefined;
+    const newCoverHtmlPath = addingNewCover ? (opfDir ? `${opfDir}/${coverHtmlFilename}` : coverHtmlFilename!) : undefined;
 
     if (addingNewCover) {
-      // Add manifest item and meta tag for the new cover
+      const mimeType = updates.coverMimeType === "image/png" ? "png" : "jpeg";
+      // Add manifest items for cover image and cover HTML page
       opfWithCoverAdded = opfWithCoverAdded.replace(
         /<\/manifest>/i,
-        `  <item id="cover-image" href="${newCoverFilename}" media-type="image/${updates.coverMimeType === "image/png" ? "png" : "jpeg"}"/>\n  </manifest>`,
+        `  <item id="cover-image" href="${coverImgFilename}" media-type="image/${mimeType}"/>\n` +
+        `  <item id="cover" href="${coverHtmlFilename}" media-type="application/xhtml+xml"/>\n  </manifest>`,
       );
+      // Add meta tag
       opfWithCoverAdded = opfWithCoverAdded.replace(
         /<\/metadata>/i,
         `    <meta name="cover" content="cover-image"/>\n  </metadata>`,
+      );
+      // Add cover page as first item in spine
+      opfWithCoverAdded = opfWithCoverAdded.replace(
+        /<spine([^>]*)>/i,
+        `<spine$1>\n    <itemref idref="cover"/>`,
       );
     }
 
@@ -469,6 +494,9 @@ export async function updateEpubMetadata(
       } else if (isCover && updates.removeCover) {
         // Skip — remove cover image from EPUB
         continue;
+      } else if (coverHtmlPath && entry.filename === coverHtmlPath && updates.removeCover) {
+        // Skip — remove cover HTML page too
+        continue;
       } else if (isCover && updates.coverImageBuffer) {
         newZip.addBuffer(updates.coverImageBuffer, entry.filename, options);
       } else {
@@ -478,9 +506,22 @@ export async function updateEpubMetadata(
       }
     }
 
-    // Add new cover image file if EPUB didn't have one before
-    if (addingNewCover && newCoverPath && updates.coverImageBuffer) {
-      newZip.addBuffer(updates.coverImageBuffer, newCoverPath, { compress: true });
+    // Add new cover files if EPUB didn't have one before
+    if (addingNewCover && newCoverImgPath && updates.coverImageBuffer) {
+      newZip.addBuffer(updates.coverImageBuffer, newCoverImgPath, { compress: true });
+
+      // Create cover HTML page
+      const coverHtml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><title>Cover</title></head>
+<body style="margin:0;padding:0;text-align:center">
+<img src="${coverImgFilename}" alt="Cover" style="max-width:100%;max-height:100vh"/>
+</body>
+</html>`;
+      if (newCoverHtmlPath) {
+        newZip.addBuffer(Buffer.from(coverHtml, "utf-8"), newCoverHtmlPath, { compress: true });
+      }
     }
 
     newZip.end();
