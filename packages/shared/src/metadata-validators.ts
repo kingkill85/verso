@@ -3,6 +3,9 @@ import { z } from "zod";
 export const metadataSearchInput = z.object({
   bookId: z.string().uuid(),
   query: z.string().min(1).optional(),
+  title: z.string().min(1).optional(),
+  author: z.string().min(1).optional(),
+  isbn: z.string().min(1).optional(),
 });
 
 export const metadataApplyFields = z.object({
@@ -23,7 +26,7 @@ export const metadataApplyFields = z.object({
 export const metadataApplyInput = z.object({
   bookId: z.string().uuid(),
   fields: metadataApplyFields,
-  source: z.enum(["google", "openlibrary"]).optional(),
+  source: z.enum(["google", "openlibrary", "goodreads"]).optional(),
 });
 
 export type MetadataApplyFields = z.infer<typeof metadataApplyFields>;

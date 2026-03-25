@@ -38,22 +38,41 @@ function BookMetadataPage() {
   const navigate = useNavigate();
   const bookQuery = trpc.books.byId.useQuery({ id });
 
-  const [searchInput, setSearchInput] = useState("");
-  const [manualQuery, setManualQuery] = useState<string | undefined>(undefined);
+  const [searchTitle, setSearchTitle] = useState("");
+  const [searchAuthor, setSearchAuthor] = useState("");
+  const [searchIsbn, setSearchIsbn] = useState("");
+  const [searchParams, setSearchParams] = useState<{ title?: string; author?: string; isbn?: string } | null>(null);
   const [selected, setSelected] = useState<ExternalBook | null>(null);
   const [checkedFields, setCheckedFields] = useState<Record<string, boolean>>({});
   const [coverChecked, setCoverChecked] = useState(false);
 
   useEffect(() => {
     if (bookQuery.data) {
-      setSearchInput(`${bookQuery.data.title} ${bookQuery.data.author}`.trim());
+      setSearchTitle(bookQuery.data.title ?? "");
+      setSearchAuthor(bookQuery.data.author ?? "");
+      setSearchIsbn((bookQuery.data as any).isbn ?? "");
     }
   }, [bookQuery.data]);
 
   const searchQuery = trpc.metadata.search.useQuery(
-    { bookId: id, query: manualQuery },
-    { enabled: !!manualQuery },
+    {
+      bookId: id,
+      ...(searchParams?.isbn ? { isbn: searchParams.isbn } : {}),
+      ...(searchParams?.title ? { title: searchParams.title } : {}),
+      ...(searchParams?.author ? { author: searchParams.author } : {}),
+      // Also send a combined query for Google/OpenLibrary
+      query: [searchParams?.title, searchParams?.author].filter(Boolean).join(" ") || undefined,
+    },
+    { enabled: !!searchParams },
   );
+
+  const handleSearch = () => {
+    const t = searchTitle.trim();
+    const a = searchAuthor.trim();
+    const i = searchIsbn.trim();
+    if (!t && !a && !i) return;
+    setSearchParams({ title: t || undefined, author: a || undefined, isbn: i || undefined });
+  };
 
   useEffect(() => {
     if (!selected || !bookQuery.data) return;
@@ -119,24 +138,39 @@ function BookMetadataPage() {
 
       {!selected ? (
         <>
-          {/* Search */}
-          <div className="flex gap-2 mb-6">
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (searchInput.trim()) setManualQuery(searchInput.trim()); } }}
-              placeholder="Search by title, author, ISBN..."
-              className="flex-1 rounded-lg border px-4 py-2.5 text-sm outline-none"
-              style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", color: "var(--text)" }}
-            />
-            <button
-              onClick={() => { if (searchInput.trim()) setManualQuery(searchInput.trim()); }}
-              className="px-5 py-2.5 rounded-lg text-sm font-medium text-white"
-              style={{ backgroundColor: "var(--warm)" }}
-            >
-              Search
-            </button>
+          {/* Search fields */}
+          <div className="rounded-xl p-5 mb-6" style={{ backgroundColor: "var(--card)" }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-dim)" }}>Title</label>
+                <input type="text" value={searchTitle} onChange={(e) => setSearchTitle(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSearch(); } }}
+                  className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+                  style={{ backgroundColor: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-dim)" }}>Author</label>
+                <input type="text" value={searchAuthor} onChange={(e) => setSearchAuthor(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSearch(); } }}
+                  className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+                  style={{ backgroundColor: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }} />
+              </div>
+            </div>
+            <div className="flex gap-3 items-end">
+              <div className="flex-1">
+                <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-dim)" }}>ISBN</label>
+                <input type="text" value={searchIsbn} onChange={(e) => setSearchIsbn(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSearch(); } }}
+                  placeholder="Optional — most precise"
+                  className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+                  style={{ backgroundColor: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }} />
+              </div>
+              <button onClick={handleSearch}
+                className="px-5 py-2 rounded-lg text-sm font-medium text-white shrink-0"
+                style={{ backgroundColor: "var(--warm)" }}>
+                Search
+              </button>
+            </div>
           </div>
 
           {/* Results */}

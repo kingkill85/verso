@@ -17,11 +17,16 @@ export const metadataRouter = router({
     });
     if (!book) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
 
-    // Build query string
-    const query = input.query ?? `${book.title} ${book.author}`.trim();
+    // Use explicit fields if provided, fall back to book data
+    const searchTitle = input.title ?? book.title;
+    const searchAuthor = input.author ?? book.author;
+    const searchIsbn = input.isbn ?? book.isbn ?? undefined;
+
+    // Build query string (for Google/OpenLibrary which take a single query)
+    const query = input.query ?? `${searchTitle} ${searchAuthor}`.trim();
 
     // Build cache key
-    const cacheKey = book.isbn || `${book.title}::${book.author}`;
+    const cacheKey = searchIsbn || `${searchTitle}::${searchAuthor}`;
 
     // Check cache (only for auto-search, not manual queries)
     if (!input.query) {
@@ -43,7 +48,7 @@ export const metadataRouter = router({
 
     // Search external APIs
     const results = await searchExternalMetadata(
-      { title: book.title, author: book.author, isbn: book.isbn ?? undefined },
+      { title: searchTitle, author: searchAuthor, isbn: searchIsbn },
       book.year ?? undefined,
     );
 

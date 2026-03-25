@@ -99,15 +99,12 @@ export function deduplicateResults(results: ExternalBook[]): ExternalBook[] {
         confidence: Math.max(existing.confidence, result.confidence),
       };
 
-      // Prefer Google cover
-      const googleEntry =
-        result.source === "google"
-          ? result
-          : existing.source === "google"
-            ? existing
-            : null;
-      if (googleEntry?.coverUrl) {
-        merged.coverUrl = googleEntry.coverUrl;
+      // Prefer Goodreads cover (Amazon-hosted), then Google
+      const preferred =
+        [result, existing].find((r) => r.source === "goodreads" && r.coverUrl) ??
+        [result, existing].find((r) => r.source === "google" && r.coverUrl);
+      if (preferred?.coverUrl) {
+        merged.coverUrl = preferred.coverUrl;
       }
 
       byIsbn.set(key, merged);
@@ -262,8 +259,164 @@ export async function searchOpenLibrary(
   }
 }
 
+const GR_USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
 /**
- * Search both APIs in parallel, score all results, deduplicate, and return sorted.
+ * Search Goodreads by scraping search results, then fetching book pages for JSON-LD.
+ * Returns [] on any error.
+ */
+export async function searchGoodreads(
+  query: string,
+  isbn?: string
+): Promise<ExternalBook[]> {
+  try {
+    const q = isbn || query;
+    const searchUrl = `https://www.goodreads.com/search?q=${encodeURIComponent(q)}&search_type=books`;
+    const searchRes = await fetch(searchUrl, {
+      headers: { "User-Agent": GR_USER_AGENT },
+      redirect: "follow",
+    });
+    if (!searchRes.ok) return [];
+
+    const html = await searchRes.text();
+
+    // If ISBN search redirected to a book page, the JSON-LD is right there
+    const finalUrl = searchRes.url;
+    if (finalUrl.includes("/book/show/")) {
+      const book = parseGoodreadsBookPage(html, finalUrl);
+      return book ? [book] : [];
+    }
+
+    // Parse search results for book URLs
+    const bookUrls: string[] = [];
+    const urlRegex = /\/book\/show\/[\w-]+/g;
+    let match;
+    while ((match = urlRegex.exec(html)) !== null) {
+      const url = `https://www.goodreads.com${match[0].split("?")[0]}`;
+      if (!bookUrls.includes(url)) bookUrls.push(url);
+      if (bookUrls.length >= 3) break;
+    }
+
+    if (bookUrls.length === 0) return [];
+
+    // Fetch book pages in parallel (limit to 3)
+    const bookPages = await Promise.all(
+      bookUrls.map(async (url) => {
+        try {
+          const res = await fetch(url, {
+            headers: { "User-Agent": GR_USER_AGENT },
+            redirect: "follow",
+          });
+          if (!res.ok) return null;
+          const pageHtml = await res.text();
+          return parseGoodreadsBookPage(pageHtml, url);
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    return bookPages.filter((b): b is ExternalBook => b !== null);
+  } catch {
+    return [];
+  }
+}
+
+/** Parse a Goodreads book page for JSON-LD and additional metadata. */
+function parseGoodreadsBookPage(html: string, url: string): ExternalBook | null {
+  // Extract JSON-LD
+  const ldMatch = html.match(
+    /<script type="application\/ld\+json">([^<]+)<\/script>/
+  );
+  if (!ldMatch) return null;
+
+  let ld: any;
+  try {
+    ld = JSON.parse(ldMatch[1]);
+  } catch {
+    return null;
+  }
+
+  if (ld["@type"] !== "Book") return null;
+
+  // Extract title — remove series suffix like "(Series Name, #1)"
+  let title = ld.name ?? "";
+  const seriesMatch = title.match(/^(.+?)\s*\(([^,]+),\s*#(\d+)\)$/);
+  let series: string | undefined;
+  let seriesIndex: number | undefined;
+  if (seriesMatch) {
+    title = seriesMatch[1].trim();
+    series = seriesMatch[2].trim();
+    seriesIndex = parseInt(seriesMatch[3], 10) || undefined;
+  }
+
+  // Authors — first one is the primary author
+  const authors = Array.isArray(ld.author) ? ld.author : ld.author ? [ld.author] : [];
+  const author = authors
+    .filter((a: any) => a["@type"] === "Person")
+    .map((a: any) => a.name)
+    .join(", ");
+
+  // Extract year from "First published ..." text
+  const yearMatch = html.match(/First published\s+\w+\s+\d+,\s+(\d{4})/);
+  const year = yearMatch ? parseInt(yearMatch[1], 10) : undefined;
+
+  // Extract description from the page
+  let description: string | undefined;
+  const descMatch = html.match(
+    /data-testid="contentContainer"[^>]*><div[^>]*><div[^>]*><span class="Formatted">([^]*?)<\/span>/
+  );
+  if (descMatch) {
+    description = descMatch[1]
+      .replace(/<br\s*\/?>/g, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .trim();
+  }
+
+  // Extract genres
+  const genreMatches = html.match(
+    /BookPageMetadataSection__genreButton[^>]*><a[^>]*><span[^>]*>([^<]+)<\/span>/g
+  );
+  const genres = genreMatches
+    ? genreMatches
+        .map((m) => {
+          const inner = m.match(/>([^<]+)<\/span>$/);
+          return inner ? inner[1] : "";
+        })
+        .filter(Boolean)
+    : [];
+  const genre = genres[0];
+
+  // Extract sourceId from URL
+  const idMatch = url.match(/\/book\/show\/(\d+)/);
+  const sourceId = idMatch ? idMatch[1] : url;
+
+  return {
+    source: "goodreads",
+    sourceId,
+    title,
+    author,
+    isbn: ld.isbn,
+    year,
+    description,
+    genre,
+    language: ld.inLanguage,
+    pageCount: ld.numberOfPages ? parseInt(ld.numberOfPages, 10) : undefined,
+    coverUrl: ld.image,
+    series,
+    seriesIndex,
+    confidence: 0,
+  };
+}
+
+/**
+ * Search all APIs in parallel, score all results, deduplicate, and return sorted.
  */
 export async function searchExternalMetadata(
   bookQuery: { title: string; author: string; isbn?: string },
@@ -271,12 +424,13 @@ export async function searchExternalMetadata(
 ): Promise<ExternalBook[]> {
   const query = `${bookQuery.title} ${bookQuery.author}`.trim();
 
-  const [googleResults, openLibraryResults] = await Promise.all([
+  const [googleResults, openLibraryResults, goodreadsResults] = await Promise.all([
     searchGoogleBooks(query, bookQuery.isbn),
     searchOpenLibrary(query, bookQuery.isbn),
+    searchGoodreads(query, bookQuery.isbn),
   ]);
 
-  const allResults = [...googleResults, ...openLibraryResults];
+  const allResults = [...googleResults, ...openLibraryResults, ...goodreadsResults];
 
   // Score each result
   for (const result of allResults) {
