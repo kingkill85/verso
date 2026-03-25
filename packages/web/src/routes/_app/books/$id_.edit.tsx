@@ -54,10 +54,12 @@ function BookEditPage() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [coverUrl, setCoverUrl] = useState<string | null>(metadataApply?.coverUrl ?? null);
   const [initialValues, setInitialValues] = useState<Record<string, string>>({});
+  const [initialized, setInitialized] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // Initialize form from book data, merge metadata selections on top
+  // Initialize form from book data ONCE, merge metadata selections on top
   useEffect(() => {
-    if (!bookQuery.data) return;
+    if (!bookQuery.data || initialized) return;
     const v: Record<string, string> = {};
     for (const { key } of FIELDS) {
       const val = (bookQuery.data as any)[key];
@@ -65,7 +67,8 @@ function BookEditPage() {
     }
     setInitialValues(v);
     setValues(metadataApply ? { ...v, ...metadataApply.fields } : v);
-  }, [bookQuery.data, metadataApply]);
+    setInitialized(true);
+  }, [bookQuery.data, metadataApply, initialized]);
 
   const isDirty = useMemo(() => {
     if (coverUrl) return true;
@@ -73,13 +76,14 @@ function BookEditPage() {
   }, [values, initialValues, coverUrl]);
 
   useEffect(() => {
-    if (!isDirty) return;
+    if (!isDirty || saving) return;
     const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [isDirty]);
+  }, [isDirty, saving]);
 
-  useBlocker({ condition: isDirty });
+  // Don't block navigation while saving
+  useBlocker({ condition: isDirty && !saving });
 
   const updateMutation = trpc.books.update.useMutation({
     onSuccess: () => {
@@ -91,6 +95,7 @@ function BookEditPage() {
 
   const handleSave = () => {
     if (!bookQuery.data) return;
+    setSaving(true);
     const fields: Record<string, any> = { id };
     for (const { key, type } of FIELDS) {
       const val = values[key].trim();
