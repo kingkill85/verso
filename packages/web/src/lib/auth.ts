@@ -38,10 +38,11 @@ export async function refreshTokens(): Promise<boolean> {
       body: JSON.stringify({ json: { refreshToken } }),
     });
     if (!res.ok) {
-      if (res.status >= 400 && res.status < 500) {
-        // Server explicitly rejected — session is dead
+      if (res.status === 401) {
+        // Server explicitly rejected the refresh token — session is dead
         window.dispatchEvent(new Event("verso:auth-failed"));
       }
+      // Any other error (400, 500, etc.) — transient, keep tokens
       return false;
     }
     const data = await res.json();
