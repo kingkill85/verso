@@ -50,7 +50,12 @@ export async function refreshTokens(): Promise<boolean> {
       setTokens(result.accessToken, result.refreshToken);
       return true;
     }
-    window.dispatchEvent(new Event("verso:auth-failed"));
+    // tRPC returned 200 but no tokens — check if it's an auth error or a transient issue
+    const errorCode = data?.error?.data?.httpStatus || data?.[0]?.error?.data?.httpStatus;
+    if (errorCode === 401 || errorCode === 403) {
+      window.dispatchEvent(new Event("verso:auth-failed"));
+    }
+    // Otherwise: transient error, keep tokens
     return false;
   } catch {
     // Network error (server restart, offline) — DON'T clear tokens.
