@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { eq, and } from "drizzle-orm";
 import { books } from "@verso/shared";
 import { verifyAccessToken } from "../services/jwt.js";
+import { updateEpubMetadata, getEpubFileHash } from "../services/epub-writer.js";
 import sharp from "sharp";
 import type { StorageService } from "../services/storage.js";
 import type { AppDatabase } from "../db/client.js";
@@ -87,6 +88,18 @@ export function registerCoversRoute(app: FastifyInstance, db: AppDatabase, stora
         coverPath: null,
         updatedAt: new Date().toISOString(),
       }).where(eq(books.id, bookId));
+    }
+
+    // Remove cover from EPUB file too
+    if (book.fileFormat === "epub") {
+      try {
+        const filePath = storage.fullPath(book.filePath);
+        await updateEpubMetadata(filePath, { removeCover: true }, book.fileHash ?? undefined);
+        const newHash = await getEpubFileHash(filePath);
+        await db.update(books).set({ fileHash: newHash }).where(eq(books.id, bookId));
+      } catch (err) {
+        console.error("Failed to remove cover from EPUB:", err);
+      }
     }
 
     return { success: true };

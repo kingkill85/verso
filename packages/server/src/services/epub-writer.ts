@@ -23,6 +23,7 @@ export type EpubMetadataUpdate = {
   seriesIndex?: number | null;
   coverImageBuffer?: Buffer;
   coverMimeType?: string;
+  removeCover?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -260,6 +261,14 @@ export function applyMetadataToOpf(
     }
   }
 
+  // Remove cover references from OPF metadata
+  if (updates.removeCover) {
+    // Remove <meta name="cover" content="..."/>
+    xml = xml.replace(/\s*<meta\s+name="cover"\s+content="[^"]*"\s*\/?>/gi, "");
+    // Remove properties="cover-image" from manifest items
+    xml = xml.replace(/\s+properties="[^"]*cover-image[^"]*"/gi, "");
+  }
+
   return xml;
 }
 
@@ -383,7 +392,7 @@ export async function updateEpubMetadata(
     const originalOpf = opfBuf.toString("utf-8");
 
     const coverPath =
-      updates.coverImageBuffer
+      (updates.coverImageBuffer || updates.removeCover)
         ? findCoverImageHref(originalOpf, opfDir)
         : undefined;
 
@@ -407,6 +416,9 @@ export async function updateEpubMetadata(
 
       if (isOpf) {
         newZip.addBuffer(Buffer.from(modifiedOpf, "utf-8"), entry.filename, options);
+      } else if (isCover && updates.removeCover) {
+        // Skip — remove cover image from EPUB
+        continue;
       } else if (isCover && updates.coverImageBuffer) {
         newZip.addBuffer(updates.coverImageBuffer, entry.filename, options);
       } else {
