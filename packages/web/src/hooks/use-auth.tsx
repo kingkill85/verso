@@ -14,7 +14,7 @@ type AuthState = {
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const hasToken = !!getAccessToken() && !isTokenExpired(getAccessToken()!);
+  const hasToken = !!getAccessToken();
   const meQuery = trpc.auth.me.useQuery(undefined, { enabled: hasToken, retry: false });
 
   const [user, setUser] = useState<SafeUser | null>(null);
