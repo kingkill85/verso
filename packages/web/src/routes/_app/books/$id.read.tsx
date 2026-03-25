@@ -38,6 +38,7 @@ function ReaderPage() {
   } = useEpubReader({
     bookId: id,
     initialCfi: dataReady ? initialCfi : undefined,
+    enabled: dataReady,
   });
 
   const { syncNow } = useProgressSync({

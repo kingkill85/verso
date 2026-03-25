@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/trpc";
+import { getAccessToken } from "@/lib/auth";
 
 type UseProgressSyncOptions = {
   bookId: string;
@@ -17,6 +18,8 @@ export function useProgressSync({
   enabled,
 }: UseProgressSyncOptions) {
   const syncMutation = trpc.progress.sync.useMutation();
+  const mutateRef = useRef(syncMutation.mutate);
+  mutateRef.current = syncMutation.mutate;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSyncedRef = useRef<{ percentage: number; cfi: string | null }>({
     percentage: 0,
@@ -31,12 +34,12 @@ export function useProgressSync({
     ) return;
 
     lastSyncedRef.current = { percentage, cfi: cfiPosition };
-    syncMutation.mutate({
+    mutateRef.current({
       bookId,
       percentage,
       ...(cfiPosition ? { cfiPosition } : {}),
     });
-  }, [bookId, percentage, cfiPosition, enabled, syncMutation]);
+  }, [bookId, percentage, cfiPosition, enabled]);
 
   // Debounced sync on percentage/cfi change
   useEffect(() => {
@@ -59,7 +62,7 @@ export function useProgressSync({
     return () => {
       if (lastSyncedRef.current.percentage !== percentage || lastSyncedRef.current.cfi !== cfiPosition) {
         if (enabled && percentage > 0) {
-          const token = localStorage.getItem("verso-access-token");
+          const token = getAccessToken();
           fetch("/trpc/progress.sync", {
             method: "POST",
             headers: {

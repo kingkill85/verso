@@ -61,9 +61,10 @@ const THEME_MAP: Record<ReaderSettings["theme"], { body: Record<string, string> 
 type UseEpubReaderOptions = {
   bookId: string;
   initialCfi?: string | null;
+  enabled?: boolean;
 };
 
-export function useEpubReader({ bookId, initialCfi }: UseEpubReaderOptions) {
+export function useEpubReader({ bookId, initialCfi, enabled = true }: UseEpubReaderOptions) {
   const containerRef = useRef<HTMLDivElement>(null);
   const bookRef = useRef<Book | null>(null);
   const renditionRef = useRef<Rendition | null>(null);
@@ -84,8 +85,14 @@ export function useEpubReader({ bookId, initialCfi }: UseEpubReaderOptions) {
     rendition.themes.override("line-height", `${LINE_HEIGHT_MAP[s.lineSpacing]}`);
   }, []);
 
+  // Use a ref for currentCfi so updateSettings always reads the latest value
+  const currentCfiRef = useRef<string | null>(initialCfi ?? null);
   useEffect(() => {
-    if (!containerRef.current) return;
+    currentCfiRef.current = currentCfi;
+  }, [currentCfi]);
+
+  useEffect(() => {
+    if (!containerRef.current || !enabled) return;
 
     let cancelled = false;
     const container = containerRef.current;
@@ -125,10 +132,13 @@ export function useEpubReader({ bookId, initialCfi }: UseEpubReaderOptions) {
 
       if (!cancelled) setIsLoaded(true);
 
-      rendition.on("relocated", (location: any) => {
+      function onRelocated(location: any) {
         if (cancelled) return;
         const cfi = location.start?.cfi;
-        if (cfi) setCurrentCfi(cfi);
+        if (cfi) {
+          setCurrentCfi(cfi);
+          currentCfiRef.current = cfi;
+        }
 
         const pct = book.locations
           ? Math.round((location.start?.percentage ?? 0) * 100)
@@ -142,7 +152,11 @@ export function useEpubReader({ bookId, initialCfi }: UseEpubReaderOptions) {
           );
           if (chapter) setCurrentChapter(chapter.label.trim());
         }
-      });
+      }
+
+      rendition.on("relocated", onRelocated);
+      // Store handler for reuse on flow change
+      (bookRef.current as any)._onRelocated = onRelocated;
 
       await book.locations.generate(1024);
       if (renditionRef.current && !cancelled) {
@@ -170,7 +184,7 @@ export function useEpubReader({ bookId, initialCfi }: UseEpubReaderOptions) {
       }
       container.innerHTML = "";
     };
-  }, [bookId, initialCfi, applyStyles]);
+  }, [bookId, initialCfi, applyStyles, enabled]);
 
   const nextPage = useCallback(() => {
     renditionRef.current?.next();
@@ -195,7 +209,7 @@ export function useEpubReader({ bookId, initialCfi }: UseEpubReaderOptions) {
         rendition.themes.override("padding", `0 ${MARGIN_MAP[next.margins]}px`);
 
         if (partial.flow && partial.flow !== prev.flow) {
-          const currentCfiValue = currentCfi;
+          const cfiValue = currentCfiRef.current;
           const container = containerRef.current;
           if (container && bookRef.current) {
             rendition.destroy();
@@ -208,8 +222,11 @@ export function useEpubReader({ bookId, initialCfi }: UseEpubReaderOptions) {
             renditionRef.current = newRendition;
             applyStyles(newRendition, next);
             newRendition.themes.override("padding", `0 ${MARGIN_MAP[next.margins]}px`);
-            if (currentCfiValue) {
-              newRendition.display(currentCfiValue);
+            // Re-register relocated handler on new rendition
+            const onRelocated = (bookRef.current as any)._onRelocated;
+            if (onRelocated) newRendition.on("relocated", onRelocated);
+            if (cfiValue) {
+              newRendition.display(cfiValue);
             } else {
               newRendition.display();
             }
@@ -219,7 +236,7 @@ export function useEpubReader({ bookId, initialCfi }: UseEpubReaderOptions) {
 
       return next;
     });
-  }, [applyStyles, currentCfi]);
+  }, [applyStyles]);
 
   return {
     containerRef,
