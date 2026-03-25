@@ -11,16 +11,16 @@ import yazl from "yazl";
 // ---------------------------------------------------------------------------
 
 export type EpubMetadataUpdate = {
-  title?: string;
-  author?: string;
-  description?: string;
-  publisher?: string;
-  isbn?: string;
-  year?: number;
-  language?: string;
-  genre?: string;
-  series?: string;
-  seriesIndex?: number;
+  title?: string | null;
+  author?: string | null;
+  description?: string | null;
+  publisher?: string | null;
+  isbn?: string | null;
+  year?: number | null;
+  language?: string | null;
+  genre?: string | null;
+  series?: string | null;
+  seriesIndex?: number | null;
   coverImageBuffer?: Buffer;
   coverMimeType?: string;
 };
@@ -71,6 +71,17 @@ export function replaceOrInsertDcTag(
     /<\/metadata>/i,
     `    <dc:${tag}${attrStr}>${escaped}</dc:${tag}>\n  </metadata>`,
   );
+}
+
+/**
+ * Remove a `<dc:tag>…</dc:tag>` entirely.
+ */
+function removeDcTag(xml: string, tag: string): string {
+  const re = new RegExp(
+    `\\s*<dc:${tag}[^>]*>[\\s\\S]*?</dc:${tag}>`,
+    "gi",
+  );
+  return xml.replace(re, "");
 }
 
 /**
@@ -166,47 +177,49 @@ export function applyMetadataToOpf(
 ): string {
   let xml = opfXml;
 
-  if (updates.title != null) {
-    xml = replaceOrInsertDcTag(xml, "title", updates.title);
+  if ("title" in updates) {
+    xml = updates.title ? replaceOrInsertDcTag(xml, "title", updates.title) : removeDcTag(xml, "title");
   }
-  if (updates.author != null) {
-    xml = replaceOrInsertDcTag(xml, "creator", updates.author);
+  if ("author" in updates) {
+    xml = updates.author ? replaceOrInsertDcTag(xml, "creator", updates.author) : removeDcTag(xml, "creator");
   }
-  if (updates.description != null) {
-    xml = replaceOrInsertDcTag(xml, "description", updates.description);
+  if ("description" in updates) {
+    xml = updates.description ? replaceOrInsertDcTag(xml, "description", updates.description) : removeDcTag(xml, "description");
   }
-  if (updates.publisher != null) {
-    xml = replaceOrInsertDcTag(xml, "publisher", updates.publisher);
+  if ("publisher" in updates) {
+    xml = updates.publisher ? replaceOrInsertDcTag(xml, "publisher", updates.publisher) : removeDcTag(xml, "publisher");
   }
-  if (updates.language != null) {
-    xml = replaceOrInsertDcTag(xml, "language", updates.language);
+  if ("language" in updates) {
+    xml = updates.language ? replaceOrInsertDcTag(xml, "language", updates.language) : removeDcTag(xml, "language");
   }
-  if (updates.year != null) {
-    xml = replaceOrInsertDcTag(xml, "date", String(updates.year));
+  if ("year" in updates) {
+    xml = updates.year ? replaceOrInsertDcTag(xml, "date", String(updates.year)) : removeDcTag(xml, "date");
   }
-  if (updates.genre != null) {
-    xml = replaceOrInsertDcTag(xml, "subject", updates.genre);
+  if ("genre" in updates) {
+    xml = updates.genre ? replaceOrInsertDcTag(xml, "subject", updates.genre) : removeDcTag(xml, "subject");
   }
-  if (updates.isbn != null) {
-    // Try to replace existing ISBN identifier first
+  if ("isbn" in updates) {
     const isbnRe =
       /<dc:identifier[^>]*opf:scheme="ISBN"[^>]*>[^<]*<\/dc:identifier>/i;
-    if (isbnRe.test(xml)) {
-      xml = xml.replace(
-        isbnRe,
-        `<dc:identifier opf:scheme="ISBN">${escapeXml(updates.isbn)}</dc:identifier>`,
-      );
+    if (updates.isbn) {
+      if (isbnRe.test(xml)) {
+        xml = xml.replace(
+          isbnRe,
+          `<dc:identifier opf:scheme="ISBN">${escapeXml(updates.isbn)}</dc:identifier>`,
+        );
+      } else {
+        xml = xml.replace(
+          /<\/metadata>/i,
+          `    <dc:identifier opf:scheme="ISBN">${escapeXml(updates.isbn)}</dc:identifier>\n  </metadata>`,
+        );
+      }
     } else {
-      // Insert a new ISBN identifier
-      xml = xml.replace(
-        /<\/metadata>/i,
-        `    <dc:identifier opf:scheme="ISBN">${escapeXml(updates.isbn)}</dc:identifier>\n  </metadata>`,
-      );
+      xml = xml.replace(new RegExp(`\\s*${isbnRe.source}`, "i"), "");
     }
   }
 
   // Series: Calibre-style meta tags
-  if (updates.series != null) {
+  if ("series" in updates) {
     if (updates.series) {
       xml = replaceOrInsertMeta(xml, "calibre:series", updates.series);
       xml = replaceOrInsertMeta(
@@ -220,8 +233,8 @@ export function applyMetadataToOpf(
       xml = removeMeta(xml, "calibre:series_index");
     }
     // EPUB3-style series
-    xml = setEpub3Series(xml, updates.series, updates.seriesIndex);
-  } else if (updates.seriesIndex != null) {
+    xml = setEpub3Series(xml, updates.series ?? "", updates.seriesIndex ?? undefined);
+  } else if ("seriesIndex" in updates && updates.seriesIndex != null) {
     // Update index only if series meta already exists
     const seriesRe =
       /<meta\s+name="calibre:series"\s+content="[^"]*"\s*\/>/i;
