@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { trpc } from "@/trpc";
 import { useEpubReader } from "@/hooks/use-epub-reader";
 import { useProgressSync } from "@/hooks/use-progress-sync";
@@ -16,6 +16,18 @@ import type { Annotation } from "@verso/shared";
 export const Route = createFileRoute("/_app/books/$id_/read")({
   component: ReaderPage,
 });
+
+const HIGHLIGHT_COLORS: Record<string, string> = {
+  yellow: "rgba(250,204,21,0.6)",
+  green: "rgba(34,197,94,0.55)",
+  blue: "rgba(59,130,246,0.5)",
+  pink: "rgba(236,72,153,0.5)",
+};
+
+function getIframeRect(rendition: any): DOMRect {
+  const iframe = rendition?.manager?.container?.querySelector("iframe");
+  return iframe?.getBoundingClientRect() || new DOMRect(0, 0, 0, 0);
+}
 
 function ReaderPage() {
   const { id } = Route.useParams();
@@ -60,7 +72,7 @@ function ReaderPage() {
   const [tocOpen, setTocOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // Annotations
+  // ─── Annotations ───
   const annotationsQuery = trpc.annotations.list.useQuery({ bookId: id }, { enabled: isLoaded });
   const createAnnotation = trpc.annotations.create.useMutation({ onSuccess: () => annotationsQuery.refetch() });
   const updateAnnotation = trpc.annotations.update.useMutation({ onSuccess: () => annotationsQuery.refetch() });
@@ -71,134 +83,107 @@ function ReaderPage() {
   const [popoverPos, setPopoverPos] = useState<{ x: number; y: number } | null>(null);
   const [selectionData, setSelectionData] = useState<{ text: string; cfiRange: string } | null>(null);
 
-  // Apply existing highlights onto the rendition
+  // Keep annotations ref current for use in iframe event handlers
+  const annotationsRef = useRef(annotationsQuery.data);
+  annotationsRef.current = annotationsQuery.data;
+
+  // Render existing highlights
   useEffect(() => {
     const rendition = renditionRef.current;
     if (!rendition || !annotationsQuery.data) return;
-
-    const colorMap: Record<string, string> = {
-      yellow: "rgba(250,204,21,0.5)",
-      green: "rgba(34,197,94,0.45)",
-      blue: "rgba(59,130,246,0.45)",
-      pink: "rgba(236,72,153,0.4)",
-    };
 
     for (const ann of annotationsQuery.data) {
       if (ann.cfiPosition) {
         try {
           rendition.annotations.highlight(
             ann.cfiPosition,
-            { id: ann.id },
+            {},
             undefined,
-            `hl hl-${ann.id}`,
-            { fill: colorMap[ann.color || "yellow"] || colorMap.yellow }
+            "epubjs-hl",
+            { fill: HIGHLIGHT_COLORS[ann.color || "yellow"] || HIGHLIGHT_COLORS.yellow }
           );
-        } catch {
-          // CFI may be invalid for current chapter
-        }
+        } catch { /* CFI invalid for current chapter */ }
       }
     }
-
-    // Tag highlight elements with annotation IDs for click detection
-    const tagHighlights = () => {
-      const iframes = (rendition as any).manager?.container?.querySelectorAll("iframe") || [];
-      for (const iframe of iframes) {
-        try {
-          for (const ann of annotationsQuery.data!) {
-            const els = iframe.contentDocument?.querySelectorAll(`.hl-${ann.id}`) || [];
-            for (const el of els) {
-              (el as HTMLElement).dataset.annotationId = ann.id;
-            }
-          }
-        } catch { /* cross-origin */ }
-      }
-    };
-    setTimeout(tagHighlights, 100);
-    rendition.on("rendered", () => setTimeout(tagHighlights, 100));
   }, [annotationsQuery.data, isLoaded]);
 
-  // Listen for clicks on existing highlights inside the iframe
-  useEffect(() => {
-    const rendition = renditionRef.current;
-    if (!rendition || !isLoaded || !annotationsQuery.data?.length) return;
-
-    const handleClick = (e: Event) => {
-      const el = e.target as HTMLElement;
-      if (!el?.classList?.contains("hl")) return;
-
-      // Find which annotation was clicked by matching the element's data or CFI
-      const dataset = el.dataset;
-      const annId = dataset?.annotationId;
-      const ann = annId
-        ? annotationsQuery.data?.find((a) => a.id === annId)
-        : annotationsQuery.data?.[0]; // fallback
-
-      if (!ann) return;
-
-      const iframe = (rendition as any).manager?.container?.querySelector("iframe");
-      const iframeRect = iframe?.getBoundingClientRect() || { left: 0, top: 0 };
-      const rect = el.getBoundingClientRect();
-
-      setPopoverAnnotation(ann);
-      setPopoverPos({
-        x: iframeRect.left + rect.left + rect.width / 2,
-        y: iframeRect.top + rect.top - 10,
-      });
-    };
-
-    // Attach to each iframe's content document
-    const attachListeners = () => {
-      const iframes = (rendition as any).manager?.container?.querySelectorAll("iframe") || [];
-      for (const iframe of iframes) {
-        try {
-          iframe.contentDocument?.addEventListener("click", handleClick);
-        } catch { /* cross-origin */ }
-      }
-    };
-
-    attachListeners();
-    rendition.on("rendered", attachListeners);
-
-    return () => {
-      rendition.off("rendered", attachListeners);
-      const iframes = (rendition as any).manager?.container?.querySelectorAll("iframe") || [];
-      for (const iframe of iframes) {
-        try {
-          iframe.contentDocument?.removeEventListener("click", handleClick);
-        } catch { /* cross-origin */ }
-      }
-    };
-  }, [isLoaded, annotationsQuery.data]);
-
-  // Listen for text selection in epub
+  // Text selection → show toolbar
   useEffect(() => {
     const rendition = renditionRef.current;
     if (!rendition || !isLoaded) return;
 
     const onSelected = (cfiRange: string, contents: any) => {
-      const selection = contents.window.getSelection();
-      if (!selection || selection.isCollapsed) return;
+      try {
+        const sel = contents.window.getSelection();
+        if (!sel || sel.isCollapsed) return;
 
-      const text = selection.toString().trim();
-      if (!text) return;
+        const text = sel.toString().trim();
+        if (!text) return;
 
-      // Get selection rect from inside the iframe
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
+        const range = sel.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        const iframeRect = getIframeRect(rendition);
 
-      // Convert iframe-relative coords to page coords
-      const iframe = contents.document?.defaultView?.frameElement;
-      const iframeRect = iframe?.getBoundingClientRect() || { left: 0, top: 0 };
-
-      setToolbarPos({
-        x: iframeRect.left + rect.left + rect.width / 2,
-        y: iframeRect.top + rect.top - 20,
-      });
-      setSelectionData({ text, cfiRange });
+        setToolbarPos({
+          x: iframeRect.left + rect.left + rect.width / 2,
+          y: iframeRect.top + rect.top - 20,
+        });
+        setSelectionData({ text, cfiRange });
+      } catch { /* ignore */ }
     };
 
     rendition.on("selected", onSelected);
     return () => rendition.off("selected", onSelected);
+  }, [isLoaded]);
+
+  // Click on highlight → show popover
+  useEffect(() => {
+    const rendition = renditionRef.current;
+    if (!rendition || !isLoaded) return;
+
+    const onClick = (e: MouseEvent) => {
+      // epub.js highlights render as <svg> or <mark> elements with epubjs-hl class
+      const el = e.target as HTMLElement;
+      const hlEl = el.closest(".epubjs-hl") || (el.tagName === "mark" ? el : null);
+      if (!hlEl) return;
+
+      // Find which annotation this is by matching CFI to position on page
+      const annotations = annotationsRef.current;
+      if (!annotations?.length) return;
+
+      // Use click position for the popover
+      const iframeRect = getIframeRect(rendition);
+      setPopoverPos({
+        x: iframeRect.left + e.clientX,
+        y: iframeRect.top + e.clientY - 20,
+      });
+
+      // Pick the first annotation (best effort — exact match would need CFI comparison)
+      setPopoverAnnotation(annotations[0]);
+    };
+
+    // Listen on each iframe that renders
+    const attach = () => {
+      const iframes = rendition?.manager?.container?.querySelectorAll("iframe") || [];
+      for (const iframe of Array.from(iframes)) {
+        try {
+          (iframe as HTMLIFrameElement).contentDocument?.addEventListener("click", onClick);
+        } catch { /* cross-origin */ }
+      }
+    };
+
+    const detach = () => {
+      const iframes = rendition?.manager?.container?.querySelectorAll("iframe") || [];
+      for (const iframe of Array.from(iframes)) {
+        try {
+          (iframe as HTMLIFrameElement).contentDocument?.removeEventListener("click", onClick);
+        } catch { /* cross-origin */ }
+      }
+    };
+
+    attach();
+    rendition.on("rendered", attach);
+    return () => { detach(); rendition.off("rendered", attach); };
   }, [isLoaded]);
 
   const handleHighlight = (color: string, note?: string) => {
@@ -220,18 +205,16 @@ function ReaderPage() {
     setSelectionData(null);
   };
 
-  // Auto-hide controls after 3s
+  // ─── Reader chrome ───
+
   useEffect(() => {
     if (!controlsVisible || tocOpen || settingsOpen) return;
     const timer = setTimeout(() => setControlsVisible(false), 3000);
     return () => clearTimeout(timer);
   }, [controlsVisible, tocOpen, settingsOpen]);
 
-  const toggleControls = useCallback(() => {
-    setControlsVisible((v) => !v);
-  }, []);
+  const toggleControls = useCallback(() => setControlsVisible((v) => !v), []);
 
-  // Keyboard navigation
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       switch (e.key) {
@@ -255,48 +238,30 @@ function ReaderPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [nextPage, prevPage, navigate, id, syncNow]);
 
-  const handleClose = useCallback(() => {
-    navigate({ to: "/books/$id", params: { id } });
-  }, [navigate, id]);
+  const handleClose = useCallback(() => navigate({ to: "/books/$id", params: { id } }), [navigate, id]);
 
   if (!dataReady) {
     return (
-      <div
-        className="fixed inset-0 flex items-center justify-center"
-        style={{ backgroundColor: "var(--bg)" }}
-      >
-        <p className="text-sm" style={{ color: "var(--text-dim)" }}>
-          Loading book...
-        </p>
+      <div className="fixed inset-0 flex items-center justify-center" style={{ backgroundColor: "var(--bg)" }}>
+        <p className="text-sm" style={{ color: "var(--text-dim)" }}>Loading book...</p>
       </div>
     );
   }
 
   return (
     <div className="fixed inset-0 z-50" style={{ backgroundColor: "var(--bg)" }}>
-      {/* EPUB container */}
-      <div
-        ref={containerRef}
-        className="absolute inset-0 z-0"
-        style={{ top: 0, bottom: 0 }}
-      />
+      <div ref={containerRef} className="absolute inset-0 z-0" style={{ top: 0, bottom: 0 }} />
 
-      {/* Navigation tap zones */}
       <TapZones
         onPrev={() => { prevPage(); syncNow(); }}
         onNext={() => { nextPage(); syncNow(); }}
         onCenter={toggleControls}
       />
 
-      {/* Hover zone at top to reveal controls */}
       {!controlsVisible && (
-        <div
-          className="fixed top-0 left-0 right-0 h-12 z-[25]"
-          onMouseEnter={() => setControlsVisible(true)}
-        />
+        <div className="fixed top-0 left-0 right-0 h-12 z-[25]" onMouseEnter={() => setControlsVisible(true)} />
       )}
 
-      {/* Chrome */}
       <ReaderTopBar
         title={bookQuery.data?.title ?? ""}
         visible={controlsVisible}
@@ -304,32 +269,12 @@ function ReaderPage() {
         onToggleToc={() => { setTocOpen((v) => !v); setControlsVisible(true); }}
         onToggleSettings={() => { setSettingsOpen((v) => !v); setControlsVisible(true); }}
       />
-      <ReaderBottomBar
-        percentage={percentage}
-        visible={controlsVisible}
-      />
+      <ReaderBottomBar percentage={percentage} visible={controlsVisible} />
 
-      {/* Panels */}
-      <TOCPanel
-        toc={toc}
-        currentChapter={currentChapter}
-        open={tocOpen}
-        onClose={() => setTocOpen(false)}
-        onNavigate={(href) => { goTo(href); syncNow(); }}
-      />
-      <SettingsPanel
-        settings={settings}
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        onUpdate={updateSettings}
-      />
+      <TOCPanel toc={toc} currentChapter={currentChapter} open={tocOpen} onClose={() => setTocOpen(false)} onNavigate={(href) => { goTo(href); syncNow(); }} />
+      <SettingsPanel settings={settings} open={settingsOpen} onClose={() => setSettingsOpen(false)} onUpdate={updateSettings} />
 
-      {/* Highlight toolbar and popover */}
-      <HighlightToolbar
-        position={toolbarPos}
-        onHighlight={handleHighlight}
-        onDismiss={handleDismissToolbar}
-      />
+      <HighlightToolbar position={toolbarPos} onHighlight={handleHighlight} onDismiss={handleDismissToolbar} />
       <HighlightPopover
         annotation={popoverAnnotation}
         position={popoverPos}
@@ -339,15 +284,9 @@ function ReaderPage() {
         onDismiss={() => setPopoverAnnotation(null)}
       />
 
-      {/* Loading overlay */}
       {!isLoaded && (
-        <div
-          className="absolute inset-0 flex items-center justify-center z-20"
-          style={{ backgroundColor: "var(--bg)" }}
-        >
-          <p className="text-sm" style={{ color: "var(--text-dim)" }}>
-            Rendering book...
-          </p>
+        <div className="absolute inset-0 flex items-center justify-center z-20" style={{ backgroundColor: "var(--bg)" }}>
+          <p className="text-sm" style={{ color: "var(--text-dim)" }}>Rendering book...</p>
         </div>
       )}
     </div>

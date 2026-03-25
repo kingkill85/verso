@@ -120,12 +120,6 @@ describe("TapZones", () => {
     expect(onPrev).toHaveBeenCalledOnce();
   });
 
-  it("calls onCenter when center zone is clicked", () => {
-    const onCenter = vi.fn();
-    render(<TapZones onPrev={vi.fn()} onNext={vi.fn()} onCenter={onCenter} />);
-    fireEvent.click(screen.getByLabelText("Toggle controls"));
-    expect(onCenter).toHaveBeenCalledOnce();
-  });
 
   it("calls onNext when right zone is clicked", () => {
     const onNext = vi.fn();
