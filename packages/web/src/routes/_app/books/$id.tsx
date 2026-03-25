@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { trpc } from "@/trpc";
 import { BookCover } from "@/components/books/book-cover";
 import { AddToShelfMenu } from "@/components/shelves/add-to-shelf-menu";
+import { FindMetadataDialog } from "@/components/metadata/find-metadata-dialog";
 
 export const Route = createFileRoute("/_app/books/$id")({
   component: BookDetailPage,
@@ -26,6 +28,7 @@ function BookDetailPage() {
   const navigate = useNavigate();
   const utils = trpc.useUtils();
 
+  const [metadataOpen, setMetadataOpen] = useState(false);
   const bookQuery = trpc.books.byId.useQuery({ id });
   const progressQuery = trpc.progress.get.useQuery({ bookId: id });
   const deleteMutation = trpc.books.delete.useMutation({
@@ -144,6 +147,14 @@ function BookDetailPage() {
             >
               {book.author}
             </p>
+            {book.series && (
+              <p
+                className="text-sm mt-1"
+                style={{ color: "var(--text-faint)" }}
+              >
+                Book {book.seriesIndex || "?"} of {book.series}
+              </p>
+            )}
 
             {/* Tags */}
             {tags.length > 0 && (
@@ -189,6 +200,16 @@ function BookDetailPage() {
                 {deleteMutation.isPending ? "Deleting..." : "Delete"}
               </button>
               <AddToShelfMenu bookId={id} />
+              <button
+                onClick={() => setMetadataOpen(true)}
+                className="px-5 py-2.5 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
+                style={{
+                  borderColor: "var(--border)",
+                  color: "var(--text-dim)",
+                }}
+              >
+                Find Metadata
+              </button>
             </div>
           </div>
         </div>
@@ -274,6 +295,14 @@ function BookDetailPage() {
           </div>
         </div>
       )}
+
+      <FindMetadataDialog
+        bookId={id}
+        book={book}
+        open={metadataOpen}
+        onClose={() => setMetadataOpen(false)}
+        onApplied={() => bookQuery.refetch()}
+      />
     </div>
   );
 }
