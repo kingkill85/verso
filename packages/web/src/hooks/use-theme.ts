@@ -12,7 +12,9 @@ export function useTheme() {
     return stored || "dark";
   });
 
-  const resolvedTheme = theme === "system" ? getSystemTheme() : theme;
+  const [systemTheme, setSystemTheme] = useState<"light" | "dark">(getSystemTheme);
+
+  const resolvedTheme = theme === "system" ? systemTheme : theme;
 
   useEffect(() => {
     const root = document.documentElement;
@@ -24,12 +26,11 @@ export function useTheme() {
   }, [resolvedTheme]);
 
   useEffect(() => {
-    if (theme !== "system") return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = () => setThemeState("system");
+    const handler = () => setSystemTheme(mq.matches ? "dark" : "light");
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
-  }, [theme]);
+  }, []);
 
   const setTheme = useCallback((t: Theme) => {
     localStorage.setItem("verso-theme", t);
