@@ -25,12 +25,14 @@ Session 4a covers the "enrich" half of Session 4. Session 4b (reading stats, imp
 
 ### New table: `annotations`
 
+This table supersedes the `annotations` definition in DATABASE.md. Key differences: we scope Session 4a to EPUB-only annotations (no PDF `page` column needed yet), exclude bookmark type (redundant with reading progress), and add `cfi_end` + `chapter` for richer highlight support.
+
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | uuid | PK, default gen | Unique annotation identifier |
 | user_id | uuid | FK → users.id, NOT NULL | Annotator |
 | book_id | uuid | FK → books.id, NOT NULL | Book |
-| type | varchar(20) | NOT NULL | 'highlight' or 'note' |
+| type | varchar(20) | NOT NULL | 'highlight' (note is always attached to a highlight via the `note` column) |
 | content | text | nullable | Highlighted text |
 | note | text | nullable | Note attached to highlight |
 | cfi_position | text | NOT NULL | EPUB CFI for start position |
@@ -41,6 +43,8 @@ Session 4a covers the "enrich" half of Session 4. Session 4b (reading stats, imp
 | updated_at | timestamp | NOT NULL, default now | |
 
 **Indexes:** `INDEX(user_id, book_id)`, `INDEX(book_id, cfi_position)`
+
+**Future:** When PDF annotation support is added, a nullable `page` integer column and `'bookmark'` type can be added via migration.
 
 ### New table: `metadata_cache`
 
@@ -157,6 +161,8 @@ User clicks "Find metadata" (or types a manual query)
 
 ### tRPC Router: `metadata`
 
+This router supersedes the `metadata.*` definitions in API.md. Key differences: `search` takes `bookId` (to auto-populate from existing book data) instead of a raw query; `apply` takes a `fields` object with per-field control instead of a whole `ExternalBook`; `refresh` is dropped (user can re-search on demand).
+
 | Procedure | Type | Input | Output | Description |
 |-----------|------|-------|--------|-------------|
 | `search` | query | `{ bookId, query? }` | `ExternalBook[]` | Search external APIs, return ranked matches |
@@ -174,6 +180,7 @@ The `fields` parameter in `apply` is an object mapping field names to their fina
     publisher?: string;
     year?: number;
     isbn?: string;
+    language?: string;
     pageCount?: number;
     series?: string;
     seriesIndex?: number;
@@ -304,7 +311,7 @@ New section/tab on the book detail page:
 | `packages/server/src/services/epub-writer.ts` | EPUB metadata write-back |
 | `packages/server/src/trpc/routers/metadata.ts` | metadata.search, metadata.apply |
 | `packages/server/src/trpc/routers/annotations.ts` | CRUD for annotations |
-| `packages/shared/src/validators.ts` | New Zod schemas for metadata + annotation inputs |
+| `packages/shared/src/validators.ts` | Add Zod schemas for metadata + annotation inputs (file already exists with other validators) |
 | `packages/web/src/hooks/use-reading-timer.ts` | Client-side reading time tracking |
 | `packages/web/src/components/metadata/find-metadata-dialog.tsx` | Search + diff preview dialog |
 | `packages/web/src/components/reader/highlight-toolbar.tsx` | Floating color picker + note for text selection |
@@ -319,9 +326,8 @@ New section/tab on the book detail page:
 | `packages/server/src/trpc/router.ts` | Register metadata + annotations routers |
 | `packages/server/src/services/epub-parser.ts` | Fix metadata extraction, add series parsing |
 | `packages/server/src/trpc/routers/progress.ts` | Accept timeSpentMinutes in sync mutation |
-| `packages/web/src/routes/_app/books/$id.tsx` | Add "Find metadata" button + annotations tab |
+| `packages/web/src/routes/_app/books/$id.tsx` | Add "Find metadata" button, annotations tab, series info in header |
 | `packages/web/src/routes/_app/books/$id_.read.tsx` | Integrate annotations + reading timer |
 | `packages/web/src/hooks/use-epub-reader.ts` | Add highlight rendering + text selection handling |
 | `packages/web/src/hooks/use-progress-sync.ts` | Include time delta in sync calls |
-| `packages/web/src/components/layout/sidebar.tsx` | Show series info if present |
 | New migration file | Schema changes |
