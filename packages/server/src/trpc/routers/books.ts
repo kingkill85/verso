@@ -1,12 +1,21 @@
 import { TRPCError } from "@trpc/server";
 import { eq, and, desc, asc, sql, isNull, isNotNull } from "drizzle-orm";
-import { books, readingProgress, bookListInput, bookByIdInput, bookUpdateInput, bookDeleteInput } from "@verso/shared";
+import { books, readingProgress, bookListInput, bookByIdInput, bookUpdateInput, bookDeleteInput, searchInput } from "@verso/shared";
 import { router, protectedProcedure } from "../index.js";
 
 const timestamp = () => ({ updatedAt: new Date().toISOString() });
 
 function escapeLike(str: string): string {
   return str.replace(/[%_\\]/g, (ch) => `\\${ch}`);
+}
+
+/** Escape a user query for FTS5 MATCH — wraps each token in double quotes. */
+function escapeFts5(query: string): string {
+  return query
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((tok) => `"${tok.replace(/"/g, '""')}"`)
+    .join(" ");
 }
 
 export const booksRouter = router({
@@ -108,5 +117,69 @@ export const booksRouter = router({
       )
       .orderBy(desc(readingProgress.lastReadAt));
     return rows;
+  }),
+
+  search: protectedProcedure.input(searchInput).query(async ({ ctx, input }) => {
+    const { query, genre, author, format, page = 1, limit = 50 } = input;
+    const offset = (page - 1) * limit;
+
+    // Build dynamic WHERE conditions using Drizzle sql template chunks
+    const conditions = [
+      sql`books_fts MATCH ${escapeFts5(query)}`,
+      sql`b.added_by = ${ctx.user.sub}`,
+    ];
+
+    if (genre) {
+      conditions.push(sql`b.genre = ${genre}`);
+    }
+    if (author) {
+      conditions.push(sql`b.author LIKE ${"%" + escapeLike(author) + "%"} ESCAPE '\\'`);
+    }
+    if (format) {
+      conditions.push(sql`b.file_format = ${format}`);
+    }
+
+    const whereClause = sql.join(conditions, sql` AND `);
+
+    const countRow = ctx.db.get<{ total: number }>(sql`
+      SELECT count(*) AS total
+      FROM books_fts
+      JOIN books b ON b.rowid = books_fts.rowid
+      WHERE ${whereClause}
+    `);
+
+    const rows = ctx.db.all<any>(sql`
+      SELECT b.*, bm25(books_fts, 10, 5, 1) AS rank
+      FROM books_fts
+      JOIN books b ON b.rowid = books_fts.rowid
+      WHERE ${whereClause}
+      ORDER BY rank
+      LIMIT ${limit} OFFSET ${offset}
+    `);
+
+    // Map snake_case columns to camelCase to match Drizzle schema
+    const bookResults = rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      author: row.author,
+      description: row.description,
+      isbn: row.isbn,
+      genre: row.genre,
+      language: row.language,
+      publisher: row.publisher,
+      publishedDate: row.published_date,
+      coverPath: row.cover_path,
+      filePath: row.file_path,
+      fileFormat: row.file_format,
+      fileSize: row.file_size,
+      pageCount: row.page_count,
+      tags: row.tags,
+      addedBy: row.added_by,
+      metadataLocked: row.metadata_locked,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+
+    return { books: bookResults, total: countRow?.total ?? 0, page };
   }),
 });
