@@ -3,8 +3,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { trpc } from "@/trpc";
 import { BookCover } from "@/components/books/book-cover";
 import { AddToShelfMenu } from "@/components/shelves/add-to-shelf-menu";
-import { FindMetadataDialog } from "@/components/metadata/find-metadata-dialog";
-import { BookEditDialog } from "@/components/books/book-edit-dialog";
 import { AnnotationsTab } from "@/components/books/annotations-tab";
 
 export const Route = createFileRoute("/_app/books/$id")({
@@ -30,8 +28,6 @@ function BookDetailPage() {
   const navigate = useNavigate();
   const utils = trpc.useUtils();
 
-  const [metadataOpen, setMetadataOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"details" | "annotations">("details");
   const bookQuery = trpc.books.byId.useQuery({ id });
   const progressQuery = trpc.progress.get.useQuery({ bookId: id });
@@ -206,20 +202,16 @@ function BookDetailPage() {
                 {deleteMutation.isPending ? "Deleting..." : "Delete"}
               </button>
               <AddToShelfMenu bookId={id} />
-              <button
-                onClick={() => setEditOpen(true)}
+              <Link to="/books/$id/edit" params={{ id }}
                 className="px-5 py-2.5 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
-                style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
-              >
+                style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}>
                 Edit
-              </button>
-              <button
-                onClick={() => setMetadataOpen(true)}
+              </Link>
+              <Link to="/books/$id/edit" params={{ id }} search={{ metadata: "1" }}
                 className="px-5 py-2.5 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
-                style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
-              >
+                style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}>
                 Find Metadata
-              </button>
+              </Link>
             </div>
           </div>
         </div>
@@ -331,21 +323,6 @@ function BookDetailPage() {
         <AnnotationsTab bookId={id} />
       )}
 
-      {editOpen && (
-        <BookEditDialog
-          book={book}
-          onClose={() => setEditOpen(false)}
-          onSaved={() => bookQuery.refetch()}
-        />
-      )}
-
-      <FindMetadataDialog
-        bookId={id}
-        book={book}
-        open={metadataOpen}
-        onClose={() => setMetadataOpen(false)}
-        onSaved={() => bookQuery.refetch()}
-      />
     </div>
   );
 }
