@@ -18,6 +18,7 @@ import {
   protectedProcedure,
   signAccessToken,
 } from "../index.js";
+import { seedDefaultShelves } from "./seed-shelves.js";
 import type { AppDatabase } from "../../db/client.js";
 import type { Config } from "../../config.js";
 
@@ -103,6 +104,7 @@ export const authRouter = router({
         })
         .returning();
       newUser = inserted;
+      await seedDefaultShelves(ctx.db, newUser.id);
     } catch (err: any) {
       if (
         err.message?.includes("UNIQUE constraint failed") ||
