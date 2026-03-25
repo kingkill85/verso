@@ -69,17 +69,18 @@ export const booksRouter = router({
     if (tags !== undefined) updateData.tags = JSON.stringify(tags);
 
     // Handle cover URL — fetch and store
+    let coverImageBuffer: Buffer | undefined;
     if (coverUrl) {
       try {
         const response = await fetch(coverUrl);
         if (response.ok) {
           const buffer = Buffer.from(await response.arrayBuffer());
-          const processed = await sharp(buffer)
+          coverImageBuffer = await sharp(buffer)
             .resize(600, undefined, { withoutEnlargement: true })
             .jpeg({ quality: 85 })
             .toBuffer();
           const coverPath = `covers/${id}.jpg`;
-          await ctx.storage.put(coverPath, processed);
+          await ctx.storage.put(coverPath, coverImageBuffer);
           updateData.coverPath = coverPath;
         }
       } catch (err) {
@@ -94,7 +95,12 @@ export const booksRouter = router({
       try {
         const filePath = ctx.storage.fullPath(existing.filePath);
         const { coverUrl: _, tags: __, ...metaFields } = input;
-        await updateEpubMetadata(filePath, metaFields, existing.fileHash ?? undefined);
+        const epubUpdates: Record<string, any> = { ...metaFields };
+        if (coverImageBuffer) {
+          epubUpdates.coverImageBuffer = coverImageBuffer;
+          epubUpdates.coverMimeType = "image/jpeg";
+        }
+        await updateEpubMetadata(filePath, epubUpdates, existing.fileHash ?? undefined);
         const newHash = await getEpubFileHash(filePath);
         await ctx.db.update(books).set({ fileHash: newHash }).where(eq(books.id, id));
       } catch (err) {
