@@ -56,14 +56,21 @@ export function replaceOrInsertDcTag(
   const escaped = escapeXml(value);
   const attrStr = attrs ? ` ${attrs}` : "";
 
-  // Match existing tag – greedy across attributes
-  const re = new RegExp(
+  // Match dc:tag OR tag with dc namespace attribute
+  const rePrefixed = new RegExp(
     `<dc:${tag}[^>]*>[\\s\\S]*?</dc:${tag}>`,
     "i",
   );
+  const reNs = new RegExp(
+    `<${tag}\\s+xmlns="http://purl\\.org/dc/elements/1\\.1/"[^>]*>[\\s\\S]*?</${tag}>`,
+    "i",
+  );
 
-  if (re.test(xml)) {
-    return xml.replace(re, `<dc:${tag}${attrStr}>${escaped}</dc:${tag}>`);
+  if (rePrefixed.test(xml)) {
+    return xml.replace(rePrefixed, `<dc:${tag}${attrStr}>${escaped}</dc:${tag}>`);
+  }
+  if (reNs.test(xml)) {
+    return xml.replace(reNs, `<dc:${tag}${attrStr}>${escaped}</dc:${tag}>`);
   }
 
   // Insert before </metadata>
@@ -77,11 +84,17 @@ export function replaceOrInsertDcTag(
  * Remove a `<dc:tag>…</dc:tag>` entirely.
  */
 function removeDcTag(xml: string, tag: string): string {
-  const re = new RegExp(
+  // Remove dc:tag prefix form
+  const rePrefixed = new RegExp(
     `\\s*<dc:${tag}[^>]*>[\\s\\S]*?</dc:${tag}>`,
     "gi",
   );
-  return xml.replace(re, "");
+  // Remove tag with dc namespace attribute form
+  const reNs = new RegExp(
+    `\\s*<${tag}\\s+xmlns="http://purl\\.org/dc/elements/1\\.1/"[^>]*>[\\s\\S]*?</${tag}>`,
+    "gi",
+  );
+  return xml.replace(rePrefixed, "").replace(reNs, "");
 }
 
 /**
