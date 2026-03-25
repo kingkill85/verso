@@ -9,7 +9,7 @@ import { TapZones } from "@/components/reader/tap-zones";
 import { TOCPanel } from "@/components/reader/toc-panel";
 import { SettingsPanel } from "@/components/reader/settings-panel";
 
-export const Route = createFileRoute("/_app/books/$id/read")({
+export const Route = createFileRoute("/_app/books/$id_/read")({
   component: ReaderPage,
 });
 
