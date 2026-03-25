@@ -30,7 +30,7 @@ export function registerUploadRoute(
 
       const buffer = await data.toBuffer();
 
-      if (buffer.length > config.MAX_UPLOAD_SIZE) {
+      if (data.file.truncated) {
         return reply.status(413).send({ error: "File exceeds maximum upload size" });
       }
 

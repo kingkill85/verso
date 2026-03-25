@@ -176,6 +176,7 @@ export const authRouter = router({
       .get();
 
     if (!session) {
+      console.warn("[auth] Refresh token not found — possible token theft attempt");
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "Invalid refresh token",

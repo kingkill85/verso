@@ -39,7 +39,7 @@ describe("loadConfig", () => {
     expect(config.DB_DRIVER).toBe("sqlite");
     expect(config.STORAGE_DRIVER).toBe("local");
     expect(config.AUTH_MODE).toBe("both");
-    expect(config.CORS_ORIGIN).toBe("*");
+    expect(config.CORS_ORIGIN).toBe("http://localhost:5173");
     expect(config.NODE_ENV).toBe("test"); // vitest sets NODE_ENV=test
   });
 

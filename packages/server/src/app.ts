@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 import multipart from "@fastify/multipart";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import { appRouter } from "./trpc/router.js";
@@ -20,7 +21,17 @@ export async function buildApp(config: Config) {
 
   const storage = new StorageService(config);
 
+  await app.register(rateLimit, {
+    max: 100,
+    timeWindow: "1 minute",
+  });
+
   await app.register(cors, { origin: config.CORS_ORIGIN });
+
+  if (config.CORS_ORIGIN === "*" && config.NODE_ENV === "production") {
+    app.log.warn("CORS_ORIGIN is set to '*' in production — consider restricting to your domain");
+  }
+
   await app.register(multipart, { limits: { fileSize: config.MAX_UPLOAD_SIZE } });
 
   await app.register(fastifyTRPCPlugin, {

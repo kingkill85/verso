@@ -12,7 +12,7 @@ const envSchema = z.object({
   STORAGE_PATH: z.string().default("./data"),
   AUTH_MODE: z.enum(["local", "oidc", "both"]).default("both"),
   MAX_UPLOAD_SIZE: z.coerce.number().default(104857600),
-  CORS_ORIGIN: z.string().default("*"),
+  CORS_ORIGIN: z.string().default("http://localhost:5173"),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 });
 
