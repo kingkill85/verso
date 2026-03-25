@@ -13,32 +13,61 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+function getCachedUser(): SafeUser | null {
+  try {
+    const raw = localStorage.getItem("verso-user");
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function setCachedUser(user: SafeUser | null) {
+  if (user) {
+    localStorage.setItem("verso-user", JSON.stringify(user));
+  } else {
+    localStorage.removeItem("verso-user");
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const hasToken = !!getAccessToken();
-  const meQuery = trpc.auth.me.useQuery(undefined, { enabled: hasToken, retry: false });
+  const meQuery = trpc.auth.me.useQuery(undefined, {
+    enabled: hasToken,
+    retry: 3,
+    retryDelay: 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
 
-  const [user, setUser] = useState<SafeUser | null>(null);
-  const isLoading = hasToken && meQuery.isLoading;
+  const [user, setUserState] = useState<SafeUser | null>(getCachedUser);
+  const isLoading = hasToken && !user && meQuery.isLoading;
+
+  const setUser = useCallback((u: SafeUser | null) => {
+    setUserState(u);
+    setCachedUser(u);
+  }, []);
 
   useEffect(() => {
     if (meQuery.data) {
       setUser(meQuery.data);
     }
     if (meQuery.error) {
-      clearTokens();
-      setUser(null);
+      const httpStatus = (meQuery.error.data as any)?.httpStatus;
+      if (httpStatus === 401 || httpStatus === 403) {
+        clearTokens();
+        setUser(null);
+      }
     }
-  }, [meQuery.data, meQuery.error]);
+  }, [meQuery.data, meQuery.error, setUser]);
 
   const login = useCallback((response: AuthResponse) => {
     setTokens(response.accessToken, response.refreshToken);
     setUser(response.user);
-  }, []);
+  }, [setUser]);
 
   const logout = useCallback(() => {
     clearTokens();
     setUser(null);
-  }, []);
+  }, [setUser]);
 
   return (
     <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, login, logout }}>

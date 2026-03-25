@@ -7,6 +7,7 @@ type BookCoverProps = {
   title: string;
   author?: string;
   coverPath?: string | null;
+  updatedAt?: string | null;
   size?: BookCoverSize;
 };
 
@@ -49,6 +50,7 @@ export function BookCover({
   title,
   author,
   coverPath,
+  updatedAt,
   size = "md",
 }: BookCoverProps) {
   const { width, height } = sizeMap[size];
@@ -66,7 +68,7 @@ export function BookCover({
         style={{ width, height }}
       >
         <img
-          src={`/api/covers/${bookId}`}
+          src={`/api/covers/${bookId}?v=${updatedAt || coverPath}`}
           alt={title}
           className="w-full h-full object-cover"
           loading="lazy"

@@ -38,13 +38,17 @@ export const bookUpdateInput = z.object({
   id: z.string().uuid(),
   title: z.string().min(1).max(500).optional(),
   author: z.string().min(1).max(500).optional(),
-  isbn: z.string().max(20).optional(),
-  publisher: z.string().max(255).optional(),
-  year: z.number().int().optional(),
-  language: z.string().max(10).optional(),
-  description: z.string().optional(),
-  genre: z.string().max(100).optional(),
+  isbn: z.string().max(20).nullable().optional(),
+  publisher: z.string().max(255).nullable().optional(),
+  year: z.number().int().nullable().optional(),
+  language: z.string().max(10).nullable().optional(),
+  description: z.string().nullable().optional(),
+  genre: z.string().max(100).nullable().optional(),
   tags: z.array(z.string()).optional(),
+  series: z.string().max(255).nullable().optional(),
+  seriesIndex: z.number().nullable().optional(),
+  pageCount: z.number().int().positive().nullable().optional(),
+  coverUrl: z.string().url().optional(),
 });
 
 export const bookDeleteInput = z.object({

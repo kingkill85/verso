@@ -76,6 +76,7 @@ export const metadataRouter = router({
     });
     if (!book) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
 
+    console.log("[metadata apply] input.fields:", JSON.stringify(input.fields));
     // Extract coverUrl, handle separately
     const { coverUrl, ...metadataFields } = input.fields;
 
@@ -90,19 +91,23 @@ export const metadataRouter = router({
 
     // Handle cover image download and processing
     if (coverUrl) {
-      const response = await fetch(coverUrl);
-      if (response.ok) {
-        const arrayBuffer = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+      try {
+        const response = await fetch(coverUrl);
+        if (response.ok) {
+          const arrayBuffer = await response.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
 
-        const processed = await sharp(buffer)
-          .resize(600, null, { withoutEnlargement: true })
-          .jpeg({ quality: 85 })
-          .toBuffer();
+          const processed = await sharp(buffer)
+            .resize(600, undefined, { withoutEnlargement: true })
+            .jpeg({ quality: 85 })
+            .toBuffer();
 
-        const coverPath = `books/${input.bookId}/cover.jpg`;
-        await ctx.storage.put(coverPath, processed);
-        updateData.coverPath = coverPath;
+          const coverPath = `covers/${input.bookId}.jpg`;
+          await ctx.storage.put(coverPath, processed);
+          updateData.coverPath = coverPath;
+        }
+      } catch (err) {
+        console.error("Cover fetch/processing failed:", err);
       }
     }
 

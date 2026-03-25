@@ -1,4 +1,4 @@
-import EPub from "epub2";
+import { EPub } from "epub2";
 
 export type ParsedMetadata = {
   title: string;
@@ -10,6 +10,7 @@ export type ParsedMetadata = {
   description?: string;
   genre?: string;
   pageCount?: number;
+  tags?: string[];
   coverData?: Buffer;
   coverMimeType?: string;
   series?: string;
@@ -196,11 +197,16 @@ export async function parseEpub(filePath: string): Promise<ParsedMetadata> {
     description = stripHtml(meta.description) || undefined;
   }
 
-  // Subject can be a string or an array
+  // Subject can be a string or an array — use first as genre, rest as tags
   let genre: string | undefined;
+  let tags: string[] | undefined;
   if (meta.subject) {
     if (Array.isArray(meta.subject)) {
-      genre = meta.subject.join(", ") || undefined;
+      const subjects = meta.subject.filter((s): s is string => typeof s === "string" && s.trim() !== "");
+      genre = subjects[0] || undefined;
+      if (subjects.length > 1) {
+        tags = subjects.slice(1);
+      }
     } else if (typeof meta.subject === "string") {
       genre = meta.subject || undefined;
     }
@@ -219,6 +225,7 @@ export async function parseEpub(filePath: string): Promise<ParsedMetadata> {
       typeof meta.language === "string" ? meta.language.trim() || undefined : undefined,
     description,
     genre,
+    tags,
     coverData,
     coverMimeType,
     series,
