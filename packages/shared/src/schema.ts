@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, primaryKey } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 export const users = sqliteTable("users", {
@@ -85,3 +85,40 @@ export const readingProgress = sqliteTable("reading_progress", {
   finishedAt: text("finished_at"),
   timeSpentMinutes: integer("time_spent_minutes").default(0),
 });
+
+export const shelves = sqliteTable("shelves", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name", { length: 100 }).notNull(),
+  description: text("description"),
+  emoji: text("emoji", { length: 10 }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  isSmart: integer("is_smart", { mode: "boolean" }).default(false),
+  isDefault: integer("is_default", { mode: "boolean" }).default(false),
+  smartFilter: text("smart_filter"),
+  position: integer("position").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+export const shelfBooks = sqliteTable("shelf_books", {
+  shelfId: text("shelf_id")
+    .notNull()
+    .references(() => shelves.id, { onDelete: "cascade" }),
+  bookId: text("book_id")
+    .notNull()
+    .references(() => books.id, { onDelete: "cascade" }),
+  position: integer("position").notNull(),
+  addedAt: text("added_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+}, (table) => [
+  primaryKey({ columns: [table.shelfId, table.bookId] }),
+]);
