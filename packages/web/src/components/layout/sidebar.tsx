@@ -1,17 +1,12 @@
-import { useState } from "react";
-import { createPortal } from "react-dom";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/trpc";
-import { ShelfDialog } from "@/components/shelves/shelf-dialog";
 
 export function Sidebar({ onClose }: { onClose?: () => void }) {
   const { user } = useAuth();
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
   const shelvesQuery = trpc.shelves.list.useQuery();
-
-  const [shelfDialogOpen, setShelfDialogOpen] = useState(false);
 
   const allShelves = shelvesQuery.data ?? [];
   const defaultShelves = allShelves.filter((s) => s.isDefault === true);
@@ -46,13 +41,11 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
           <span className="text-[10px] font-medium uppercase tracking-[1.5px]" style={{ color: "var(--text-faint)" }}>
             Shelves
           </span>
-          <button
-            onClick={() => setShelfDialogOpen(true)}
+          <Link to="/shelves/new"
             className="w-5 h-5 flex items-center justify-center rounded text-xs transition-colors hover:opacity-80"
-            style={{ color: "var(--text-faint)" }}
-          >
+            style={{ color: "var(--text-faint)" }}>
             +
-          </button>
+          </Link>
         </div>
         {userShelves.map((shelf) => (
           <SidebarItem
@@ -86,10 +79,6 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
         </div>
       </div>
 
-      {shelfDialogOpen && createPortal(
-        <ShelfDialog onClose={() => setShelfDialogOpen(false)} />,
-        document.body,
-      )}
     </aside>
   );
 }
