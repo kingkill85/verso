@@ -28,39 +28,41 @@ export function isTokenExpired(token: string): boolean {
   }
 }
 
-export async function refreshTokens(): Promise<boolean> {
+// Single in-flight refresh promise — ALL callers share this.
+// Prevents race conditions where multiple 401s each try to rotate the session.
+let inflightRefresh: Promise<boolean> | null = null;
+
+export function refreshTokens(): Promise<boolean> {
+  if (inflightRefresh) return inflightRefresh;
+  inflightRefresh = doRefresh().finally(() => { inflightRefresh = null; });
+  return inflightRefresh;
+}
+
+async function doRefresh(): Promise<boolean> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return false;
   try {
     const res = await fetch("/trpc/auth.refresh", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ json: { refreshToken } }),
+      body: JSON.stringify({ refreshToken }),
     });
     if (!res.ok) {
-      if (res.status === 401) {
-        // Server explicitly rejected the refresh token — session is dead
-        window.dispatchEvent(new Event("verso:auth-failed"));
-      }
-      // Any other error (400, 500, etc.) — transient, keep tokens
+      // Any non-OK response means refresh is dead — clear and go to login
+      window.dispatchEvent(new Event("verso:auth-failed"));
       return false;
     }
     const data = await res.json();
-    const result = data.result?.data?.json;
+    const result = data?.result?.data;
     if (result?.accessToken && result?.refreshToken) {
       setTokens(result.accessToken, result.refreshToken);
       return true;
     }
-    // tRPC returned 200 but no tokens — check if it's an auth error or a transient issue
-    const errorCode = data?.error?.data?.httpStatus || data?.[0]?.error?.data?.httpStatus;
-    if (errorCode === 401 || errorCode === 403) {
-      window.dispatchEvent(new Event("verso:auth-failed"));
-    }
-    // Otherwise: transient error, keep tokens
+    // Got 200 but no tokens — session is dead
+    window.dispatchEvent(new Event("verso:auth-failed"));
     return false;
   } catch {
-    // Network error (server restart, offline) — DON'T clear tokens.
-    // Keep them so we can retry when the server comes back.
+    // Network error — keep tokens so we can retry when server comes back
     return false;
   }
 }

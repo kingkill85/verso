@@ -17,9 +17,12 @@ import { Route as AuthRegisterRouteImport } from './routes/_auth/register'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AppUploadRouteImport } from './routes/_app/upload'
 import { Route as AppSearchRouteImport } from './routes/_app/search'
+import { Route as AppShelvesNewRouteImport } from './routes/_app/shelves/new'
 import { Route as AppShelvesIdRouteImport } from './routes/_app/shelves/$id'
 import { Route as AppBooksIdRouteImport } from './routes/_app/books/$id'
+import { Route as AppShelvesIdEditRouteImport } from './routes/_app/shelves/$id_.edit'
 import { Route as AppBooksIdReadRouteImport } from './routes/_app/books/$id_.read'
+import { Route as AppBooksIdEditRouteImport } from './routes/_app/books/$id_.edit'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
@@ -59,6 +62,11 @@ const AppSearchRoute = AppSearchRouteImport.update({
   path: '/search',
   getParentRoute: () => AppRoute,
 } as any)
+const AppShelvesNewRoute = AppShelvesNewRouteImport.update({
+  id: '/shelves/new',
+  path: '/shelves/new',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppShelvesIdRoute = AppShelvesIdRouteImport.update({
   id: '/shelves/$id',
   path: '/shelves/$id',
@@ -69,9 +77,19 @@ const AppBooksIdRoute = AppBooksIdRouteImport.update({
   path: '/books/$id',
   getParentRoute: () => AppRoute,
 } as any)
+const AppShelvesIdEditRoute = AppShelvesIdEditRouteImport.update({
+  id: '/shelves/$id_/edit',
+  path: '/shelves/$id/edit',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppBooksIdReadRoute = AppBooksIdReadRouteImport.update({
   id: '/books/$id_/read',
   path: '/books/$id/read',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBooksIdEditRoute = AppBooksIdEditRouteImport.update({
+  id: '/books/$id_/edit',
+  path: '/books/$id/edit',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -84,7 +102,10 @@ export interface FileRoutesByFullPath {
   '/setup': typeof AuthSetupRoute
   '/books/$id': typeof AppBooksIdRoute
   '/shelves/$id': typeof AppShelvesIdRoute
+  '/shelves/new': typeof AppShelvesNewRoute
+  '/books/$id/edit': typeof AppBooksIdEditRoute
   '/books/$id/read': typeof AppBooksIdReadRoute
+  '/shelves/$id/edit': typeof AppShelvesIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
@@ -95,7 +116,10 @@ export interface FileRoutesByTo {
   '/setup': typeof AuthSetupRoute
   '/books/$id': typeof AppBooksIdRoute
   '/shelves/$id': typeof AppShelvesIdRoute
+  '/shelves/new': typeof AppShelvesNewRoute
+  '/books/$id/edit': typeof AppBooksIdEditRoute
   '/books/$id/read': typeof AppBooksIdReadRoute
+  '/shelves/$id/edit': typeof AppShelvesIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -109,7 +133,10 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/books/$id': typeof AppBooksIdRoute
   '/_app/shelves/$id': typeof AppShelvesIdRoute
+  '/_app/shelves/new': typeof AppShelvesNewRoute
+  '/_app/books/$id_/edit': typeof AppBooksIdEditRoute
   '/_app/books/$id_/read': typeof AppBooksIdReadRoute
+  '/_app/shelves/$id_/edit': typeof AppShelvesIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -122,7 +149,10 @@ export interface FileRouteTypes {
     | '/setup'
     | '/books/$id'
     | '/shelves/$id'
+    | '/shelves/new'
+    | '/books/$id/edit'
     | '/books/$id/read'
+    | '/shelves/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,7 +163,10 @@ export interface FileRouteTypes {
     | '/setup'
     | '/books/$id'
     | '/shelves/$id'
+    | '/shelves/new'
+    | '/books/$id/edit'
     | '/books/$id/read'
+    | '/shelves/$id/edit'
   id:
     | '__root__'
     | '/_app'
@@ -146,7 +179,10 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/books/$id'
     | '/_app/shelves/$id'
+    | '/_app/shelves/new'
+    | '/_app/books/$id_/edit'
     | '/_app/books/$id_/read'
+    | '/_app/shelves/$id_/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -212,6 +248,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSearchRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/shelves/new': {
+      id: '/_app/shelves/new'
+      path: '/shelves/new'
+      fullPath: '/shelves/new'
+      preLoaderRoute: typeof AppShelvesNewRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/shelves/$id': {
       id: '/_app/shelves/$id'
       path: '/shelves/$id'
@@ -226,11 +269,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBooksIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/shelves/$id_/edit': {
+      id: '/_app/shelves/$id_/edit'
+      path: '/shelves/$id/edit'
+      fullPath: '/shelves/$id/edit'
+      preLoaderRoute: typeof AppShelvesIdEditRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/books/$id_/read': {
       id: '/_app/books/$id_/read'
       path: '/books/$id/read'
       fullPath: '/books/$id/read'
       preLoaderRoute: typeof AppBooksIdReadRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/books/$id_/edit': {
+      id: '/_app/books/$id_/edit'
+      path: '/books/$id/edit'
+      fullPath: '/books/$id/edit'
+      preLoaderRoute: typeof AppBooksIdEditRouteImport
       parentRoute: typeof AppRoute
     }
   }
@@ -242,7 +299,10 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppBooksIdRoute: typeof AppBooksIdRoute
   AppShelvesIdRoute: typeof AppShelvesIdRoute
+  AppShelvesNewRoute: typeof AppShelvesNewRoute
+  AppBooksIdEditRoute: typeof AppBooksIdEditRoute
   AppBooksIdReadRoute: typeof AppBooksIdReadRoute
+  AppShelvesIdEditRoute: typeof AppShelvesIdEditRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -251,7 +311,10 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppBooksIdRoute: AppBooksIdRoute,
   AppShelvesIdRoute: AppShelvesIdRoute,
+  AppShelvesNewRoute: AppShelvesNewRoute,
+  AppBooksIdEditRoute: AppBooksIdEditRoute,
   AppBooksIdReadRoute: AppBooksIdReadRoute,
+  AppShelvesIdEditRoute: AppShelvesIdEditRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

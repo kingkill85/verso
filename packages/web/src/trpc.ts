@@ -7,18 +7,14 @@ import { getAccessToken, isTokenExpired, refreshTokens } from "./lib/auth.js";
 export const trpc = createTRPCReact<AppRouter>();
 
 // Proactive token refresh — refresh BEFORE it expires
-let refreshPromise: Promise<boolean> | null = null;
-
 async function ensureFreshToken(): Promise<string | null> {
   const token = getAccessToken();
   if (!token) return null;
 
   // If token expires in < 2 minutes, refresh proactively
   if (isTokenExpired(token) || willExpireSoon(token, 120)) {
-    if (!refreshPromise) {
-      refreshPromise = refreshTokens().finally(() => { refreshPromise = null; });
-    }
-    await refreshPromise;
+    const ok = await refreshTokens();
+    if (!ok) return null; // don't send a dead token — let the request go unauthenticated
     return getAccessToken();
   }
   return token;
@@ -47,7 +43,7 @@ function retryLink(): TRPCLink<AppRouter> {
               (err.data as any)?.httpStatus === 401
             ) {
               attempted = true;
-              refreshTokens().then((ok) => {
+              refreshTokens().then((ok) => { // already deduplicated
                 if (ok) {
                   execute();
                 } else {
