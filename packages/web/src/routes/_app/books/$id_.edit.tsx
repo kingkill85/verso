@@ -153,8 +153,28 @@ function BookEditPage() {
       <h1 className="font-display text-xl font-bold mb-6" style={{ color: "var(--text)" }}>Edit Book</h1>
 
       <div className="flex flex-col md:flex-row gap-8">
-        <div className="shrink-0 self-center md:self-start">
-          <BookCover bookId={book.id} title={book.title} author={book.author} coverPath={book.coverPath} updatedAt={book.updatedAt} size="xl" />
+        <div className="shrink-0 self-center md:self-start flex flex-col items-center gap-3">
+          {coverUrl ? (
+            <img src={coverUrl} alt="" className="w-45 rounded-lg object-cover" />
+          ) : (
+            <BookCover bookId={book.id} title={book.title} author={book.author} coverPath={book.coverPath} updatedAt={book.updatedAt} size="xl" />
+          )}
+          {coverUrl && (
+            <button onClick={() => setCoverUrl(null)} className="text-xs hover:opacity-80" style={{ color: "var(--text-faint)" }}>
+              Reset cover
+            </button>
+          )}
+          <div className="w-full">
+            <label className="block text-[10px] font-medium uppercase tracking-wider mb-1 text-center" style={{ color: "var(--text-faint)" }}>Cover URL</label>
+            <input
+              type="text"
+              value={coverUrl ?? ""}
+              onChange={(e) => setCoverUrl(e.target.value.trim() || null)}
+              placeholder="https://..."
+              className="w-full rounded-lg border px-2 py-1.5 text-xs outline-none"
+              style={{ backgroundColor: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }}
+            />
+          </div>
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col gap-6">
