@@ -65,3 +65,23 @@ export const sessions = sqliteTable("sessions", {
     .notNull()
     .default(sql`(datetime('now'))`),
 });
+
+export const readingProgress = sqliteTable("reading_progress", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id),
+  bookId: text("book_id")
+    .notNull()
+    .references(() => books.id, { onDelete: "cascade" }),
+  currentPage: integer("current_page"),
+  totalPages: integer("total_pages"),
+  percentage: real("percentage").notNull().default(0),
+  cfiPosition: text("cfi_position"),
+  startedAt: text("started_at"),
+  lastReadAt: text("last_read_at"),
+  finishedAt: text("finished_at"),
+  timeSpentMinutes: integer("time_spent_minutes").default(0),
+});

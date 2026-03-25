@@ -8,6 +8,13 @@
       "when": 1774387667888,
       "tag": "0000_smiling_mac_gargan",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1774422452955,
+      "tag": "0001_solid_toro",
+      "breakpoints": true
     }
   ]
 }
