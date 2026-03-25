@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { trpc } from "@/trpc";
 import { BookGrid } from "@/components/books/book-grid";
+import { ContinueReadingRow } from "@/components/books/continue-reading-row";
 
 export const Route = createFileRoute("/_app/")({
   component: LibraryPage,
@@ -32,6 +33,8 @@ function LibraryPage() {
           </p>
         )}
       </div>
+
+      <ContinueReadingRow />
 
       {booksQuery.isLoading ? (
         <div
