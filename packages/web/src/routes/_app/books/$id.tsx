@@ -4,6 +4,7 @@ import { trpc } from "@/trpc";
 import { BookCover } from "@/components/books/book-cover";
 import { AddToShelfMenu } from "@/components/shelves/add-to-shelf-menu";
 import { FindMetadataDialog } from "@/components/metadata/find-metadata-dialog";
+import { AnnotationsTab } from "@/components/books/annotations-tab";
 
 export const Route = createFileRoute("/_app/books/$id")({
   component: BookDetailPage,
@@ -29,8 +30,10 @@ function BookDetailPage() {
   const utils = trpc.useUtils();
 
   const [metadataOpen, setMetadataOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"details" | "annotations">("details");
   const bookQuery = trpc.books.byId.useQuery({ id });
   const progressQuery = trpc.progress.get.useQuery({ bookId: id });
+  const annotationsQuery = trpc.annotations.list.useQuery({ bookId: id });
   const deleteMutation = trpc.books.delete.useMutation({
     onSuccess: () => {
       utils.books.list.invalidate();
@@ -262,15 +265,38 @@ function BookDetailPage() {
         </div>
       )}
 
-      {/* Details grid */}
-      {details.length > 0 && (
-        <div>
-          <h2
-            className="font-display text-lg font-semibold mb-3"
-            style={{ color: "var(--text)" }}
-          >
-            Details
-          </h2>
+      {/* Tab bar */}
+      <div
+        className="flex gap-6 mb-6 border-b"
+        style={{ borderColor: "var(--border)" }}
+      >
+        <button
+          onClick={() => setActiveTab("details")}
+          className="pb-2 text-sm font-medium transition-colors"
+          style={{
+            color: activeTab === "details" ? "var(--warm)" : "var(--text-dim)",
+            borderBottom: activeTab === "details" ? "2px solid var(--warm)" : "2px solid transparent",
+            marginBottom: "-1px",
+          }}
+        >
+          Details
+        </button>
+        <button
+          onClick={() => setActiveTab("annotations")}
+          className="pb-2 text-sm font-medium transition-colors"
+          style={{
+            color: activeTab === "annotations" ? "var(--warm)" : "var(--text-dim)",
+            borderBottom: activeTab === "annotations" ? "2px solid var(--warm)" : "2px solid transparent",
+            marginBottom: "-1px",
+          }}
+        >
+          Annotations ({annotationsQuery.data?.length ?? 0})
+        </button>
+      </div>
+
+      {/* Tab content */}
+      {activeTab === "details" ? (
+        details.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {details.map((detail) => (
               <div
@@ -293,7 +319,9 @@ function BookDetailPage() {
               </div>
             ))}
           </div>
-        </div>
+        ) : null
+      ) : (
+        <AnnotationsTab bookId={id} />
       )}
 
       <FindMetadataDialog
