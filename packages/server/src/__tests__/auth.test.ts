@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { eq } from "drizzle-orm";
+import { sessions } from "@verso/shared";
 import { createTestContext } from "../test-utils.js";
 
 describe("auth router", () => {
@@ -97,6 +99,79 @@ describe("auth router", () => {
       expect(result.accessToken).toBeTruthy();
       expect(result.refreshToken).toBeTruthy();
       expect(result.refreshToken).not.toBe(reg.refreshToken);
+    });
+
+    it("returns new tokens when given a valid refresh token", async () => {
+      const reg = await ctx.caller.auth.register({
+        email: "test@example.com",
+        password: "password123",
+        displayName: "Test",
+      });
+      const result = await ctx.caller.auth.refresh({
+        refreshToken: reg.refreshToken,
+      });
+      expect(result.accessToken).toBeTruthy();
+      expect(result.refreshToken).toBeTruthy();
+    });
+
+    it("rejects an invalid/random refresh token with UNAUTHORIZED", async () => {
+      await ctx.caller.auth.register({
+        email: "test@example.com",
+        password: "password123",
+        displayName: "Test",
+      });
+      await expect(
+        ctx.caller.auth.refresh({ refreshToken: "totally-invalid-random-token" })
+      ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    });
+
+    it("rejects an expired session with UNAUTHORIZED", async () => {
+      const reg = await ctx.caller.auth.register({
+        email: "test@example.com",
+        password: "password123",
+        displayName: "Test",
+      });
+
+      // Expire all sessions for this user by setting expiresAt to the past
+      await ctx.db
+        .update(sessions)
+        .set({ expiresAt: new Date(Date.now() - 1000).toISOString() });
+
+      await expect(
+        ctx.caller.auth.refresh({ refreshToken: reg.refreshToken })
+      ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    });
+
+    it("invalidates old session — old refresh token no longer works after refresh", async () => {
+      const reg = await ctx.caller.auth.register({
+        email: "test@example.com",
+        password: "password123",
+        displayName: "Test",
+      });
+
+      // First refresh consumes the original token
+      await ctx.caller.auth.refresh({ refreshToken: reg.refreshToken });
+
+      // Second attempt with the same (now invalidated) token must fail
+      await expect(
+        ctx.caller.auth.refresh({ refreshToken: reg.refreshToken })
+      ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    });
+
+    it("new access token works for protected routes (auth.me)", async () => {
+      const reg = await ctx.caller.auth.register({
+        email: "test@example.com",
+        password: "password123",
+        displayName: "Test",
+      });
+
+      const refreshed = await ctx.caller.auth.refresh({
+        refreshToken: reg.refreshToken,
+      });
+
+      const authedCaller = ctx.createAuthedCaller(refreshed.accessToken);
+      const me = await authedCaller.auth.me();
+      expect(me.email).toBe("test@example.com");
     });
   });
 
