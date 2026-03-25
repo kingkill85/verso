@@ -89,14 +89,13 @@ function ReaderPage() {
           rendition.annotations.highlight(
             ann.cfiPosition,
             { id: ann.id },
-            (_e: MouseEvent) => {
-              // When clicking an existing highlight, show popover
+            (e: MouseEvent) => {
               const iframe = (rendition as any).manager?.container?.querySelector("iframe");
               const iframeRect = iframe?.getBoundingClientRect() || { left: 0, top: 0 };
               setPopoverAnnotation(ann);
               setPopoverPos({
-                x: iframeRect.left + (iframeRect.width || 0) / 2,
-                y: iframeRect.top + 100,
+                x: iframeRect.left + e.clientX,
+                y: iframeRect.top + e.clientY - 10,
               });
             },
             "hl",
