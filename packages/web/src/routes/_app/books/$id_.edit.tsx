@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { createFileRoute, Link, useNavigate, useBlocker } from "@tanstack/react-router";
 import { trpc } from "@/trpc";
 import { BookCover } from "@/components/books/book-cover";
+import { getAccessToken } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/books/$id_/edit")({
   component: BookEditPage,
@@ -164,19 +165,13 @@ function BookEditPage() {
       <h1 className="font-display text-xl font-bold mb-6" style={{ color: "var(--text)" }}>Edit Book</h1>
 
       <div className="flex flex-col md:flex-row gap-8">
-        <div className="shrink-0 self-center md:self-start flex flex-col items-center gap-2">
-          {coverUrl ? (
-            <>
-              <img src={coverUrl} alt="" className="w-45 rounded-lg object-cover" />
-              <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>New cover from metadata</p>
-              <button onClick={() => setCoverUrl(null)} className="text-xs hover:opacity-80" style={{ color: "var(--text-faint)" }}>
-                Reset
-              </button>
-            </>
-          ) : (
-            <BookCover bookId={book.id} title={book.title} author={book.author} coverPath={book.coverPath} updatedAt={book.updatedAt} size="xl" />
-          )}
-        </div>
+        <CoverSection
+          bookId={book.id}
+          book={book}
+          coverUrl={coverUrl}
+          onCoverUrlChange={setCoverUrl}
+          onCoverUploaded={() => { bookQuery.refetch(); }}
+        />
 
         <div className="flex-1 min-w-0 flex flex-col gap-6">
           {groups.map((group) => {
@@ -202,6 +197,95 @@ function BookEditPage() {
             Find Metadata Online
           </Link>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function CoverSection({ bookId, book, coverUrl, onCoverUrlChange, onCoverUploaded }: {
+  bookId: string;
+  book: { id: string; title: string; author: string; coverPath: string | null; updatedAt: string | null };
+  coverUrl: string | null;
+  onCoverUrlChange: (url: string | null) => void;
+  onCoverUploaded: () => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const token = getAccessToken();
+      const res = await fetch(`/api/covers/${bookId}`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      if (res.ok) {
+        onCoverUrlChange(null); // clear any metadata cover
+        onCoverUploaded();
+      }
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`/api/covers/${bookId}`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        onCoverUrlChange(null);
+        onCoverUploaded();
+      }
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="shrink-0 self-center md:self-start flex flex-col items-center gap-3">
+      {coverUrl ? (
+        <img src={coverUrl} alt="" className="w-45 rounded-lg object-cover" />
+      ) : (
+        <BookCover bookId={book.id} title={book.title} author={book.author} coverPath={book.coverPath} updatedAt={book.updatedAt} size="xl" />
+      )}
+
+      {coverUrl && (
+        <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>New cover from metadata</p>
+      )}
+
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+
+      <div className="flex gap-2">
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:opacity-80"
+          style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
+        >
+          {uploading ? "Uploading..." : "Upload Cover"}
+        </button>
+        {(book.coverPath || coverUrl) && (
+          <button
+            onClick={coverUrl ? () => onCoverUrlChange(null) : handleDelete}
+            disabled={deleting}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:opacity-80"
+            style={{ borderColor: "var(--border)", color: "#c44" }}
+          >
+            {deleting ? "Removing..." : "Remove Cover"}
+          </button>
+        )}
       </div>
     </div>
   );
