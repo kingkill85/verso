@@ -21,7 +21,7 @@ export function ReaderBottomBar({ percentage, visible }: ReaderBottomBarProps) {
           style={{ backgroundColor: "var(--progress-bg)" }}
         >
           <div
-            className="h-full rounded-full transition-all duration-600 ease-out"
+            className="h-full rounded-full transition-all duration-500 ease-out"
             style={{
               width: `${percentage}%`,
               backgroundColor: "var(--warm)",
