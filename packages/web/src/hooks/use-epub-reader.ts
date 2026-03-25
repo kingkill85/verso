@@ -114,6 +114,7 @@ export function useEpubReader({ bookId, initialCfi, enabled = true }: UseEpubRea
         height: "100%",
         flow: loadSettings().flow === "scrolled" ? "scrolled" : "paginated",
         spread: "none",
+        allowScriptedContent: true,
       });
       renditionRef.current = rendition;
 
@@ -218,6 +219,7 @@ export function useEpubReader({ bookId, initialCfi, enabled = true }: UseEpubRea
               height: "100%",
               flow: next.flow === "scrolled" ? "scrolled" : "paginated",
               spread: "none",
+              allowScriptedContent: true,
             });
             renditionRef.current = newRendition;
             applyStyles(newRendition, next);
