@@ -1,8 +1,14 @@
 import { BookCard } from "./book-card";
-import type { Book } from "@verso/shared";
+
+type BookGridBook = {
+  id: string;
+  title: string;
+  author: string;
+  coverPath?: string | null;
+};
 
 type BookGridProps = {
-  books: Book[];
+  books: BookGridBook[];
 };
 
 export function BookGrid({ books }: BookGridProps) {

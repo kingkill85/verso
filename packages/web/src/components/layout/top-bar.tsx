@@ -1,7 +1,19 @@
+import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useTheme } from "@/hooks/use-theme";
 
 export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const { resolvedTheme, setTheme } = useTheme();
+  const navigate = useNavigate();
+  const [searchValue, setSearchValue] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = searchValue.trim();
+    if (trimmed) {
+      navigate({ to: "/search", search: { q: trimmed } });
+    }
+  };
 
   return (
     <header className="sticky top-0 z-30 flex items-center gap-4 px-6 h-14 border-b"
@@ -10,11 +22,16 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
         ☰
       </button>
 
-      <div className="flex-1 max-w-md">
-        <input type="text" placeholder="Search books..." disabled
+      <form onSubmit={handleSubmit} className="flex-1 max-w-md">
+        <input
+          type="text"
+          placeholder="Search books..."
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
           className="w-full rounded-[10px] border px-4 py-2.5 pl-10 text-sm outline-none transition-colors"
-          style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", color: "var(--text)" }} />
-      </div>
+          style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", color: "var(--text)" }}
+        />
+      </form>
 
       <div className="flex-1" />
 

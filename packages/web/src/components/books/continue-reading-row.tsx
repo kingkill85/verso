@@ -4,17 +4,34 @@ import { trpc } from "@/trpc";
 
 export function ContinueReadingRow() {
   const query = trpc.books.currentlyReading.useQuery();
+  const shelvesQuery = trpc.shelves.list.useQuery();
 
   if (!query.data?.length) return null;
 
+  const currentlyReadingShelf = shelvesQuery.data?.find(
+    (s) => s.name === "Currently Reading" && s.isDefault
+  );
+
   return (
     <div className="mb-8">
-      <h2
-        className="font-display text-base font-bold mb-3"
-        style={{ color: "var(--text)" }}
-      >
-        Continue Reading
-      </h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2
+          className="font-display text-base font-bold"
+          style={{ color: "var(--text)" }}
+        >
+          Continue Reading
+        </h2>
+        {currentlyReadingShelf && (
+          <Link
+            to="/shelves/$id"
+            params={{ id: currentlyReadingShelf.id }}
+            className="text-xs font-medium transition-colors hover:opacity-80"
+            style={{ color: "var(--warm)" }}
+          >
+            See all
+          </Link>
+        )}
+      </div>
       <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
         {query.data.map((item) => (
           <Link

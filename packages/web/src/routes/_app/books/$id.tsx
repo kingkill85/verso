@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { trpc } from "@/trpc";
 import { BookCover } from "@/components/books/book-cover";
+import { AddToShelfMenu } from "@/components/shelves/add-to-shelf-menu";
 
 export const Route = createFileRoute("/_app/books/$id")({
   component: BookDetailPage,
@@ -187,6 +188,7 @@ function BookDetailPage() {
               >
                 {deleteMutation.isPending ? "Deleting..." : "Delete"}
               </button>
+              <AddToShelfMenu bookId={id} />
             </div>
           </div>
         </div>

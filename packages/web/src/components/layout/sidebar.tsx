@@ -1,10 +1,20 @@
+import { useState } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { trpc } from "@/trpc";
+import { ShelfDialog } from "@/components/shelves/shelf-dialog";
 
 export function Sidebar({ onClose }: { onClose?: () => void }) {
   const { user } = useAuth();
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
+  const shelvesQuery = trpc.shelves.list.useQuery();
+
+  const [shelfDialogOpen, setShelfDialogOpen] = useState(false);
+
+  const allShelves = shelvesQuery.data ?? [];
+  const defaultShelves = allShelves.filter((s) => s.isDefault === true);
+  const userShelves = allShelves.filter((s) => !s.isDefault);
 
   return (
     <aside className="h-screen flex flex-col overflow-y-auto" style={{ backgroundColor: "var(--sidebar-bg)" }}>
@@ -17,6 +27,45 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
           Library
         </div>
         <SidebarItem to="/" label="All Books" emoji="📚" active={isActive("/")} onClick={onClose} />
+        {defaultShelves.map((shelf) => (
+          <SidebarItem
+            key={shelf.id}
+            to="/shelves/$id"
+            params={{ id: shelf.id }}
+            label={shelf.name}
+            emoji={shelf.emoji ?? "📁"}
+            active={isActive(`/shelves/${shelf.id}`)}
+            count={shelf.bookCount}
+            badge={shelf.isSmart ? "smart" : undefined}
+            onClick={onClose}
+          />
+        ))}
+
+        <div className="px-3 mb-2 mt-6 flex items-center justify-between">
+          <span className="text-[10px] font-medium uppercase tracking-[1.5px]" style={{ color: "var(--text-faint)" }}>
+            Shelves
+          </span>
+          <button
+            onClick={() => setShelfDialogOpen(true)}
+            className="w-5 h-5 flex items-center justify-center rounded text-xs transition-colors hover:opacity-80"
+            style={{ color: "var(--text-faint)" }}
+          >
+            +
+          </button>
+        </div>
+        {userShelves.map((shelf) => (
+          <SidebarItem
+            key={shelf.id}
+            to="/shelves/$id"
+            params={{ id: shelf.id }}
+            label={shelf.name}
+            emoji={shelf.emoji ?? "📁"}
+            active={isActive(`/shelves/${shelf.id}`)}
+            count={shelf.bookCount}
+            badge={shelf.isSmart ? "smart" : undefined}
+            onClick={onClose}
+          />
+        ))}
 
         <div className="px-3 mb-2 mt-6 text-[10px] font-medium uppercase tracking-[1.5px]" style={{ color: "var(--text-faint)" }}>
           Actions
@@ -35,15 +84,19 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
           </span>
         </div>
       </div>
+
+      {shelfDialogOpen && (
+        <ShelfDialog onClose={() => setShelfDialogOpen(false)} />
+      )}
     </aside>
   );
 }
 
-function SidebarItem({ to, label, emoji, active, count, onClick }: {
-  to: string; label: string; emoji: string; active: boolean; count?: number; onClick?: () => void;
+function SidebarItem({ to, params, label, emoji, active, count, badge, onClick }: {
+  to: string; params?: Record<string, string>; label: string; emoji: string; active: boolean; count?: number; badge?: string; onClick?: () => void;
 }) {
   return (
-    <Link to={to} onClick={onClick}
+    <Link to={to} params={params} onClick={onClick}
       className="flex items-center gap-3 rounded-lg transition-colors"
       style={{
         padding: "10px 22px", fontSize: "13.5px",
@@ -53,7 +106,11 @@ function SidebarItem({ to, label, emoji, active, count, onClick }: {
       }}>
       <span className="w-[22px] text-base">{emoji}</span>
       <span className="flex-1">{label}</span>
-      {count !== undefined && <span className="text-[11px] opacity-60">{count}</span>}
+      {badge ? (
+        <span className="text-[11px] italic opacity-60">{badge}</span>
+      ) : count !== undefined ? (
+        <span className="text-[11px] opacity-60">{count}</span>
+      ) : null}
     </Link>
   );
 }
