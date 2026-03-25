@@ -89,13 +89,7 @@ function ReaderPage() {
           rendition.annotations.highlight(
             ann.cfiPosition,
             { id: ann.id },
-            () => {
-              setPopoverAnnotation(ann);
-              setPopoverPos({
-                x: window.innerWidth / 2,
-                y: window.innerHeight / 3,
-              });
-            },
+            undefined,
             "hl",
             { fill: colorMap[ann.color || "yellow"] || colorMap.yellow }
           );
