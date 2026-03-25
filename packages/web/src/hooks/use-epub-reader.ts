@@ -242,6 +242,7 @@ export function useEpubReader({ bookId, initialCfi, enabled = true }: UseEpubRea
 
   return {
     containerRef,
+    renditionRef,
     isLoaded,
     currentCfi,
     percentage,

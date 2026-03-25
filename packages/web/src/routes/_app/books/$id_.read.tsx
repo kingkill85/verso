@@ -9,6 +9,9 @@ import { ReaderBottomBar } from "@/components/reader/reader-bottom-bar";
 import { TapZones } from "@/components/reader/tap-zones";
 import { TOCPanel } from "@/components/reader/toc-panel";
 import { SettingsPanel } from "@/components/reader/settings-panel";
+import { HighlightToolbar } from "@/components/reader/highlight-toolbar";
+import { HighlightPopover } from "@/components/reader/highlight-popover";
+import type { Annotation } from "@verso/shared";
 
 export const Route = createFileRoute("/_app/books/$id_/read")({
   component: ReaderPage,
@@ -26,6 +29,7 @@ function ReaderPage() {
 
   const {
     containerRef,
+    renditionRef,
     isLoaded,
     currentCfi,
     percentage,
@@ -55,6 +59,104 @@ function ReaderPage() {
   const [controlsVisible, setControlsVisible] = useState(true);
   const [tocOpen, setTocOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Annotations
+  const annotationsQuery = trpc.annotations.list.useQuery({ bookId: id }, { enabled: isLoaded });
+  const createAnnotation = trpc.annotations.create.useMutation({ onSuccess: () => annotationsQuery.refetch() });
+  const updateAnnotation = trpc.annotations.update.useMutation({ onSuccess: () => annotationsQuery.refetch() });
+  const deleteAnnotation = trpc.annotations.delete.useMutation({ onSuccess: () => annotationsQuery.refetch() });
+
+  const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
+  const [popoverAnnotation, setPopoverAnnotation] = useState<Annotation | null>(null);
+  const [popoverPos, setPopoverPos] = useState<{ x: number; y: number } | null>(null);
+  const [selectionData, setSelectionData] = useState<{ text: string; cfiRange: string } | null>(null);
+
+  // Apply existing highlights onto the rendition
+  useEffect(() => {
+    const rendition = renditionRef.current;
+    if (!rendition || !annotationsQuery.data) return;
+
+    const colorMap: Record<string, string> = {
+      yellow: "rgba(254,240,138,0.4)",
+      green: "rgba(187,247,208,0.4)",
+      blue: "rgba(191,219,254,0.4)",
+      pink: "rgba(251,207,232,0.4)",
+    };
+
+    for (const ann of annotationsQuery.data) {
+      if (ann.cfiPosition) {
+        try {
+          rendition.annotations.highlight(
+            ann.cfiPosition,
+            { id: ann.id },
+            (_e: MouseEvent) => {
+              // When clicking an existing highlight, show popover
+              const iframe = (rendition as any).manager?.container?.querySelector("iframe");
+              const iframeRect = iframe?.getBoundingClientRect() || { left: 0, top: 0 };
+              setPopoverAnnotation(ann);
+              setPopoverPos({
+                x: iframeRect.left + (iframeRect.width || 0) / 2,
+                y: iframeRect.top + 100,
+              });
+            },
+            "hl",
+            { fill: colorMap[ann.color || "yellow"] || colorMap.yellow }
+          );
+        } catch {
+          // CFI may be invalid for current chapter
+        }
+      }
+    }
+  }, [annotationsQuery.data, isLoaded]);
+
+  // Listen for text selection in epub
+  useEffect(() => {
+    const rendition = renditionRef.current;
+    if (!rendition || !isLoaded) return;
+
+    const onSelected = (cfiRange: string, contents: any) => {
+      const selection = contents.window.getSelection();
+      if (!selection || selection.isCollapsed) return;
+
+      const text = selection.toString().trim();
+      if (!text) return;
+
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+
+      // Get iframe offset
+      const iframe = (rendition as any).manager?.container?.querySelector("iframe");
+      const iframeRect = iframe?.getBoundingClientRect() || { left: 0, top: 0 };
+
+      setToolbarPos({
+        x: iframeRect.left + rect.left + rect.width / 2,
+        y: iframeRect.top + rect.top - 10,
+      });
+      setSelectionData({ text, cfiRange });
+    };
+
+    rendition.on("selected", onSelected);
+    return () => rendition.off("selected", onSelected);
+  }, [isLoaded]);
+
+  const handleHighlight = (color: string, note?: string) => {
+    if (!selectionData) return;
+    createAnnotation.mutate({
+      bookId: id,
+      cfiPosition: selectionData.cfiRange,
+      content: selectionData.text,
+      color: color as any,
+      note,
+      chapter: currentChapter,
+    });
+    setToolbarPos(null);
+    setSelectionData(null);
+  };
+
+  const handleDismissToolbar = () => {
+    setToolbarPos(null);
+    setSelectionData(null);
+  };
 
   // Auto-hide controls after 3s
   useEffect(() => {
@@ -158,6 +260,21 @@ function ReaderPage() {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         onUpdate={updateSettings}
+      />
+
+      {/* Highlight toolbar and popover */}
+      <HighlightToolbar
+        position={toolbarPos}
+        onHighlight={handleHighlight}
+        onDismiss={handleDismissToolbar}
+      />
+      <HighlightPopover
+        annotation={popoverAnnotation}
+        position={popoverPos}
+        onUpdateColor={(aid, color) => updateAnnotation.mutate({ id: aid, color: color as any })}
+        onUpdateNote={(aid, note) => updateAnnotation.mutate({ id: aid, note })}
+        onDelete={(aid) => { deleteAnnotation.mutate({ id: aid }); setPopoverAnnotation(null); }}
+        onDismiss={() => setPopoverAnnotation(null)}
       />
 
       {/* Loading overlay */}
