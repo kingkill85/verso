@@ -61,3 +61,15 @@ export const changePasswordInput = z.object({
   currentPassword: z.string(),
   newPassword: z.string().min(8),
 });
+
+// Progress
+export const progressGetInput = z.object({
+  bookId: z.string().uuid(),
+});
+
+export const progressSyncInput = z.object({
+  bookId: z.string().uuid(),
+  percentage: z.number().min(0).max(100),
+  cfiPosition: z.string().optional(),
+  currentPage: z.number().int().min(0).optional(),
+});
