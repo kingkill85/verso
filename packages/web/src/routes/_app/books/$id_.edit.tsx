@@ -33,7 +33,7 @@ function BookEditPage() {
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [initialValues, setInitialValues] = useState<Record<string, string>>({});
 
-  // Initialize form from book data
+  // Initialize form from book data, then apply any metadata selections from sessionStorage
   useEffect(() => {
     if (!bookQuery.data) return;
     const v: Record<string, string> = {};
@@ -41,25 +41,27 @@ function BookEditPage() {
       const val = (bookQuery.data as any)[key];
       v[key] = val != null ? String(val) : "";
     }
-    setValues(v);
     setInitialValues(v);
-  }, [bookQuery.data]);
 
-  // Pick up metadata selections from the metadata page via sessionStorage
-  useEffect(() => {
+    // Check for metadata applied from the metadata page
     const storageKey = `verso-metadata-apply-${id}`;
     const raw = sessionStorage.getItem(storageKey);
-    if (!raw) return;
-    sessionStorage.removeItem(storageKey);
-    try {
-      const applied = JSON.parse(raw) as Record<string, string>;
-      setValues((prev) => ({ ...prev, ...applied }));
-      if (applied.coverUrl) {
-        setCoverUrl(applied.coverUrl);
-        delete applied.coverUrl;
+    if (raw) {
+      sessionStorage.removeItem(storageKey);
+      try {
+        const applied = JSON.parse(raw) as Record<string, string>;
+        if (applied.coverUrl) {
+          setCoverUrl(applied.coverUrl);
+          delete applied.coverUrl;
+        }
+        setValues({ ...v, ...applied });
+      } catch {
+        setValues(v);
       }
-    } catch { /* ignore bad data */ }
-  }, [id]);
+    } else {
+      setValues(v);
+    }
+  }, [bookQuery.data, id]);
 
   const isDirty = useMemo(() => {
     if (coverUrl) return true;
