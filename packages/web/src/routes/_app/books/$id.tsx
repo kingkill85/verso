@@ -26,6 +26,7 @@ function BookDetailPage() {
   const utils = trpc.useUtils();
 
   const bookQuery = trpc.books.byId.useQuery({ id });
+  const progressQuery = trpc.progress.get.useQuery({ bookId: id });
   const deleteMutation = trpc.books.delete.useMutation({
     onSuccess: () => {
       utils.books.list.invalidate();
@@ -163,13 +164,18 @@ function BookDetailPage() {
 
             {/* Actions */}
             <div className="flex flex-wrap gap-3 mt-6">
-              <button
-                disabled
-                className="px-6 py-2.5 rounded-full text-sm font-semibold text-white opacity-50 cursor-not-allowed"
+              <Link
+                to="/books/$id/read"
+                params={{ id }}
+                className="inline-flex items-center px-6 py-2.5 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
                 style={{ backgroundColor: "var(--warm)" }}
               >
-                Start Reading
-              </button>
+                {progressQuery.data?.finishedAt
+                  ? "Read Again"
+                  : progressQuery.data?.percentage
+                    ? `Continue Reading (${Math.round(progressQuery.data.percentage)}%)`
+                    : "Start Reading"}
+              </Link>
               <button
                 onClick={handleDelete}
                 disabled={deleteMutation.isPending}
@@ -185,6 +191,35 @@ function BookDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Progress section */}
+      {progressQuery.data && !progressQuery.data.finishedAt && progressQuery.data.percentage > 0 && (
+        <div
+          className="rounded-xl p-4 mb-8 flex items-center gap-4"
+          style={{ backgroundColor: "var(--card)" }}
+        >
+          <div className="flex-1">
+            <p className="text-xs font-medium uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>
+              Reading Progress
+            </p>
+            <div
+              className="h-1.5 rounded-full overflow-hidden mb-1.5"
+              style={{ backgroundColor: "var(--progress-bg)" }}
+            >
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${progressQuery.data.percentage}%`, backgroundColor: "var(--warm)" }}
+              />
+            </div>
+            <p className="text-xs" style={{ color: "var(--text-dim)" }}>
+              {Math.round(progressQuery.data.percentage)}% complete
+              {book.pageCount
+                ? ` · ${Math.round(book.pageCount * (1 - progressQuery.data.percentage / 100))} pages remaining`
+                : ""}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Description */}
       {book.description && (
