@@ -510,13 +510,14 @@ export async function updateEpubMetadata(
     if (addingNewCover && newCoverImgPath && updates.coverImageBuffer) {
       newZip.addBuffer(updates.coverImageBuffer, newCoverImgPath, { compress: true });
 
-      // Create cover HTML page
+      // Create cover HTML page using SVG to fill the viewport (standard EPUB pattern)
       const coverHtml = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head><title>Cover</title></head>
-<body style="margin:0;padding:0;text-align:center">
-<img src="${coverImgFilename}" alt="Cover" style="max-width:100%;max-height:100vh"/>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:svg="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<head><title>Cover</title><style>body{margin:0;padding:0}svg{width:100%;height:100vh}</style></head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 600 900" preserveAspectRatio="xMidYMid meet">
+<image width="600" height="900" xlink:href="${coverImgFilename}"/>
+</svg>
 </body>
 </html>`;
       if (newCoverHtmlPath) {
