@@ -27,3 +27,30 @@ export function isTokenExpired(token: string): boolean {
     return true;
   }
 }
+
+export async function refreshTokens(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+  try {
+    const res = await fetch("/trpc/auth.refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ json: { refreshToken } }),
+    });
+    if (!res.ok) {
+      clearTokens();
+      return false;
+    }
+    const data = await res.json();
+    const result = data.result?.data?.json;
+    if (result?.accessToken && result?.refreshToken) {
+      setTokens(result.accessToken, result.refreshToken);
+      return true;
+    }
+    clearTokens();
+    return false;
+  } catch {
+    clearTokens();
+    return false;
+  }
+}
