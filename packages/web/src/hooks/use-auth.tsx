@@ -50,9 +50,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (meQuery.data) {
       setUser(meQuery.data);
     }
-    // Never auto-clear tokens here. Only the logout button clears tokens.
-    // The proactive refresh in trpc.ts handles token renewal.
   }, [meQuery.data, setUser]);
+
+  // Listen for auth failure from the refresh flow
+  useEffect(() => {
+    const onAuthFailed = () => {
+      clearTokens();
+      setUser(null);
+    };
+    window.addEventListener("verso:auth-failed", onAuthFailed);
+    return () => window.removeEventListener("verso:auth-failed", onAuthFailed);
+  }, [setUser]);
 
   const login = useCallback((response: AuthResponse) => {
     setTokens(response.accessToken, response.refreshToken);

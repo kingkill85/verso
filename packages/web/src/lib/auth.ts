@@ -38,10 +38,9 @@ export async function refreshTokens(): Promise<boolean> {
       body: JSON.stringify({ json: { refreshToken } }),
     });
     if (!res.ok) {
-      // Only clear on definitive auth rejection (4xx), not server errors (5xx)
       if (res.status >= 400 && res.status < 500) {
-        clearTokens();
-        localStorage.removeItem("verso-user");
+        // Server explicitly rejected — session is dead
+        window.dispatchEvent(new Event("verso:auth-failed"));
       }
       return false;
     }
@@ -51,9 +50,7 @@ export async function refreshTokens(): Promise<boolean> {
       setTokens(result.accessToken, result.refreshToken);
       return true;
     }
-    // Server returned OK but no tokens — auth is broken
-    clearTokens();
-    localStorage.removeItem("verso-user");
+    window.dispatchEvent(new Event("verso:auth-failed"));
     return false;
   } catch {
     // Network error (server restart, offline) — DON'T clear tokens.
