@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
-import { readFile, rename, unlink, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { rename, unlink } from "node:fs/promises";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import * as yauzl from "yauzl-promise";
@@ -327,11 +326,7 @@ export async function updateEpubMetadata(
 
   try {
     // 3. Read container.xml to find OPF path
-    let opfPath: string | undefined;
-    let containerFound = false;
-
-    // First pass: find OPF path and cover image path
-    // We need to read all entries, so collect them
+    // First pass: collect all entries so we can read them by name
     const entries: yauzl.Entry[] = [];
     for await (const entry of zipFile) {
       entries.push(entry);
@@ -346,7 +341,7 @@ export async function updateEpubMetadata(
     }
 
     const containerBuf = await readEntryBuffer(zipFile, containerEntry);
-    opfPath = parseOpfPathFromContainer(containerBuf.toString("utf-8"));
+    const opfPath = parseOpfPathFromContainer(containerBuf.toString("utf-8"));
 
     const opfDir = opfPath.includes("/")
       ? opfPath.substring(0, opfPath.lastIndexOf("/"))
