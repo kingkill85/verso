@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { trpc } from "@/trpc";
 import { useEpubReader } from "@/hooks/use-epub-reader";
 import { useProgressSync } from "@/hooks/use-progress-sync";
@@ -106,6 +106,14 @@ function ReaderPage() {
     }
   }, [annotationsQuery.data, isLoaded]);
 
+  // Track mouse position for toolbar placement
+  const lastMousePos = useRef({ x: 0, y: 0 });
+  useEffect(() => {
+    const onMouse = (e: MouseEvent) => { lastMousePos.current = { x: e.clientX, y: e.clientY }; };
+    window.addEventListener("mouseup", onMouse);
+    return () => window.removeEventListener("mouseup", onMouse);
+  }, []);
+
   // Listen for text selection in epub
   useEffect(() => {
     const rendition = renditionRef.current;
@@ -118,16 +126,9 @@ function ReaderPage() {
       const text = selection.toString().trim();
       if (!text) return;
 
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-
-      // Get iframe offset
-      const iframe = (rendition as any).manager?.container?.querySelector("iframe");
-      const iframeRect = iframe?.getBoundingClientRect() || { left: 0, top: 0 };
-
       setToolbarPos({
-        x: iframeRect.left + rect.left + rect.width / 2,
-        y: iframeRect.top + rect.top - 10,
+        x: lastMousePos.current.x,
+        y: lastMousePos.current.y - 20,
       });
       setSelectionData({ text, cfiRange });
     };
