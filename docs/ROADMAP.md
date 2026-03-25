@@ -23,16 +23,21 @@ Foundation + first end-to-end feature. Go from zero to a working app.
 
 **Result:** Sign up, upload books, browse your library, view book details.
 
-## Session 2: "Read a book"
+## Session 2: "Read a book" ✅ COMPLETE
 
 The core reading experience.
 
-- EPUB reader page with epub.js (paginated + scrolling modes)
-- Reader settings panel (font family, size, line height, theme, margins)
-- Reading progress sync via tRPC (CFI position + percentage, debounced saves)
-- Resume reading from last position
-- TOC navigation
-- "Currently Reading" shelf auto-population based on progress
+- ✅ EPUB reader page with epub.js (paginated + scrolling modes)
+- ✅ Reader settings panel (font family, size, line height, theme, margins, view mode)
+- ✅ Reading progress sync via tRPC (CFI position + percentage, debounced 30s saves)
+- ✅ Resume reading from last position
+- ✅ TOC navigation (slide-in panel from left)
+- ✅ "Continue Reading" row on library page (auto-populated from progress)
+- ✅ Book detail page: working "Start Reading" / "Continue Reading" / "Read Again" CTA + progress card
+- ✅ Full-screen reader with auto-hiding controls, keyboard nav, tap zones, hover reveal
+- ✅ Token refresh fix: expired access tokens now properly trigger the 401 → refresh → retry flow
+- ✅ Unit tests: 77 total (58 backend + 19 frontend reader component tests)
+- ✅ Frontend test infrastructure: vitest + jsdom + testing-library
 
 **Result:** Open a book, read it, come back later and pick up where you left off.
 
