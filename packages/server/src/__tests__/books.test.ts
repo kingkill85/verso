@@ -191,4 +191,45 @@ describe("books router", () => {
       expect(result).toHaveLength(3);
     });
   });
+
+  describe("currentlyReading", () => {
+    it("returns empty when no books are in progress", async () => {
+      await insertBook({ title: "Idle Book" });
+      const result = await authedCaller.books.currentlyReading();
+      expect(result).toHaveLength(0);
+    });
+
+    it("returns books with active progress", async () => {
+      const book = await insertBook({ title: "Active Book" });
+      const { readingProgress } = await import("@verso/shared");
+      await ctx.db.insert(readingProgress).values({
+        userId,
+        bookId: book.id,
+        percentage: 42,
+        startedAt: new Date().toISOString(),
+        lastReadAt: new Date().toISOString(),
+      });
+
+      const result = await authedCaller.books.currentlyReading();
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe("Active Book");
+      expect(result[0].percentage).toBe(42);
+    });
+
+    it("excludes finished books", async () => {
+      const book = await insertBook({ title: "Finished Book" });
+      const { readingProgress } = await import("@verso/shared");
+      await ctx.db.insert(readingProgress).values({
+        userId,
+        bookId: book.id,
+        percentage: 100,
+        startedAt: new Date().toISOString(),
+        lastReadAt: new Date().toISOString(),
+        finishedAt: new Date().toISOString(),
+      });
+
+      const result = await authedCaller.books.currentlyReading();
+      expect(result).toHaveLength(0);
+    });
+  });
 });

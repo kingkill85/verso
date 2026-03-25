@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
-import { eq, and, desc, asc, sql } from "drizzle-orm";
-import { books, bookListInput, bookByIdInput, bookUpdateInput, bookDeleteInput } from "@verso/shared";
+import { eq, and, desc, asc, sql, isNull, isNotNull } from "drizzle-orm";
+import { books, readingProgress, bookListInput, bookByIdInput, bookUpdateInput, bookDeleteInput } from "@verso/shared";
 import { router, protectedProcedure } from "../index.js";
 
 const timestamp = () => ({ updatedAt: new Date().toISOString() });
@@ -81,4 +81,32 @@ export const booksRouter = router({
       return ctx.db.select().from(books).where(eq(books.addedBy, ctx.user.sub))
         .orderBy(desc(books.createdAt)).limit(input.limit || 20);
     }),
+
+  currentlyReading: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select({
+        id: books.id,
+        title: books.title,
+        author: books.author,
+        coverPath: books.coverPath,
+        fileFormat: books.fileFormat,
+        fileSize: books.fileSize,
+        pageCount: books.pageCount,
+        percentage: readingProgress.percentage,
+        cfiPosition: readingProgress.cfiPosition,
+        lastReadAt: readingProgress.lastReadAt,
+        startedAt: readingProgress.startedAt,
+      })
+      .from(readingProgress)
+      .innerJoin(books, eq(books.id, readingProgress.bookId))
+      .where(
+        and(
+          eq(readingProgress.userId, ctx.user.sub),
+          isNotNull(readingProgress.startedAt),
+          isNull(readingProgress.finishedAt),
+        )
+      )
+      .orderBy(desc(readingProgress.lastReadAt));
+    return rows;
+  }),
 });
