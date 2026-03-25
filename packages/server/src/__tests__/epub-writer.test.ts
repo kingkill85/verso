@@ -106,6 +106,16 @@ describe("replaceOrInsertDcTag", () => {
     );
     expect(result).toContain('<dc:title xml:lang="en">New</dc:title>');
   });
+
+  it("replaces a tag in xmlns namespace form", () => {
+    const nsOpf = `<metadata>
+    <description xmlns="http://purl.org/dc/elements/1.1/">Old Description</description>
+  </metadata>`;
+    const result = replaceOrInsertDcTag(nsOpf, "description", "New Description");
+    expect(result).toContain("<dc:description>New Description</dc:description>");
+    expect(result).not.toContain("Old Description");
+    expect(result).not.toContain('xmlns="http://purl.org/dc/elements/1.1/"');
+  });
 });
 
 describe("replaceOrInsertMeta", () => {
@@ -206,6 +216,92 @@ describe("applyMetadataToOpf", () => {
   it("does not modify xml when no updates provided", () => {
     const result = applyMetadataToOpf(baseOpf, {});
     expect(result).toBe(baseOpf);
+  });
+
+  it("removes dc:description tag when null value passed", () => {
+    const opfWithDesc = `<?xml version="1.0"?>
+<package>
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:title>A Book</dc:title>
+    <dc:description>Some description text</dc:description>
+  </metadata>
+</package>`;
+    const result = applyMetadataToOpf(opfWithDesc, { description: null });
+    expect(result).not.toContain("<dc:description>");
+    expect(result).not.toContain("Some description text");
+  });
+
+  it("removes a tag with xmlns namespace form when null value passed", () => {
+    const opfWithNsDesc = `<?xml version="1.0"?>
+<package>
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:title>A Book</dc:title>
+    <description xmlns="http://purl.org/dc/elements/1.1/">Namespaced description</description>
+  </metadata>
+</package>`;
+    const result = applyMetadataToOpf(opfWithNsDesc, { description: null });
+    expect(result).not.toContain("<description");
+    expect(result).not.toContain("Namespaced description");
+  });
+
+  it("removes null fields using 'field in updates' pattern", () => {
+    const opfWithAll = `<?xml version="1.0"?>
+<package>
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:title>Original Title</dc:title>
+    <dc:creator>Original Author</dc:creator>
+    <dc:publisher>Original Publisher</dc:publisher>
+    <dc:language>en</dc:language>
+  </metadata>
+</package>`;
+    const result = applyMetadataToOpf(opfWithAll, {
+      publisher: null,
+      language: null,
+    });
+    expect(result).not.toContain("<dc:publisher>");
+    expect(result).not.toContain("Original Publisher");
+    expect(result).not.toContain("<dc:language>");
+    // Fields not in updates should be preserved
+    expect(result).toContain("<dc:title>Original Title</dc:title>");
+    expect(result).toContain("<dc:creator>Original Author</dc:creator>");
+  });
+
+  it("removes cover meta and cover-image manifest items when removeCover is true", () => {
+    const opfWithCover = `<?xml version="1.0"?>
+<package>
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:title>A Book</dc:title>
+    <meta name="cover" content="cover-image-id"/>
+  </metadata>
+  <manifest>
+    <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
+    <item id="cover-image-id" href="images/cover.jpg" media-type="image/jpeg"/>
+  </manifest>
+</package>`;
+    const result = applyMetadataToOpf(opfWithCover, { removeCover: true });
+    expect(result).not.toContain('name="cover"');
+    expect(result).not.toContain('id="cover-image-id"');
+    // Non-cover manifest items should remain
+    expect(result).toContain('id="chapter1"');
+  });
+
+  it("removeCover strips properties='cover-image' attribute from manifest items", () => {
+    const opfWithCoverProps = `<?xml version="1.0"?>
+<package>
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:title>A Book</dc:title>
+  </metadata>
+  <manifest>
+    <item id="my-cover" href="cover.jpg" media-type="image/jpeg" properties="cover-image"/>
+    <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
+  </manifest>
+</package>`;
+    const result = applyMetadataToOpf(opfWithCoverProps, { removeCover: true });
+    expect(result).not.toContain('properties="cover-image"');
+    // The item itself should be removed since its id contains "cover-image" in properties
+    // but by the regex rules, the item with id="my-cover" doesn't match id="*cover-image*"
+    // so we just verify the property attribute is stripped
+    expect(result).toContain('id="chapter1"');
   });
 });
 
