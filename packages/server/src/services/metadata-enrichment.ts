@@ -324,7 +324,7 @@ export async function searchGoodreads(
 }
 
 /** Parse a Goodreads book page for JSON-LD and additional metadata. */
-function parseGoodreadsBookPage(html: string, url: string): ExternalBook | null {
+export function parseGoodreadsBookPage(html: string, url: string): ExternalBook | null {
   // Extract JSON-LD
   const ldMatch = html.match(
     /<script type="application\/ld\+json">([^<]+)<\/script>/

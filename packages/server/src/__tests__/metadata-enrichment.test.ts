@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { scoreMatch, deduplicateResults } from "../services/metadata-enrichment.js";
+import { scoreMatch, deduplicateResults, parseGoodreadsBookPage } from "../services/metadata-enrichment.js";
 import type { ExternalBook } from "@verso/shared";
 
 function makeCandidate(overrides: Partial<ExternalBook> = {}): ExternalBook {
@@ -249,5 +249,146 @@ describe("deduplicateResults", () => {
     ];
     const deduped = deduplicateResults(results);
     expect(deduped[0].coverUrl).toBe("https://google-cover.jpg");
+  });
+
+  it("prefers Goodreads cover over Google and OpenLibrary covers", () => {
+    const results: ExternalBook[] = [
+      makeCandidate({
+        isbn: "9780743273565",
+        confidence: 0.9,
+        source: "google",
+        coverUrl: "https://books.google.com/cover.jpg",
+      }),
+      makeCandidate({
+        isbn: "9780743273565",
+        confidence: 0.8,
+        source: "goodreads",
+        coverUrl: "https://i.gr-assets.com/images/S/goodreads-cover.jpg",
+      }),
+      makeCandidate({
+        isbn: "9780743273565",
+        confidence: 0.7,
+        source: "openlibrary",
+        coverUrl: "https://covers.openlibrary.org/b/id/99-L.jpg",
+      }),
+    ];
+    const deduped = deduplicateResults(results);
+    expect(deduped).toHaveLength(1);
+    expect(deduped[0].coverUrl).toBe("https://i.gr-assets.com/images/S/goodreads-cover.jpg");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Helpers for building minimal Goodreads HTML fixtures
+// ---------------------------------------------------------------------------
+
+function makeJsonLd(overrides: Record<string, unknown> = {}): string {
+  const ld = {
+    "@context": "https://schema.org",
+    "@type": "Book",
+    name: "The Mercy",
+    author: [{ "@type": "Person", name: "Jussi Adler-Olsen" }],
+    isbn: "9781846554483",
+    numberOfPages: "517",
+    inLanguage: "en",
+    image: "https://i.gr-assets.com/images/S/cover.jpg",
+    ...overrides,
+  };
+  return `<script type="application/ld+json">${JSON.stringify(ld)}</script>`;
+}
+
+function makeGoodreadsPage(options: {
+  ldOverrides?: Record<string, unknown>;
+  extraHtml?: string;
+  omitJsonLd?: boolean;
+} = {}): string {
+  const { ldOverrides = {}, extraHtml = "", omitJsonLd = false } = options;
+  const jsonLdBlock = omitJsonLd ? "" : makeJsonLd(ldOverrides);
+  return `<html><body>${jsonLdBlock}${extraHtml}</body></html>`;
+}
+
+const BOOK_URL = "https://www.goodreads.com/book/show/6892870-mercy";
+
+// ---------------------------------------------------------------------------
+
+describe("parseGoodreadsBookPage", () => {
+  it("extracts JSON-LD metadata: title, author, ISBN, pages, language, cover", () => {
+    const html = makeGoodreadsPage();
+    const book = parseGoodreadsBookPage(html, BOOK_URL);
+
+    expect(book).not.toBeNull();
+    expect(book!.title).toBe("The Mercy");
+    expect(book!.author).toBe("Jussi Adler-Olsen");
+    expect(book!.isbn).toBe("9781846554483");
+    expect(book!.pageCount).toBe(517);
+    expect(book!.language).toBe("en");
+    expect(book!.coverUrl).toBe("https://i.gr-assets.com/images/S/cover.jpg");
+    expect(book!.source).toBe("goodreads");
+    expect(book!.sourceId).toBe("6892870");
+  });
+
+  it("strips series suffix and populates series + seriesIndex", () => {
+    const html = makeGoodreadsPage({
+      ldOverrides: { name: "Erbarmen (Sonderdezernat Q, #1)" },
+    });
+    const book = parseGoodreadsBookPage(html, BOOK_URL);
+
+    expect(book).not.toBeNull();
+    expect(book!.title).toBe("Erbarmen");
+    expect(book!.series).toBe("Sonderdezernat Q");
+    expect(book!.seriesIndex).toBe(1);
+  });
+
+  it("uses only the first author (ignores translators listed as subsequent authors)", () => {
+    const html = makeGoodreadsPage({
+      ldOverrides: {
+        author: [
+          { "@type": "Person", name: "Jussi Adler-Olsen" },
+          { "@type": "Person", name: "Lisa Reinhardt" }, // translator
+        ],
+      },
+    });
+    const book = parseGoodreadsBookPage(html, BOOK_URL);
+
+    expect(book).not.toBeNull();
+    expect(book!.author).toBe("Jussi Adler-Olsen");
+  });
+
+  it("extracts description from HTML contentContainer span", () => {
+    const descHtml = `<div data-testid="contentContainer"><div><div><span class="Formatted">A gripping thriller.<br/>Very good.</span></div></div></div>`;
+    const html = makeGoodreadsPage({ extraHtml: descHtml });
+    const book = parseGoodreadsBookPage(html, BOOK_URL);
+
+    expect(book).not.toBeNull();
+    expect(book!.description).toContain("A gripping thriller.");
+    expect(book!.description).toContain("Very good.");
+  });
+
+  it("extracts the first genre from BookPageMetadataSection genre buttons", () => {
+    const genreHtml = `
+      <div class="BookPageMetadataSection__genreButton foo"><a href="/genres/crime"><span class="Button__labelItem">Crime</span></a></div>
+      <div class="BookPageMetadataSection__genreButton bar"><a href="/genres/thriller"><span class="Button__labelItem">Thriller</span></a></div>
+    `;
+    const html = makeGoodreadsPage({ extraHtml: genreHtml });
+    const book = parseGoodreadsBookPage(html, BOOK_URL);
+
+    expect(book).not.toBeNull();
+    expect(book!.genre).toBe("Crime");
+  });
+
+  it("returns null when no JSON-LD script tag is present", () => {
+    const html = makeGoodreadsPage({ omitJsonLd: true });
+    const book = parseGoodreadsBookPage(html, BOOK_URL);
+
+    expect(book).toBeNull();
+  });
+
+  it("returns null when JSON-LD @type is not Book", () => {
+    const html = makeGoodreadsPage({
+      ldOverrides: { "@type": "WebPage" },
+    });
+    const book = parseGoodreadsBookPage(html, BOOK_URL);
+
+    expect(book).toBeNull();
   });
 });
