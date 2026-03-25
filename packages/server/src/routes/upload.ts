@@ -94,6 +94,8 @@ export function registerUploadRoute(
           fileSize: buffer.length,
           fileHash,
           pageCount: metadata.pageCount,
+          series: metadata.series,
+          seriesIndex: metadata.seriesIndex,
           addedBy: user.sub,
           metadataSource: "extracted",
         })
