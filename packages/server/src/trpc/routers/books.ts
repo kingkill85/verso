@@ -1,7 +1,13 @@
 import { TRPCError } from "@trpc/server";
-import { eq, and, desc, asc, like, sql } from "drizzle-orm";
+import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { books, bookListInput, bookByIdInput, bookUpdateInput, bookDeleteInput } from "@verso/shared";
 import { router, protectedProcedure } from "../index.js";
+
+const timestamp = () => ({ updatedAt: new Date().toISOString() });
+
+function escapeLike(str: string): string {
+  return str.replace(/[%_\\]/g, (ch) => `\\${ch}`);
+}
 
 export const booksRouter = router({
   list: protectedProcedure.input(bookListInput).query(async ({ ctx, input }) => {
@@ -10,10 +16,11 @@ export const booksRouter = router({
 
     const conditions = [eq(books.addedBy, ctx.user.sub)];
     if (search) {
-      conditions.push(sql`(${books.title} LIKE ${"%" + search + "%"} OR ${books.author} LIKE ${"%" + search + "%"})`);
+      const term = "%" + escapeLike(search) + "%";
+      conditions.push(sql`(${books.title} LIKE ${term} ESCAPE '\\' OR ${books.author} LIKE ${term} ESCAPE '\\')`);
     }
     if (genre) conditions.push(eq(books.genre, genre));
-    if (author) conditions.push(like(books.author, `%${author}%`));
+    if (author) conditions.push(sql`${books.author} LIKE ${"%" + escapeLike(author) + "%"} ESCAPE '\\'`);
     if (format) conditions.push(eq(books.fileFormat, format));
 
     const where = and(...conditions);
@@ -47,7 +54,7 @@ export const booksRouter = router({
     });
     if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
 
-    const updateData: Record<string, any> = { ...fields, updatedAt: new Date().toISOString(), metadataLocked: true };
+    const updateData: Record<string, any> = { ...fields, ...timestamp(), metadataLocked: true };
     if (tags !== undefined) updateData.tags = JSON.stringify(tags);
 
     const [book] = await ctx.db.update(books).set(updateData).where(eq(books.id, id)).returning();
@@ -63,6 +70,7 @@ export const booksRouter = router({
     await ctx.db.delete(books).where(eq(books.id, input.id));
     await ctx.storage.delete(existing.filePath);
     if (existing.coverPath) await ctx.storage.delete(existing.coverPath);
+    await ctx.storage.removeDir(`books/${input.id}`);
 
     return { success: true };
   }),

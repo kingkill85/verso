@@ -83,6 +83,15 @@ describe("books router", () => {
       const page2 = await authedCaller.books.list({ limit: 2, page: 2 });
       expect(page2.books).toHaveLength(2);
     });
+
+    it("search with % wildcard does not match everything", async () => {
+      await insertBook({ title: "Alpha" });
+      await insertBook({ title: "Beta" });
+
+      const result = await authedCaller.books.list({ search: "%" });
+      // "%" should be escaped — literal search for "%", not a wildcard matching all
+      expect(result.books).toHaveLength(0);
+    });
   });
 
   describe("byId", () => {
@@ -141,7 +150,6 @@ describe("books router", () => {
     it("deletes a book", async () => {
       const inserted = await insertBook();
       // Create the file so storage.delete doesn't fail
-      await ctx.db.insert(books).values; // no-op, just need the book in DB
       const result = await authedCaller.books.delete({ id: inserted.id });
       expect(result.success).toBe(true);
 
