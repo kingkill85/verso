@@ -20,28 +20,31 @@ Session 3 adds library organization (shelves) and full-text search to Verso. Use
 
 ## Data Model
 
+All types follow existing schema conventions in `schema.ts`: IDs are `text` with `crypto.randomUUID()`, timestamps are `text` with `datetime('now')`.
+
 ### `shelves` table
 
 | Column | Type | Constraints |
 |---|---|---|
-| `id` | uuid | PK |
-| `name` | varchar(100) | NOT NULL |
+| `id` | text (UUID) | PK, default `crypto.randomUUID()` |
+| `name` | text | NOT NULL, max 100 chars |
 | `description` | text | nullable |
-| `emoji` | varchar(10) | nullable |
-| `userId` | uuid | FK → users.id, ON DELETE CASCADE, NOT NULL |
-| `isSmart` | boolean | default false |
-| `smartFilter` | JSON | nullable |
+| `emoji` | text | nullable, max 10 chars |
+| `userId` | text (UUID) | FK → users.id, ON DELETE CASCADE, NOT NULL |
+| `isSmart` | integer (boolean) | default 0 |
+| `smartFilter` | text (JSON) | nullable |
 | `position` | integer | NOT NULL |
-| `createdAt` | timestamp | default now |
+| `createdAt` | text (ISO datetime) | default `datetime('now')` |
+| `updatedAt` | text (ISO datetime) | default `datetime('now')` |
 
 ### `shelfBooks` join table (manual shelves only)
 
 | Column | Type | Constraints |
 |---|---|---|
-| `shelfId` | uuid | FK → shelves.id, ON DELETE CASCADE |
-| `bookId` | uuid | FK → books.id, ON DELETE CASCADE |
+| `shelfId` | text (UUID) | FK → shelves.id, ON DELETE CASCADE |
+| `bookId` | text (UUID) | FK → books.id, ON DELETE CASCADE |
 | `position` | integer | NOT NULL |
-| `addedAt` | timestamp | default now |
+| `addedAt` | text (ISO datetime) | default `datetime('now')` |
 
 PK: (`shelfId`, `bookId`)
 
@@ -61,6 +64,10 @@ PK: (`shelfId`, `bookId`)
 
 **Supported operators:** `eq`, `neq`, `contains`, `gt`, `gte`, `lt`, `lte`, `in`
 
+**Implementation note — `tags` field:** Tags are stored as a JSON-stringified array in a text column. `buildFilterConditions` must use SQLite `json_each()` for tag membership queries (e.g., `EXISTS (SELECT 1 FROM json_each(books.tags) WHERE value = ?)`).
+
+**Note on read status:** Read status filtering (unread/reading/finished) is not a supported smart filter field in Session 3. It would require joining `readingProgress`, adding cross-table complexity. All default shelves that relate to reading state (Currently Reading, Want to Read) are manual shelves, curated by the user. Read-status smart filters can be added in a future session.
+
 ### FTS5 virtual table: `books_fts`
 
 - Indexes: `title`, `author`, `description`
@@ -74,6 +81,8 @@ PK: (`shelfId`, `bookId`)
 - 🔖 Want to Read (manual)
 - ⭐ Favorites (manual)
 - 📅 Recently Added (smart: added in last 30 days)
+
+Default shelves are created by a `seedDefaultShelves(userId)` function called at the end of the `auth.register` mutation, inside the same transaction. Existing users get default shelves via a one-time migration backfill.
 
 ## API Layer
 
@@ -92,6 +101,8 @@ New `shelves` tRPC router + `search` procedure on `books` router. All procedures
 | `addBook` | `{ shelfId, bookId }` | Add book to manual shelf |
 | `removeBook` | `{ shelfId, bookId }` | Remove book from manual shelf |
 
+Book reordering within shelves is out of scope for Session 3. New books are appended to the end (highest position + 1). The `position` column exists for future drag-and-drop support.
+
 ### Books router addition
 
 | Procedure | Input | Description |
@@ -103,6 +114,21 @@ New `shelves` tRPC router + `search` procedure on `books` router. All procedures
 `buildFilterConditions(filter: SmartFilter, userId: string)` — translates smart filter JSON to Drizzle `where` clause. Reused by:
 - Smart shelf `byId` evaluation
 - Search result chip filtering
+
+### Boundary with existing `books.list`
+
+`books.search` is for the dedicated search page (FTS5-ranked results). `books.list` retains its LIKE-based `search` param for inline filtering on the library grid page. The two serve different UX contexts.
+
+### Validators
+
+New Zod schemas in `validators.ts`:
+- `smartFilterCondition` — `{ field, op, value }` with typed enums for field/op
+- `smartFilter` — `{ operator: "AND" | "OR", conditions: smartFilterCondition[] }`
+- `shelfCreateInput` — `{ name, emoji?, description?, isSmart, smartFilter? }`
+- `shelfUpdateInput` — `{ id, name?, emoji?, description?, smartFilter? }`
+- `shelfReorderInput` — `{ shelfIds: string[] }`
+- `shelfBookInput` — `{ shelfId, bookId }`
+- `searchInput` — `{ query, genre?, format?, author?, limit?, page? }`
 
 ## Frontend
 
@@ -132,9 +158,11 @@ Two sections replacing current single "Library" section:
 
 **Shelves section:** User-created shelves with "+" button to create new. Shows emoji + name + count. Smart shelves show italic "smart" label.
 
+**Note:** `SidebarItem` will need a new `badge` prop (string) to render "smart" as an alternative to the numeric count.
+
 ### Home page changes
 
-Continue Reading row gains a "See all" link that navigates to the Currently Reading shelf page (`/shelves/:id`).
+Continue Reading row gains a "See all" link that navigates to the Currently Reading shelf page (`/shelves/:id`). The row itself continues to use the existing `books.currentlyReading` tRPC procedure (reading-progress-based). The "Currently Reading" default shelf is a separate manual collection the user curates — the two may diverge intentionally.
 
 ### Search bar behavior
 
