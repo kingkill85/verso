@@ -206,8 +206,9 @@ function BookDetailPage() {
               <button
                 onClick={async () => {
                   const token = getAccessToken();
-                  const res = await fetch(`/api/books/${id}/file`, {
+                  const res = await fetch(`/api/books/${id}/file?t=${Date.now()}`, {
                     headers: token ? { Authorization: `Bearer ${token}` } : {},
+                    cache: "no-store",
                   });
                   if (!res.ok) return;
                   const blob = await res.blob();
