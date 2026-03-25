@@ -1,10 +1,12 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import type { CreateFastifyContextOptions } from "@trpc/server/adapters/fastify";
-import { SignJWT, jwtVerify } from "jose";
+import { verifyAccessToken } from "../services/jwt.js";
 import type { AppDatabase } from "../db/client.js";
 import type { Config } from "../config.js";
 import type { StorageService } from "../services/storage.js";
 import type { TokenPayload } from "@verso/shared";
+
+export { signAccessToken } from "../services/jwt.js";
 
 export type AppContext = {
   db: AppDatabase;
@@ -21,11 +23,7 @@ export function createContextFactory(db: AppDatabase, config: Config, storage: S
     if (authHeader?.startsWith("Bearer ")) {
       const token = authHeader.slice(7);
       try {
-        const secret = new TextEncoder().encode(config.JWT_SECRET);
-        const { payload } = await jwtVerify(token, secret);
-        if (payload.type === "access") {
-          user = payload as unknown as TokenPayload;
-        }
+        user = await verifyAccessToken(token, config);
       } catch {
         // Invalid token — user stays null
       }
@@ -53,28 +51,3 @@ export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   }
   return next({ ctx });
 });
-
-// JWT helpers
-export async function signAccessToken(
-  payload: Omit<TokenPayload, "type">,
-  config: Config
-): Promise<string> {
-  const secret = new TextEncoder().encode(config.JWT_SECRET);
-  return new SignJWT({ ...payload, type: "access" })
-    .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime(config.JWT_ACCESS_EXPIRES)
-    .setIssuedAt()
-    .sign(secret);
-}
-
-export async function signRefreshToken(
-  payload: Omit<TokenPayload, "type">,
-  config: Config
-): Promise<string> {
-  const secret = new TextEncoder().encode(config.JWT_SECRET);
-  return new SignJWT({ ...payload, type: "refresh" })
-    .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime(config.JWT_REFRESH_EXPIRES)
-    .setIssuedAt()
-    .sign(secret);
-}

@@ -4,7 +4,6 @@ import { books } from "@verso/shared";
 import type { StorageService } from "../services/storage.js";
 import type { AppDatabase } from "../db/client.js";
 import type { Config } from "../config.js";
-import type { TokenPayload } from "@verso/shared";
 import { createAuthHook } from "../middleware/auth.js";
 
 const MIME_TYPES: Record<string, string> = {
@@ -16,7 +15,7 @@ const MIME_TYPES: Record<string, string> = {
 export function registerStreamRoute(app: FastifyInstance, db: AppDatabase, storage: StorageService, config: Config) {
   const authHook = createAuthHook(config);
   app.get("/api/books/:id/file", { preHandler: authHook }, async (req, reply) => {
-    const user = (req as any).user as TokenPayload;
+    const user = req.user!;
     const { id } = req.params as { id: string };
 
     const book = await db.query.books.findFirst({

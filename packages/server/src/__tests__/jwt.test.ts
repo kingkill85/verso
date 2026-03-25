@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { jwtVerify } from "jose";
-import { signAccessToken, signRefreshToken } from "../trpc/index.js";
+import { signAccessToken } from "../services/jwt.js";
 import type { Config } from "../config.js";
 
 const TEST_CONFIG = {
@@ -37,38 +37,6 @@ describe("JWT helpers", () => {
       expect(payload.sessionId).toBe("session-456");
       expect(payload.iat).toBeDefined();
       expect(payload.exp).toBeDefined();
-    });
-  });
-
-  describe("signRefreshToken", () => {
-    it("signs a valid refresh token", async () => {
-      const token = await signRefreshToken(TEST_PAYLOAD, TEST_CONFIG);
-      expect(token).toBeTruthy();
-      expect(token.split(".")).toHaveLength(3);
-    });
-
-    it("token has type refresh", async () => {
-      const token = await signRefreshToken(TEST_PAYLOAD, TEST_CONFIG);
-      const secret = new TextEncoder().encode(TEST_CONFIG.JWT_SECRET);
-      const { payload } = await jwtVerify(token, secret);
-
-      expect(payload.type).toBe("refresh");
-      expect(payload.sub).toBe("user-123");
-      expect(payload.exp).toBeDefined();
-    });
-  });
-
-  describe("token differentiation", () => {
-    it("access and refresh tokens have different type fields", async () => {
-      const accessToken = await signAccessToken(TEST_PAYLOAD, TEST_CONFIG);
-      const refreshToken = await signRefreshToken(TEST_PAYLOAD, TEST_CONFIG);
-      const secret = new TextEncoder().encode(TEST_CONFIG.JWT_SECRET);
-
-      const access = await jwtVerify(accessToken, secret);
-      const refresh = await jwtVerify(refreshToken, secret);
-
-      expect(access.payload.type).toBe("access");
-      expect(refresh.payload.type).toBe("refresh");
     });
   });
 });

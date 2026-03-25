@@ -6,7 +6,6 @@ import { books } from "@verso/shared";
 import type { StorageService } from "../services/storage.js";
 import type { AppDatabase } from "../db/client.js";
 import type { Config } from "../config.js";
-import type { TokenPayload } from "@verso/shared";
 import { createAuthHook } from "../middleware/auth.js";
 import sharp from "sharp";
 
@@ -22,7 +21,7 @@ export function registerUploadRoute(
     "/api/upload",
     { preHandler: authHook },
     async (req, reply) => {
-      const user = (req as any).user as TokenPayload;
+      const user = req.user!;
       const data = await req.file();
 
       if (!data) {

@@ -5,12 +5,11 @@ import type { StorageService } from "../services/storage.js";
 import type { AppDatabase } from "../db/client.js";
 import type { Config } from "../config.js";
 import { createAuthHook } from "../middleware/auth.js";
-import type { TokenPayload } from "@verso/shared";
 
 export function registerCoversRoute(app: FastifyInstance, db: AppDatabase, storage: StorageService, config: Config) {
   const authHook = createAuthHook(config);
   app.get("/api/covers/:bookId", { preHandler: authHook }, async (req, reply) => {
-    const user = (req as any).user as TokenPayload;
+    const user = req.user!;
     const { bookId } = req.params as { bookId: string };
 
     const book = await db.query.books.findFirst({
