@@ -30,12 +30,14 @@ Uses `resolve` (not `join`) to normalize `..` segments before comparison.
 
 **Files:** `packages/server/src/app.ts`, `package.json`
 
-Add `@fastify/rate-limit` dependency. Register globally with generous defaults (100 req/min per IP). Apply tighter limits to auth-sensitive endpoints:
+Add `@fastify/rate-limit` dependency. Register globally with a reasonable default (100 req/min per IP). Since all tRPC procedures share a single Fastify route (`/trpc`), per-procedure rate limiting via Fastify route config is not feasible. Instead, apply a single global rate limit that protects all endpoints equally. This is sufficient for Session 1 — a more granular tRPC middleware-based approach can be added later if needed.
 
-- `POST /trpc/auth.register` — 5 req/min per IP
-- `POST /trpc/auth.login` — 10 req/min per IP
-
-Since tRPC routes all go through `/trpc`, apply rate limiting at the Fastify plugin level with route-level overrides. Alternatively, add rate limiting config in the tRPC adapter setup. The simplest approach: register `@fastify/rate-limit` globally, then add a `preHandler` with stricter config on the specific routes if Fastify allows it — otherwise, apply a global limit that's reasonable for all endpoints.
+```ts
+await app.register(rateLimit, {
+  max: 100,
+  timeWindow: "1 minute",
+});
+```
 
 ### #5 — CORS wildcard default
 
@@ -53,7 +55,9 @@ if (config.CORS_ORIGIN === "*" && config.NODE_ENV === "production") {
 
 **File:** `packages/server/src/routes/upload.ts`
 
-After `data.toBuffer()`, check the `data.file.truncated` property (set by `@fastify/multipart` when stream exceeds `limits.fileSize`). If truncated, return 413 immediately. Remove the redundant manual `buffer.length` check since multipart limits handle it. This prevents full buffering of oversized files.
+After `data.toBuffer()`, check the `data.file.truncated` property. Here `data` is the `MultipartFile` returned by `req.file()`, and `data.file` is its underlying Busboy `ReadableStream` — `@fastify/multipart` sets `truncated = true` on this stream when it exceeds `limits.fileSize`. If truncated, return 413 immediately. Remove the redundant manual `buffer.length > config.MAX_UPLOAD_SIZE` check.
+
+Note: `toBuffer()` still fully buffers the file up to `limits.fileSize` — it does not prevent buffering, but it does prevent processing an incomplete file as if it were valid. True streaming size checks would be a larger change deferred to a future session.
 
 ### #4 — Refresh token race condition diagnostics
 
@@ -72,7 +76,7 @@ Bearer tokens from `localStorage` are not auto-sent by browsers. CSRF is not app
 
 ## Section 2: Auth Consolidation
 
-### #10 — Shared JWT verification + #11 — Fastify type augmentation + #13 — Remove dead code
+### #10 — Shared JWT verification + #11 — Fastify type augmentation + #13 — Remove dead `signRefreshToken`
 
 **New file:** `packages/server/src/services/jwt.ts`
 
@@ -129,6 +133,12 @@ declare module "fastify" {
 - Remove `signAccessToken` and `signRefreshToken` function definitions (moved / dead)
 - Re-export `signAccessToken` from `services/jwt.ts` for use by `auth.ts` router
 
+**Updated file:** `packages/server/src/__tests__/jwt.test.ts`
+
+- Update import path from `../trpc/index.js` to `../services/jwt.js`
+- Remove `signRefreshToken` import and all tests that reference it (the `signRefreshToken` describe block and the `token differentiation` describe block)
+- Keep only the `signAccessToken` tests
+
 **Updated files:** `packages/server/src/routes/upload.ts`, `stream.ts`, `covers.ts`
 
 - Remove all `(req as any).user as TokenPayload` casts
@@ -181,16 +191,7 @@ Add a custom tRPC link before `httpBatchLink` that intercepts 401 responses. On 
 
 **Updated file:** `packages/web/src/hooks/use-theme.ts`
 
-Change the media query handler to read the actual new value:
-
-```ts
-const handler = (e: MediaQueryListEvent) => {
-  // Force re-render by setting a new state even though value is "system"
-  setThemeState((prev) => prev === "system" ? "system" : prev);
-};
-```
-
-Actually, the real fix: derive `resolvedTheme` inside a `useMemo` that depends on both `theme` and a `systemTheme` state:
+Track `systemTheme` as its own piece of state so React re-renders when the OS preference changes:
 
 ```ts
 const [systemTheme, setSystemTheme] = useState<"light" | "dark">(getSystemTheme);
@@ -295,7 +296,15 @@ function escapeLike(str: string): string {
 }
 ```
 
-Apply to `search` and `author` filter values before wrapping with `%..%`. Add `ESCAPE '\\'` to the SQL LIKE clauses.
+Apply to both search filter paths. The raw `sql` template (used for `search`) can include `ESCAPE '\\'` directly. The Drizzle `like()` helper (used for `author` on line 16) does not support an ESCAPE clause, so replace it with a raw `sql` template as well:
+
+```ts
+// Before (no escaping, uses Drizzle helper):
+if (author) conditions.push(like(books.author, `%${author}%`));
+
+// After (escaped, raw SQL):
+if (author) conditions.push(sql`${books.author} LIKE ${"%" + escapeLike(author) + "%"} ESCAPE '\\'`);
+```
 
 ### #9 — Orphan directory cleanup on delete
 
@@ -331,17 +340,9 @@ type AuthFormProps = {
 
 Replace inline forms with `<AuthForm>` using appropriate props. `login.tsx` stays separate (different field set).
 
-### #18 — Load custom fonts
+### #18 — Load custom fonts (ALREADY DONE)
 
-**Updated file:** `packages/web/index.html`
-
-Add to `<head>`:
-
-```html
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-```
+Fonts are already loaded in `packages/web/index.html` (lines 7-12). No change needed. Removed from scope.
 
 ### #22 — Remove dead test code
 
@@ -358,7 +359,7 @@ Remove the no-op line `await ctx.db.insert(books).values;` (line 144).
 - `packages/web/src/components/error-boundary.tsx` — React error boundary
 - `packages/web/src/components/auth-form.tsx` — shared auth form
 
-### Modified files (16)
+### Modified files (18)
 - `packages/server/package.json` — add `@fastify/rate-limit`
 - `packages/server/src/app.ts` — rate limiting, CORS warning
 - `packages/server/src/config.ts` — CORS default change
@@ -371,11 +372,13 @@ Remove the no-op line `await ctx.db.insert(books).values;` (line 144).
 - `packages/server/src/trpc/routers/auth.ts` — improved error messages
 - `packages/server/src/trpc/routers/books.ts` — LIKE escaping, timestamp helper, dir cleanup
 - `packages/server/src/__tests__/books.test.ts` — remove dead code
-- `packages/web/index.html` — font loading
+- `packages/server/src/__tests__/jwt.test.ts` — update imports, remove signRefreshToken tests
 - `packages/web/src/main.tsx` — error boundary, QueryClient config
 - `packages/web/src/trpc.ts` — token refresh link
 - `packages/web/src/lib/auth.ts` — `refreshTokens()` function
 - `packages/web/src/hooks/use-theme.ts` — system theme re-render fix
-- `packages/web/src/lib/constants.ts` — delete (or gut)
 - `packages/web/src/routes/_auth/setup.tsx` — use AuthForm
 - `packages/web/src/routes/_auth/register.tsx` — use AuthForm
+
+### Deleted files (1)
+- `packages/web/src/lib/constants.ts` — unused COVER_PALETTES (no remaining exports)
