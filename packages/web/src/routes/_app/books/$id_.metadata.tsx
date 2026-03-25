@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { trpc } from "@/trpc";
+import { trpc } from "@/trpc";  // still needed for books.byId and metadata.search
 import { BookCover } from "@/components/books/book-cover";
 import { SourceBadge } from "@/components/metadata/source-badge";
 import type { ExternalBook } from "@verso/shared";
+
+const METADATA_STORAGE_KEY = (id: string) => `verso-metadata-apply-${id}`;
 
 export const Route = createFileRoute("/_app/books/$id_/metadata")({
   component: BookMetadataPage,
@@ -34,7 +36,6 @@ function str(val: unknown): string {
 function BookMetadataPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const utils = trpc.useUtils();
   const bookQuery = trpc.books.byId.useQuery({ id });
 
   const [searchInput, setSearchInput] = useState("");
@@ -53,14 +54,6 @@ function BookMetadataPage() {
     { bookId: id, query: manualQuery },
     { enabled: !!manualQuery },
   );
-
-  const updateMutation = trpc.books.update.useMutation({
-    onSuccess: () => {
-      utils.books.byId.invalidate({ id });
-      utils.books.list.invalidate();
-      navigate({ to: "/books/$id", params: { id } });
-    },
-  });
 
   useEffect(() => {
     if (!selected || !bookQuery.data) return;
@@ -85,24 +78,18 @@ function BookMetadataPage() {
   }, [checkedFields, coverChecked]);
 
   const handleApply = () => {
-    if (!selected || !bookQuery.data) return;
-    const fields: Record<string, any> = { id };
+    if (!selected) return;
+    // Store selected values in sessionStorage, edit page will pick them up
+    const applied: Record<string, string> = {};
     for (const { key } of DIFF_FIELDS) {
       if (!checkedFields[key]) continue;
-      const val = str(selected[key as keyof ExternalBook]);
-      if (!val) {
-        fields[key] = null;
-      } else if (NUM_FIELDS.has(key)) {
-        const num = parseFloat(val);
-        if (!isNaN(num)) fields[key] = num;
-      } else {
-        fields[key] = val;
-      }
+      applied[key] = str(selected[key as keyof ExternalBook]);
     }
     if (coverChecked && selected.coverUrl) {
-      fields.coverUrl = selected.coverUrl;
+      applied.coverUrl = selected.coverUrl;
     }
-    updateMutation.mutate(fields as any);
+    sessionStorage.setItem(METADATA_STORAGE_KEY(id), JSON.stringify(applied));
+    navigate({ to: "/books/$id/edit", params: { id } });
   };
 
   if (bookQuery.isLoading) {
@@ -196,12 +183,6 @@ function BookMetadataPage() {
             <SourceBadge source={selected.source} />
           </div>
 
-          {updateMutation.isError && (
-            <div className="rounded-lg px-4 py-3 mb-4 text-sm" style={{ backgroundColor: "rgba(200,50,50,0.1)", color: "#c44" }}>
-              Failed to save. Please try again.
-            </div>
-          )}
-
           {/* Cover comparison */}
           {selected.coverUrl && (
             <label className="flex items-center gap-4 rounded-xl p-4 mb-3 cursor-pointer" style={{ backgroundColor: "var(--card)" }}>
@@ -258,11 +239,11 @@ function BookMetadataPage() {
             </button>
             <button
               onClick={handleApply}
-              disabled={checkedCount === 0 || updateMutation.isPending}
+              disabled={checkedCount === 0}
               className="px-5 py-2 rounded-full text-sm font-semibold text-white hover:scale-[1.02] disabled:opacity-50"
               style={{ backgroundColor: "var(--warm)" }}
             >
-              {updateMutation.isPending ? "Saving..." : `Apply ${checkedCount} change${checkedCount !== 1 ? "s" : ""}`}
+              Apply {checkedCount} change{checkedCount !== 1 ? "s" : ""}
             </button>
           </div>
         </>

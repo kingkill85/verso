@@ -30,8 +30,10 @@ function BookEditPage() {
   const bookQuery = trpc.books.byId.useQuery({ id });
 
   const [values, setValues] = useState<Record<string, string>>({});
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [initialValues, setInitialValues] = useState<Record<string, string>>({});
 
+  // Initialize form from book data
   useEffect(() => {
     if (!bookQuery.data) return;
     const v: Record<string, string> = {};
@@ -43,9 +45,26 @@ function BookEditPage() {
     setInitialValues(v);
   }, [bookQuery.data]);
 
+  // Pick up metadata selections from the metadata page via sessionStorage
+  useEffect(() => {
+    const storageKey = `verso-metadata-apply-${id}`;
+    const raw = sessionStorage.getItem(storageKey);
+    if (!raw) return;
+    sessionStorage.removeItem(storageKey);
+    try {
+      const applied = JSON.parse(raw) as Record<string, string>;
+      setValues((prev) => ({ ...prev, ...applied }));
+      if (applied.coverUrl) {
+        setCoverUrl(applied.coverUrl);
+        delete applied.coverUrl;
+      }
+    } catch { /* ignore bad data */ }
+  }, [id]);
+
   const isDirty = useMemo(() => {
+    if (coverUrl) return true;
     return Object.keys(values).some((k) => values[k] !== initialValues[k]);
-  }, [values, initialValues]);
+  }, [values, initialValues, coverUrl]);
 
   useEffect(() => {
     if (!isDirty) return;
@@ -81,6 +100,7 @@ function BookEditPage() {
         fields[key] = val;
       }
     }
+    if (coverUrl) fields.coverUrl = coverUrl;
     updateMutation.mutate(fields as any);
   };
 
@@ -149,6 +169,17 @@ function BookEditPage() {
               </div>
             );
           })}
+
+          <Link
+            to="/books/$id/metadata" params={{ id }}
+            className="flex items-center justify-center gap-2 rounded-xl p-4 text-sm font-medium transition-colors hover:opacity-80 border border-dashed"
+            style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            Find Metadata Online
+          </Link>
         </div>
       </div>
     </div>
