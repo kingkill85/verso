@@ -47,6 +47,7 @@ function ReaderPage() {
     prevPage,
     goTo,
     updateSettings,
+    settingsVersion,
   } = useEpubReader({
     bookId: id,
     initialCfi: dataReady ? initialCfi : undefined,
@@ -86,11 +87,21 @@ function ReaderPage() {
   // Track which CFIs we've already added to avoid duplicates
   const addedHighlightsRef = useRef(new Set<string>());
 
-  // Render highlights — epub.js persists them across chapter navigation automatically
+  // Render highlights — re-add when annotations or settings change
   useEffect(() => {
     const rendition = renditionRef.current;
     if (!rendition || !annotationsQuery.data) return;
 
+    // Clear existing highlights on settings change so SVG rects get recalculated
+    if (addedHighlightsRef.current.size > 0) {
+      for (const cfi of addedHighlightsRef.current) {
+        try { rendition.annotations.remove(cfi, "highlight"); } catch { /* ok */ }
+      }
+      addedHighlightsRef.current.clear();
+    }
+
+    // Small delay to let epub.js finish re-rendering after settings change
+    const timer = setTimeout(() => {
     for (const ann of annotationsQuery.data) {
       if (!ann.cfiPosition || addedHighlightsRef.current.has(ann.cfiPosition)) continue;
       addedHighlightsRef.current.add(ann.cfiPosition);
@@ -112,7 +123,10 @@ function ReaderPage() {
         );
       } catch { /* CFI not in current chapter — epub.js handles this */ }
     }
-  }, [annotationsQuery.data, isLoaded]);
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [annotationsQuery.data, isLoaded, settingsVersion]);
 
   // Text selection → show toolbar
   useEffect(() => {

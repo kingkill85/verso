@@ -70,6 +70,7 @@ export function useEpubReader({ bookId, initialCfi, enabled = true }: UseEpubRea
   const renditionRef = useRef<Rendition | null>(null);
 
   const [isLoaded, setIsLoaded] = useState(false);
+  const [settingsVersion, setSettingsVersion] = useState(0);
   const [currentCfi, setCurrentCfi] = useState<string | null>(initialCfi ?? null);
   const [percentage, setPercentage] = useState(0);
   const [toc, setToc] = useState<NavItem[]>([]);
@@ -200,6 +201,7 @@ export function useEpubReader({ bookId, initialCfi, enabled = true }: UseEpubRea
   }, []);
 
   const updateSettings = useCallback((partial: Partial<ReaderSettings>) => {
+    setSettingsVersion((v) => v + 1);
     setSettingsState((prev) => {
       const next = { ...prev, ...partial };
       saveSettings(next);
@@ -253,5 +255,6 @@ export function useEpubReader({ bookId, initialCfi, enabled = true }: UseEpubRea
     prevPage,
     goTo,
     updateSettings,
+    settingsVersion,
   };
 }
