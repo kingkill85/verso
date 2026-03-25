@@ -164,7 +164,7 @@ function BookEditPage() {
       }
     }
     if (coverUrl) fields.coverUrl = coverUrl;
-    updateMutation.mutate(fields);
+    updateMutation.mutate(fields as any);
   };
 
   const set = (key: string, val: string) => setValues((p) => ({ ...p, [key]: val }));
