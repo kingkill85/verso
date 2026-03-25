@@ -72,4 +72,5 @@ export const progressSyncInput = z.object({
   percentage: z.number().min(0).max(100),
   cfiPosition: z.string().optional(),
   currentPage: z.number().int().min(0).optional(),
+  timeSpentMinutes: z.number().min(0).optional(),
 });
