@@ -89,13 +89,11 @@ function ReaderPage() {
           rendition.annotations.highlight(
             ann.cfiPosition,
             { id: ann.id },
-            (e: MouseEvent) => {
-              const iframe = (rendition as any).manager?.container?.querySelector("iframe");
-              const iframeRect = iframe?.getBoundingClientRect() || { left: 0, top: 0 };
+            () => {
               setPopoverAnnotation(ann);
               setPopoverPos({
-                x: iframeRect.left + e.clientX,
-                y: iframeRect.top + e.clientY - 10,
+                x: window.innerWidth / 2,
+                y: window.innerHeight / 3,
               });
             },
             "hl",
