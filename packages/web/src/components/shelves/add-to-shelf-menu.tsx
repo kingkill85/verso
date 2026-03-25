@@ -9,16 +9,17 @@ export function AddToShelfMenu({ bookId }: AddToShelfMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const shelvesQuery = trpc.shelves.list.useQuery();
+  const membershipQuery = trpc.shelves.forBook.useQuery({ bookId });
   const utils = trpc.useUtils();
 
-  const addBookMutation = trpc.shelves.addBook.useMutation({
-    onSuccess: () => {
-      utils.shelves.list.invalidate();
-      setOpen(false);
-    },
-  });
+  const invalidateAll = () => {
+    utils.shelves.forBook.invalidate({ bookId });
+    utils.shelves.list.invalidate();
+  };
 
-  // Close on outside click
+  const addMutation = trpc.shelves.addBook.useMutation({ onSuccess: invalidateAll });
+  const removeMutation = trpc.shelves.removeBook.useMutation({ onSuccess: invalidateAll });
+
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
@@ -31,6 +32,16 @@ export function AddToShelfMenu({ bookId }: AddToShelfMenuProps) {
   }, [open]);
 
   const manualShelves = (shelvesQuery.data ?? []).filter((s) => !s.isSmart);
+  const memberSet = new Set(membershipQuery.data ?? []);
+  const isPending = addMutation.isPending || removeMutation.isPending;
+
+  const toggle = (shelfId: string) => {
+    if (memberSet.has(shelfId)) {
+      removeMutation.mutate({ shelfId, bookId });
+    } else {
+      addMutation.mutate({ shelfId, bookId });
+    }
+  };
 
   return (
     <div className="relative" ref={menuRef}>
@@ -52,20 +63,26 @@ export function AddToShelfMenu({ bookId }: AddToShelfMenuProps) {
               No shelves yet
             </div>
           ) : (
-            manualShelves.map((shelf) => (
-              <button
-                key={shelf.id}
-                onClick={() => addBookMutation.mutate({ shelfId: shelf.id, bookId })}
-                disabled={addBookMutation.isPending}
-                className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 transition-colors hover:opacity-80"
-                style={{ color: "var(--text)" }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--card)")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-              >
-                <span>{shelf.emoji ?? "📁"}</span>
-                <span className="flex-1 truncate">{shelf.name}</span>
-              </button>
-            ))
+            manualShelves.map((shelf) => {
+              const isIn = memberSet.has(shelf.id);
+              return (
+                <button
+                  key={shelf.id}
+                  onClick={() => toggle(shelf.id)}
+                  disabled={isPending}
+                  className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 transition-colors hover:opacity-80"
+                  style={{ color: "var(--text)" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--card)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                >
+                  <span className="w-5 text-center" style={{ color: "var(--warm)" }}>
+                    {isIn ? "✓" : ""}
+                  </span>
+                  <span>{shelf.emoji ?? "📁"}</span>
+                  <span className="flex-1 truncate">{shelf.name}</span>
+                </button>
+              );
+            })
           )}
         </div>
       )}

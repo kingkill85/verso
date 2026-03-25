@@ -1,7 +1,10 @@
 import { useState, useMemo } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createPortal } from "react-dom";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { trpc } from "@/trpc";
 import { BookGrid } from "@/components/books/book-grid";
+import { BookCard } from "@/components/books/book-card";
+import { ShelfDialog } from "@/components/shelves/shelf-dialog";
 
 export const Route = createFileRoute("/_app/shelves/$id")({
   component: ShelfDetailPage,
@@ -9,8 +12,26 @@ export const Route = createFileRoute("/_app/shelves/$id")({
 
 function ShelfDetailPage() {
   const { id } = Route.useParams();
+  const navigate = useNavigate();
+  const utils = trpc.useUtils();
   const shelfQuery = trpc.shelves.byId.useQuery({ id });
   const [search, setSearch] = useState("");
+  const [editOpen, setEditOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const deleteMutation = trpc.shelves.delete.useMutation({
+    onSuccess: () => {
+      utils.shelves.list.invalidate();
+      navigate({ to: "/" });
+    },
+  });
+
+  const removeBookMutation = trpc.shelves.removeBook.useMutation({
+    onSuccess: () => {
+      utils.shelves.byId.invalidate({ id });
+      utils.shelves.list.invalidate();
+    },
+  });
 
   const filteredBooks = useMemo(() => {
     if (!shelfQuery.data?.books) return [];
@@ -34,12 +55,8 @@ function ShelfDetailPage() {
   if (shelfQuery.error || !shelfQuery.data) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <p className="font-display text-lg" style={{ color: "var(--text)" }}>
-          Shelf not found
-        </p>
-        <Link to="/" className="text-sm mt-2" style={{ color: "var(--warm)" }}>
-          Back to library
-        </Link>
+        <p className="font-display text-lg" style={{ color: "var(--text)" }}>Shelf not found</p>
+        <Link to="/" className="text-sm mt-2" style={{ color: "var(--warm)" }}>Back to library</Link>
       </div>
     );
   }
@@ -47,6 +64,15 @@ function ShelfDetailPage() {
   const shelf = shelfQuery.data;
   const books = shelf.books ?? [];
   const showSearch = books.length > 5;
+  const canEdit = !shelf.isDefault && !shelf.isSmart;
+  const canEditSmart = !shelf.isDefault && shelf.isSmart;
+  const canManageBooks = !shelf.isSmart; // manual shelves only
+
+  const handleDelete = () => {
+    if (window.confirm(`Delete "${shelf.name}"? Books won't be deleted.`)) {
+      deleteMutation.mutate({ id });
+    }
+  };
 
   return (
     <div className="animate-in fade-in">
@@ -64,7 +90,7 @@ function ShelfDetailPage() {
       <div className="mb-6">
         <div className="flex items-center gap-3">
           <span className="text-2xl">{shelf.emoji ?? "📁"}</span>
-          <h1 className="font-display text-[26px] font-bold" style={{ color: "var(--text)" }}>
+          <h1 className="font-display text-[26px] font-bold flex-1" style={{ color: "var(--text)" }}>
             {shelf.name}
           </h1>
           {shelf.isSmart && (
@@ -74,6 +100,45 @@ function ShelfDetailPage() {
             >
               Smart shelf
             </span>
+          )}
+          {(canEdit || canEditSmart) && (
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:opacity-80"
+                style={{ color: "var(--text-dim)" }}
+              >
+                ⋯
+              </button>
+              {menuOpen && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+                  <div
+                    className="absolute right-0 top-full mt-1 w-36 rounded-xl border shadow-lg overflow-hidden z-40"
+                    style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+                  >
+                    <button
+                      onClick={() => { setMenuOpen(false); setEditOpen(true); }}
+                      className="w-full text-left px-4 py-2.5 text-sm transition-colors"
+                      style={{ color: "var(--text)" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--card)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpen(false); handleDelete(); }}
+                      className="w-full text-left px-4 py-2.5 text-sm transition-colors"
+                      style={{ color: "#c44" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--card)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
         <p className="text-sm mt-1" style={{ color: "var(--text-dim)" }}>
@@ -94,16 +159,81 @@ function ShelfDetailPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-[10px] border px-4 py-2.5 text-sm outline-none transition-colors"
-            style={{
-              backgroundColor: "var(--card)",
-              borderColor: "var(--border)",
-              color: "var(--text)",
-            }}
+            style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", color: "var(--text)" }}
           />
         </div>
       )}
 
-      <BookGrid books={filteredBooks} />
+      {canManageBooks ? (
+        <RemovableBookGrid
+          books={filteredBooks}
+          onRemove={(bookId) => removeBookMutation.mutate({ shelfId: id, bookId })}
+          isRemoving={removeBookMutation.isPending}
+        />
+      ) : (
+        <BookGrid books={filteredBooks} />
+      )}
+
+      {editOpen && createPortal(
+        <ShelfDialog
+          onClose={() => { setEditOpen(false); utils.shelves.byId.invalidate({ id }); }}
+          editShelf={{
+            id: shelf.id,
+            name: shelf.name,
+            emoji: shelf.emoji,
+            description: shelf.description,
+            isSmart: shelf.isSmart,
+            smartFilter: shelf.smartFilter,
+          }}
+        />,
+        document.body,
+      )}
+    </div>
+  );
+}
+
+function RemovableBookGrid({ books, onRemove, isRemoving }: {
+  books: any[];
+  onRemove: (bookId: string) => void;
+  isRemoving: boolean;
+}) {
+  if (books.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center" style={{ color: "var(--text-dim)" }}>
+        <p className="font-display text-lg">No books in this shelf</p>
+        <p className="text-sm mt-1">Add books from the book detail page</p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="grid gap-[22px]"
+      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(135px, 1fr))" }}
+    >
+      {books.map((book, index) => (
+        <div
+          key={book.id}
+          className="relative group animate-in fade-in"
+          style={{ animationDelay: `${index * 30}ms` }}
+        >
+          <BookCard
+            id={book.id}
+            title={book.title}
+            author={book.author}
+            coverPath={book.coverPath}
+          />
+          <button
+            onClick={() => onRemove(book.id)}
+            disabled={isRemoving}
+            className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+            style={{ backgroundColor: "rgba(0,0,0,0.6)", color: "white" }}
+            title="Remove from shelf"
+          >
+            ✕
+          </button>
+        </div>
+      ))}
     </div>
   );
 }

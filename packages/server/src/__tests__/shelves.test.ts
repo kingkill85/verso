@@ -269,6 +269,29 @@ describe("shelves router", () => {
     });
   });
 
+  describe("forBook", () => {
+    it("returns shelf IDs containing a book", async () => {
+      const list = await authedCaller.shelves.list();
+      const favs = list.find((s) => s.name === "Favorites")!;
+      const wtr = list.find((s) => s.name === "Want to Read")!;
+      const book = await insertBook({ title: "Multi-Shelf Book" });
+
+      await authedCaller.shelves.addBook({ shelfId: favs.id, bookId: book.id });
+      await authedCaller.shelves.addBook({ shelfId: wtr.id, bookId: book.id });
+
+      const result = await authedCaller.shelves.forBook({ bookId: book.id });
+      expect(result).toHaveLength(2);
+      expect(result).toContain(favs.id);
+      expect(result).toContain(wtr.id);
+    });
+
+    it("returns empty array for book in no shelves", async () => {
+      const book = await insertBook({ title: "Lonely Book" });
+      const result = await authedCaller.shelves.forBook({ bookId: book.id });
+      expect(result).toHaveLength(0);
+    });
+  });
+
   describe("user isolation", () => {
     it("other user cannot see shelves", async () => {
       // Register another user

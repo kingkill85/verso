@@ -268,6 +268,22 @@ export const shelvesRouter = router({
     return { success: true };
   }),
 
+  forBook: protectedProcedure
+    .input(shelfBookInput.pick({ bookId: true }))
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db
+        .select({ shelfId: shelfBooks.shelfId })
+        .from(shelfBooks)
+        .innerJoin(shelves, eq(shelves.id, shelfBooks.shelfId))
+        .where(
+          and(
+            eq(shelfBooks.bookId, input.bookId),
+            eq(shelves.userId, ctx.user.sub),
+          )
+        );
+      return rows.map((r) => r.shelfId);
+    }),
+
   removeBook: protectedProcedure.input(shelfBookInput).mutation(async ({ ctx, input }) => {
     const shelf = await ctx.db.query.shelves.findFirst({
       where: and(eq(shelves.id, input.shelfId), eq(shelves.userId, ctx.user.sub)),
