@@ -22,6 +22,7 @@ import { Route as AppShelvesIdRouteImport } from './routes/_app/shelves/$id'
 import { Route as AppBooksIdRouteImport } from './routes/_app/books/$id'
 import { Route as AppShelvesIdEditRouteImport } from './routes/_app/shelves/$id_.edit'
 import { Route as AppBooksIdReadRouteImport } from './routes/_app/books/$id_.read'
+import { Route as AppBooksIdMetadataRouteImport } from './routes/_app/books/$id_.metadata'
 import { Route as AppBooksIdEditRouteImport } from './routes/_app/books/$id_.edit'
 
 const AuthRoute = AuthRouteImport.update({
@@ -87,6 +88,11 @@ const AppBooksIdReadRoute = AppBooksIdReadRouteImport.update({
   path: '/books/$id/read',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBooksIdMetadataRoute = AppBooksIdMetadataRouteImport.update({
+  id: '/books/$id_/metadata',
+  path: '/books/$id/metadata',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppBooksIdEditRoute = AppBooksIdEditRouteImport.update({
   id: '/books/$id_/edit',
   path: '/books/$id/edit',
@@ -104,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/shelves/$id': typeof AppShelvesIdRoute
   '/shelves/new': typeof AppShelvesNewRoute
   '/books/$id/edit': typeof AppBooksIdEditRoute
+  '/books/$id/metadata': typeof AppBooksIdMetadataRoute
   '/books/$id/read': typeof AppBooksIdReadRoute
   '/shelves/$id/edit': typeof AppShelvesIdEditRoute
 }
@@ -118,6 +125,7 @@ export interface FileRoutesByTo {
   '/shelves/$id': typeof AppShelvesIdRoute
   '/shelves/new': typeof AppShelvesNewRoute
   '/books/$id/edit': typeof AppBooksIdEditRoute
+  '/books/$id/metadata': typeof AppBooksIdMetadataRoute
   '/books/$id/read': typeof AppBooksIdReadRoute
   '/shelves/$id/edit': typeof AppShelvesIdEditRoute
 }
@@ -135,6 +143,7 @@ export interface FileRoutesById {
   '/_app/shelves/$id': typeof AppShelvesIdRoute
   '/_app/shelves/new': typeof AppShelvesNewRoute
   '/_app/books/$id_/edit': typeof AppBooksIdEditRoute
+  '/_app/books/$id_/metadata': typeof AppBooksIdMetadataRoute
   '/_app/books/$id_/read': typeof AppBooksIdReadRoute
   '/_app/shelves/$id_/edit': typeof AppShelvesIdEditRoute
 }
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/shelves/$id'
     | '/shelves/new'
     | '/books/$id/edit'
+    | '/books/$id/metadata'
     | '/books/$id/read'
     | '/shelves/$id/edit'
   fileRoutesByTo: FileRoutesByTo
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
     | '/shelves/$id'
     | '/shelves/new'
     | '/books/$id/edit'
+    | '/books/$id/metadata'
     | '/books/$id/read'
     | '/shelves/$id/edit'
   id:
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/_app/shelves/$id'
     | '/_app/shelves/new'
     | '/_app/books/$id_/edit'
+    | '/_app/books/$id_/metadata'
     | '/_app/books/$id_/read'
     | '/_app/shelves/$id_/edit'
   fileRoutesById: FileRoutesById
@@ -283,6 +295,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBooksIdReadRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/books/$id_/metadata': {
+      id: '/_app/books/$id_/metadata'
+      path: '/books/$id/metadata'
+      fullPath: '/books/$id/metadata'
+      preLoaderRoute: typeof AppBooksIdMetadataRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/books/$id_/edit': {
       id: '/_app/books/$id_/edit'
       path: '/books/$id/edit'
@@ -301,6 +320,7 @@ interface AppRouteChildren {
   AppShelvesIdRoute: typeof AppShelvesIdRoute
   AppShelvesNewRoute: typeof AppShelvesNewRoute
   AppBooksIdEditRoute: typeof AppBooksIdEditRoute
+  AppBooksIdMetadataRoute: typeof AppBooksIdMetadataRoute
   AppBooksIdReadRoute: typeof AppBooksIdReadRoute
   AppShelvesIdEditRoute: typeof AppShelvesIdEditRoute
 }
@@ -313,6 +333,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppShelvesIdRoute: AppShelvesIdRoute,
   AppShelvesNewRoute: AppShelvesNewRoute,
   AppBooksIdEditRoute: AppBooksIdEditRoute,
+  AppBooksIdMetadataRoute: AppBooksIdMetadataRoute,
   AppBooksIdReadRoute: AppBooksIdReadRoute,
   AppShelvesIdEditRoute: AppShelvesIdEditRoute,
 }
