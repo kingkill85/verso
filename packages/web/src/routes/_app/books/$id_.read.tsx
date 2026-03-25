@@ -120,6 +120,14 @@ function ReaderPage() {
         onCenter={toggleControls}
       />
 
+      {/* Hover zone at top to reveal controls */}
+      {!controlsVisible && (
+        <div
+          className="fixed top-0 left-0 right-0 h-12 z-[25]"
+          onMouseEnter={() => setControlsVisible(true)}
+        />
+      )}
+
       {/* Chrome */}
       <ReaderTopBar
         title={bookQuery.data?.title ?? ""}
