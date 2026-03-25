@@ -76,7 +76,6 @@ export const metadataRouter = router({
     });
     if (!book) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
 
-    console.log("[metadata apply] input.fields:", JSON.stringify(input.fields));
     // Extract coverUrl, handle separately
     const { coverUrl, ...metadataFields } = input.fields;
 
