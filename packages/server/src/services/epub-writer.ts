@@ -5,6 +5,7 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import * as yauzl from "yauzl-promise";
 import yazl from "yazl";
+import { EPub } from "epub2";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -261,12 +262,15 @@ export function applyMetadataToOpf(
     }
   }
 
-  // Remove cover references from OPF metadata
+  // Remove cover references from OPF
   if (updates.removeCover) {
     // Remove <meta name="cover" content="..."/>
     xml = xml.replace(/\s*<meta\s+name="cover"\s+content="[^"]*"\s*\/?>/gi, "");
     // Remove properties="cover-image" from manifest items
     xml = xml.replace(/\s+properties="[^"]*cover-image[^"]*"/gi, "");
+    // Remove the cover image manifest <item> entirely
+    xml = xml.replace(/\s*<item[^>]+id="[^"]*cover-image[^"]*"[^>]*\/>/gi, "");
+    xml = xml.replace(/\s*<item[^>]+id="[^"]*cover-image[^"]*"[^>]*>[^<]*<\/item>/gi, "");
   }
 
   return xml;
@@ -406,10 +410,22 @@ export async function updateEpubMetadata(
     const opfBuf = await readEntryBuffer(zipFile, opfEntry);
     const originalOpf = opfBuf.toString("utf-8");
 
-    const coverPath =
-      (updates.coverImageBuffer || updates.removeCover)
-        ? findCoverImageHref(originalOpf, opfDir)
-        : undefined;
+    // Use epub2 to reliably find the cover image path (same as upload parser)
+    let coverPath: string | undefined;
+    if (updates.coverImageBuffer || updates.removeCover) {
+      try {
+        const epub = await EPub.createAsync(filePath);
+        const coverId = epub.metadata.cover;
+        if (coverId && epub.manifest[coverId]) {
+          const item = epub.manifest[coverId] as Record<string, string>;
+          coverPath = item.href;
+          // epub2 prepends the OPF dir to href already
+        }
+      } catch {
+        // Fallback to regex if epub2 fails
+        coverPath = findCoverImageHref(originalOpf, opfDir);
+      }
+    }
 
     // 4. Modify OPF
     const modifiedOpf = applyMetadataToOpf(originalOpf, updates);
@@ -433,9 +449,6 @@ export async function updateEpubMetadata(
         newZip.addBuffer(Buffer.from(modifiedOpf, "utf-8"), entry.filename, options);
       } else if (isCover && updates.removeCover) {
         // Skip — remove cover image from EPUB
-        continue;
-      } else if (!isCover && updates.removeCover && /cover\.(jpe?g|png|gif)$/i.test(entry.filename)) {
-        // Fallback: skip any file that looks like a cover image
         continue;
       } else if (isCover && updates.coverImageBuffer) {
         newZip.addBuffer(updates.coverImageBuffer, entry.filename, options);
