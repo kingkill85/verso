@@ -109,7 +109,7 @@ function ReaderPage() {
       {/* EPUB container */}
       <div
         ref={containerRef}
-        className="absolute inset-0"
+        className="absolute inset-0 z-0"
         style={{ top: 0, bottom: 0 }}
       />
 
