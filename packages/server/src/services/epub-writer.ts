@@ -317,6 +317,21 @@ function findCoverImageHref(
     return opfDir ? `${opfDir}/${propsMatch[1]}` : propsMatch[1];
   }
 
+  // Strategy 3: manifest item with id containing "cover" and image media type
+  const coverItemMatch = opfXml.match(
+    /<item[^>]+id="[^"]*cover[^"]*"[^>]+media-type="image\/[^"]*"[^>]+href="([^"]+)"/i,
+  );
+  if (coverItemMatch) {
+    return opfDir ? `${opfDir}/${coverItemMatch[1]}` : coverItemMatch[1];
+  }
+  // Also try href before media-type
+  const coverItemMatch2 = opfXml.match(
+    /<item[^>]+href="([^"]*cover[^"]*\.(jpe?g|png|gif))"[^>]*/i,
+  );
+  if (coverItemMatch2) {
+    return opfDir ? `${opfDir}/${coverItemMatch2[1]}` : coverItemMatch2[1];
+  }
+
   return undefined;
 }
 
@@ -418,6 +433,9 @@ export async function updateEpubMetadata(
         newZip.addBuffer(Buffer.from(modifiedOpf, "utf-8"), entry.filename, options);
       } else if (isCover && updates.removeCover) {
         // Skip — remove cover image from EPUB
+        continue;
+      } else if (!isCover && updates.removeCover && /cover\.(jpe?g|png|gif)$/i.test(entry.filename)) {
+        // Fallback: skip any file that looks like a cover image
         continue;
       } else if (isCover && updates.coverImageBuffer) {
         newZip.addBuffer(updates.coverImageBuffer, entry.filename, options);
