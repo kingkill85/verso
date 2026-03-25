@@ -4,6 +4,7 @@ import { trpc } from "@/trpc";
 import { BookCover } from "@/components/books/book-cover";
 import { AddToShelfMenu } from "@/components/shelves/add-to-shelf-menu";
 import { AnnotationsTab } from "@/components/books/annotations-tab";
+import { getAccessToken } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/books/$id")({
   component: BookDetailPage,
@@ -202,6 +203,26 @@ function BookDetailPage() {
                 {deleteMutation.isPending ? "Deleting..." : "Delete"}
               </button>
               <AddToShelfMenu bookId={id} />
+              <button
+                onClick={async () => {
+                  const token = getAccessToken();
+                  const res = await fetch(`/api/books/${id}/file`, {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                  });
+                  if (!res.ok) return;
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `${book.title}.${book.fileFormat}`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="px-5 py-2.5 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
+                style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
+              >
+                Download
+              </button>
               <Link to="/books/$id/edit" params={{ id }}
                 className="px-5 py-2.5 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
                 style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}>
