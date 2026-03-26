@@ -216,26 +216,28 @@ export function useEpubReader({ bookId, initialCfi, enabled = true }: UseEpubRea
         if (partial.flow && partial.flow !== prev.flow) {
           const cfiValue = currentCfiRef.current;
           const container = containerRef.current;
-          if (container && bookRef.current) {
+          const book = bookRef.current;
+          if (container && book) {
             rendition.destroy();
-            const newRendition = bookRef.current.renderTo(container, {
-              width: "100%",
-              height: "100%",
-              flow: next.flow === "scrolled" ? "scrolled" : "paginated",
-              spread: "none",
-              allowScriptedContent: true,
+            book.opened.then(() => {
+              const newRendition = book.renderTo(container, {
+                width: "100%",
+                height: "100%",
+                flow: next.flow === "scrolled" ? "scrolled" : "paginated",
+                spread: "none",
+                allowScriptedContent: true,
+              });
+              renditionRef.current = newRendition;
+              applyStyles(newRendition, next);
+              newRendition.themes.override("padding", `0 ${MARGIN_MAP[next.margins]}px`);
+              const onRelocated = (book as any)._onRelocated;
+              if (onRelocated) newRendition.on("relocated", onRelocated);
+              if (cfiValue) {
+                newRendition.display(cfiValue);
+              } else {
+                newRendition.display();
+              }
             });
-            renditionRef.current = newRendition;
-            applyStyles(newRendition, next);
-            newRendition.themes.override("padding", `0 ${MARGIN_MAP[next.margins]}px`);
-            // Re-register relocated handler on new rendition
-            const onRelocated = (bookRef.current as any)._onRelocated;
-            if (onRelocated) newRendition.on("relocated", onRelocated);
-            if (cfiValue) {
-              newRendition.display(cfiValue);
-            } else {
-              newRendition.display();
-            }
           }
         }
       }
