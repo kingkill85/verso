@@ -425,10 +425,13 @@ export async function searchAmazonCovers(
       const imageId = imgMatch[1];
       const coverUrl = `https://m.media-amazon.com/images/I/${imageId}.jpg`;
 
-      // Extract title
-      const titleMatch = chunk.match(/<span[^>]*class="[^"]*a-text-normal[^"]*"[^>]*>([^<]+)/);
-      const title = titleMatch ? titleMatch[1].trim() : undefined;
+      // Extract title from h2 aria-label
+      const titleMatch = chunk.match(/<h2[^>]*aria-label="([^"]+)"/);
+      let title = titleMatch ? titleMatch[1].trim() : undefined;
       if (!title) continue;
+      // Clean up long Amazon subtitles — keep just the main title before first colon or pipe
+      const colonIdx = title.indexOf(":");
+      if (colonIdx > 0) title = title.substring(0, colonIdx).trim();
 
       results.push({
         source: "goodreads", // Amazon covers are used to upgrade other results
