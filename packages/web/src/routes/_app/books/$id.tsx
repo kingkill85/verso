@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { trpc } from "@/trpc";
 import { BookCover } from "@/components/books/book-cover";
@@ -180,7 +180,7 @@ function BookDetailPage() {
             )}
 
             {/* Actions */}
-            <div className="flex flex-wrap gap-3 mt-6">
+            <div className="flex flex-wrap items-center gap-3 mt-6">
               {book.fileFormat === "epub" && (
                 <Link
                   to="/books/$id/read"
@@ -196,44 +196,14 @@ function BookDetailPage() {
                       : "Start Reading"}
                 </Link>
               )}
-              <button
-                onClick={handleDelete}
-                disabled={deleteMutation.isPending}
-                className="px-5 py-2.5 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
-                style={{
-                  borderColor: "var(--border)",
-                  color: "var(--text-dim)",
-                }}
-              >
-                {deleteMutation.isPending ? "Deleting..." : "Delete"}
-              </button>
               <AddToShelfMenu bookId={id} />
-              <button
-                onClick={async () => {
-                  const token = getAccessToken();
-                  const res = await fetch(`/api/books/${id}/file?t=${Date.now()}`, {
-                    headers: token ? { Authorization: `Bearer ${token}` } : {},
-                    cache: "no-store",
-                  });
-                  if (!res.ok) return;
-                  const blob = await res.blob();
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `${book.title}.${book.fileFormat}`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                }}
-                className="px-5 py-2.5 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
-                style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
-              >
-                Download
-              </button>
-              <Link to="/books/$id/edit" params={{ id }}
-                className="px-5 py-2.5 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
-                style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}>
-                Edit
-              </Link>
+              <OverflowMenu
+                bookId={id}
+                bookTitle={book.title}
+                fileFormat={book.fileFormat}
+                onDelete={handleDelete}
+                isDeleting={deleteMutation.isPending}
+              />
             </div>
           </div>
         </div>
@@ -358,6 +328,90 @@ function BookDetailPage() {
         <BookmarksTab bookId={id} />
       )}
 
+    </div>
+  );
+}
+
+function OverflowMenu({
+  bookId,
+  bookTitle,
+  fileFormat,
+  onDelete,
+  isDeleting,
+}: {
+  bookId: string;
+  bookTitle: string;
+  fileFormat: string;
+  onDelete: () => void;
+  isDeleting: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="px-3 py-2.5 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
+        style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
+      >
+        ⋯
+      </button>
+      {open && (
+        <div
+          className="absolute top-full mt-1 right-0 rounded-xl py-1 min-w-[140px] shadow-lg z-10"
+          style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)" }}
+        >
+          <button
+            onClick={async () => {
+              const token = getAccessToken();
+              const res = await fetch(`/api/books/${bookId}/file?t=${Date.now()}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                cache: "no-store",
+              });
+              if (!res.ok) return;
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `${bookTitle}.${fileFormat}`;
+              a.click();
+              URL.revokeObjectURL(url);
+              setOpen(false);
+            }}
+            className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
+            style={{ color: "var(--text)" }}
+          >
+            Download
+          </button>
+          <Link
+            to="/books/$id/edit"
+            params={{ id: bookId }}
+            className="block px-4 py-2 text-sm hover:opacity-80"
+            style={{ color: "var(--text)" }}
+            onClick={() => setOpen(false)}
+          >
+            Edit
+          </Link>
+          <button
+            onClick={() => { onDelete(); setOpen(false); }}
+            disabled={isDeleting}
+            className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
+            style={{ color: "#ef4444" }}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
