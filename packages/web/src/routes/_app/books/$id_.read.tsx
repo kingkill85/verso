@@ -166,11 +166,14 @@ function ReaderPage() {
     if (!rendition || !isLoaded) return;
 
     const onRelocated = () => {
-      // Hide highlight SVGs immediately to prevent flash at wrong position
       const container = containerRef.current;
       const svgs = container?.querySelectorAll<SVGSVGElement>("svg");
+      // Instantly hide, then fade in after recalculation
       svgs?.forEach((svg) => {
-        if (svg.querySelector("g.epubjs-hl")) svg.style.visibility = "hidden";
+        if (svg.querySelector("g.epubjs-hl")) {
+          svg.style.transition = "none";
+          svg.style.opacity = "0";
+        }
       });
 
       setTimeout(() => {
@@ -182,11 +185,13 @@ function ReaderPage() {
             });
           }
         } catch { /* ignore */ }
-        // Show highlights after recalculation
         svgs?.forEach((svg) => {
-          if (svg.querySelector("g.epubjs-hl")) svg.style.visibility = "";
+          if (svg.querySelector("g.epubjs-hl")) {
+            svg.style.transition = "opacity 150ms ease-in";
+            svg.style.opacity = "1";
+          }
         });
-      }, 200);
+      }, 150);
     };
 
     rendition.on("relocated", onRelocated);
