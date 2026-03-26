@@ -1,4 +1,5 @@
 import type { ExternalBook } from "@verso/shared";
+import { Impit } from "impit";
 
 /** Normalize an ISBN by stripping dashes and whitespace. */
 function normalizeIsbn(isbn: string): string {
@@ -128,7 +129,8 @@ export async function searchGoogleBooks(
     const apiKey = process.env.GOOGLE_BOOKS_API_KEY;
     const keyParam = apiKey ? `&key=${apiKey}` : "";
     const url = `https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=5${keyParam}`;
-    const response = await fetch(url);
+    const client = new Impit({ browser: "chrome" });
+    const response = await client.fetch(url);
     if (!response.ok) return [];
 
     const data = (await response.json()) as {
@@ -394,12 +396,8 @@ export async function searchAmazonCovers(
 ): Promise<ExternalBook[]> {
   try {
     const searchUrl = `https://www.amazon.de/s?k=${encodeURIComponent(query)}&i=digital-text`;
-    const res = await fetch(searchUrl, {
-      headers: {
-        "User-Agent": GR_USER_AGENT,
-        "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
-      },
-    });
+    const client = new Impit({ browser: "chrome" });
+    const res = await client.fetch(searchUrl);
     if (!res.ok) return [];
     const html = await res.text();
 
@@ -433,7 +431,7 @@ export async function searchAmazonCovers(
       if (!title) continue;
 
       results.push({
-        source: "google" as any, // We'll mark these differently in the UI later
+        source: "goodreads", // Amazon covers are used to upgrade other results
         sourceId: `asin:${asin}`,
         title,
         author: "",
