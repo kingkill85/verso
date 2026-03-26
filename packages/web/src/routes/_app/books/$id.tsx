@@ -4,6 +4,7 @@ import { trpc } from "@/trpc";
 import { BookCover } from "@/components/books/book-cover";
 import { AddToShelfMenu } from "@/components/shelves/add-to-shelf-menu";
 import { AnnotationsTab } from "@/components/books/annotations-tab";
+import { BookmarksTab } from "@/components/books/bookmarks-tab";
 import { getAccessToken } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/books/$id")({
@@ -29,10 +30,11 @@ function BookDetailPage() {
   const navigate = useNavigate();
   const utils = trpc.useUtils();
 
-  const [activeTab, setActiveTab] = useState<"details" | "annotations">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "annotations" | "bookmarks">("details");
   const bookQuery = trpc.books.byId.useQuery({ id });
   const progressQuery = trpc.progress.get.useQuery({ bookId: id });
   const annotationsQuery = trpc.annotations.list.useQuery({ bookId: id });
+  const bookmarksQuery = trpc.annotations.listBookmarks.useQuery({ bookId: id });
   const deleteMutation = trpc.books.delete.useMutation({
     onSuccess: () => {
       utils.books.list.invalidate();
@@ -309,6 +311,17 @@ function BookDetailPage() {
         >
           Annotations ({annotationsQuery.data?.length ?? 0})
         </button>
+        <button
+          onClick={() => setActiveTab("bookmarks")}
+          className="pb-2 text-sm font-medium transition-colors"
+          style={{
+            color: activeTab === "bookmarks" ? "var(--warm)" : "var(--text-dim)",
+            borderBottom: activeTab === "bookmarks" ? "2px solid var(--warm)" : "2px solid transparent",
+            marginBottom: "-1px",
+          }}
+        >
+          Bookmarks ({bookmarksQuery.data?.length ?? 0})
+        </button>
       </div>
 
       {/* Tab content */}
@@ -337,8 +350,10 @@ function BookDetailPage() {
             ))}
           </div>
         ) : null
-      ) : (
+      ) : activeTab === "annotations" ? (
         <AnnotationsTab bookId={id} />
+      ) : (
+        <BookmarksTab bookId={id} />
       )}
 
     </div>
