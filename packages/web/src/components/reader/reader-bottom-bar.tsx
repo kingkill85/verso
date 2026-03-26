@@ -8,9 +8,9 @@ export function ReaderBottomBar({ percentage, visible }: ReaderBottomBarProps) {
     <div
       className="fixed bottom-0 left-0 right-0 h-10 flex items-center px-4 z-30 transition-opacity duration-300"
       style={{
-        backgroundColor: "rgba(18,17,15,0.92)",
+        backgroundColor: "var(--sidebar-bg)",
         backdropFilter: "blur(8px)",
-        borderTop: "1px solid rgba(46,42,36,0.5)",
+        borderTop: "1px solid var(--border)",
         opacity: visible ? 1 : 0,
         pointerEvents: visible ? "auto" : "none",
       }}
