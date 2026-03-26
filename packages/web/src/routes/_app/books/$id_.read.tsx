@@ -166,6 +166,13 @@ function ReaderPage() {
     if (!rendition || !isLoaded) return;
 
     const onRelocated = () => {
+      // Hide highlight SVGs immediately to prevent flash at wrong position
+      const container = containerRef.current;
+      const svgs = container?.querySelectorAll<SVGSVGElement>("svg");
+      svgs?.forEach((svg) => {
+        if (svg.querySelector("g.epubjs-hl")) svg.style.visibility = "hidden";
+      });
+
       setTimeout(() => {
         try {
           const views = rendition.views();
@@ -175,6 +182,10 @@ function ReaderPage() {
             });
           }
         } catch { /* ignore */ }
+        // Show highlights after recalculation
+        svgs?.forEach((svg) => {
+          if (svg.querySelector("g.epubjs-hl")) svg.style.visibility = "";
+        });
       }, 200);
     };
 
