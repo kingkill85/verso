@@ -417,7 +417,7 @@ export async function searchAmazonCovers(
       // Find the image srcset for this result
       const asinSection = html.indexOf(`data-asin="${asin}"`);
       if (asinSection === -1) continue;
-      const chunk = html.substring(asinSection, asinSection + 3000);
+      const chunk = html.substring(asinSection, asinSection + 8000);
 
       // Extract image ID from srcset
       const imgMatch = chunk.match(/images\/I\/([A-Za-z0-9+_-]+)\._AC/);
