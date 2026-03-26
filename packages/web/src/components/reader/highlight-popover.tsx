@@ -43,7 +43,14 @@ export function HighlightPopover({
           className="rounded-xl p-3 shadow-2xl w-60"
           style={{ backgroundColor: "#1c1917", border: "1px solid #44403c" }}
         >
-          {/* Color swatches — always visible */}
+          {/* Highlighted text */}
+          {annotation.content && (
+            <p className="text-xs mb-3 px-1 text-stone-200 leading-relaxed line-clamp-4">
+              "{annotation.content}"
+            </p>
+          )}
+
+          {/* Color swatches */}
           <div className="flex items-center justify-center gap-3 mb-3">
             {COLORS.map((c) => (
               <button

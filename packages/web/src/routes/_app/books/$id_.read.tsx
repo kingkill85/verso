@@ -7,7 +7,7 @@ import { useReadingTimer } from "@/hooks/use-reading-timer";
 import { ReaderTopBar } from "@/components/reader/reader-top-bar";
 import { ReaderBottomBar } from "@/components/reader/reader-bottom-bar";
 import { TapZones } from "@/components/reader/tap-zones";
-import { TOCPanel } from "@/components/reader/toc-panel";
+import { ReaderSidebar } from "@/components/reader/reader-sidebar";
 import { SettingsPanel } from "@/components/reader/settings-panel";
 import { HighlightToolbar } from "@/components/reader/highlight-toolbar";
 import { HighlightPopover } from "@/components/reader/highlight-popover";
@@ -15,6 +15,9 @@ import type { Annotation } from "@verso/shared";
 
 export const Route = createFileRoute("/_app/books/$id_/read")({
   component: ReaderPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    cfi: typeof search.cfi === "string" ? search.cfi : undefined,
+  }),
 });
 
 const HL_COLORS: Record<string, Record<string, string>> = {
@@ -26,12 +29,13 @@ const HL_COLORS: Record<string, Record<string, string>> = {
 
 function ReaderPage() {
   const { id } = Route.useParams();
+  const { cfi: searchCfi } = Route.useSearch();
   const navigate = useNavigate();
 
   const bookQuery = trpc.books.byId.useQuery({ id });
   const progressQuery = trpc.progress.get.useQuery({ bookId: id });
 
-  const initialCfi = progressQuery.data?.cfiPosition ?? null;
+  const initialCfi = searchCfi ?? progressQuery.data?.cfiPosition ?? null;
   const dataReady = bookQuery.isSuccess && progressQuery.isSuccess;
 
   const {
@@ -64,7 +68,7 @@ function ReaderPage() {
   });
 
   const [controlsVisible, setControlsVisible] = useState(true);
-  const [tocOpen, setTocOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // ─── Annotations ───
@@ -72,6 +76,32 @@ function ReaderPage() {
   const createAnnotation = trpc.annotations.create.useMutation({ onSuccess: () => annotationsQuery.refetch() });
   const updateAnnotation = trpc.annotations.update.useMutation({ onSuccess: () => annotationsQuery.refetch() });
   const deleteAnnotation = trpc.annotations.delete.useMutation({ onSuccess: () => annotationsQuery.refetch() });
+
+  // ─── Bookmarks ───
+  const bookmarksQuery = trpc.annotations.listBookmarks.useQuery({ bookId: id }, { enabled: isLoaded });
+  const createBookmark = trpc.annotations.createBookmark.useMutation({
+    onSuccess: () => bookmarksQuery.refetch(),
+  });
+  const deleteBookmark = trpc.annotations.deleteBookmark.useMutation({
+    onSuccess: () => bookmarksQuery.refetch(),
+  });
+
+  const isBookmarked = bookmarksQuery.data?.some((bm) => bm.cfiPosition === currentCfi) ?? false;
+
+  const handleToggleBookmark = useCallback(() => {
+    if (!currentCfi) return;
+    const existing = bookmarksQuery.data?.find((bm) => bm.cfiPosition === currentCfi);
+    if (existing) {
+      deleteBookmark.mutate({ id: existing.id });
+    } else {
+      createBookmark.mutate({
+        bookId: id,
+        cfiPosition: currentCfi,
+        chapter: currentChapter,
+        percentage,
+      });
+    }
+  }, [currentCfi, bookmarksQuery.data, id, currentChapter, percentage]);
 
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
   const [popoverAnnotation, setPopoverAnnotation] = useState<Annotation | null>(null);
@@ -110,23 +140,70 @@ function ReaderPage() {
         rendition.annotations.highlight(
           ann.cfiPosition,
           { id: ann.id },
-          // This callback fires on CLICK on the SVG highlight element
-          (e: MouseEvent) => {
-            const matched = annotationsRef.current.find((a) => a.id === ann.id);
-            if (!matched) return;
-            setPopoverAnnotation(matched);
-            setPopoverPos({ x: e.clientX, y: e.clientY - 20 });
-            setToolbarPos(null); // dismiss any open toolbar
-          },
+          undefined,
           "epubjs-hl",
           HL_COLORS[ann.color || "yellow"] || HL_COLORS.yellow,
         );
       } catch { /* CFI not in current chapter — epub.js handles this */ }
     }
+
     }, 200);
 
     return () => clearTimeout(timer);
   }, [annotationsQuery.data, isLoaded, settingsVersion]);
+
+  // Enable pointer-events on highlight <g> elements so clicks reach them
+  // directly instead of relying on marks-pane's broken mouse proxy.
+  // Uses MutationObserver to catch highlights added by epub.js on page turns.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !isLoaded) return;
+
+    const enablePointerEvents = () => {
+      container.querySelectorAll<SVGGElement>("g.epubjs-hl").forEach((g) => {
+        if (!g.style.pointerEvents) {
+          g.style.pointerEvents = "auto";
+          g.style.cursor = "pointer";
+        }
+      });
+    };
+
+    enablePointerEvents();
+
+    const observer = new MutationObserver(enablePointerEvents);
+    observer.observe(container, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [isLoaded]);
+
+  // Handle highlight clicks via rendition markClicked event
+  useEffect(() => {
+    const rendition = renditionRef.current;
+    if (!rendition || !isLoaded) return;
+
+    const onMarkClicked = (cfiRange: string, data: { id?: string }, contents: any) => {
+      if (!data?.id) return;
+      const matched = annotationsRef.current.find((a) => a.id === data.id);
+      if (!matched) return;
+
+      try {
+        const range = contents.range(cfiRange);
+        const rect = range.getBoundingClientRect();
+        const iframe = contents.document.defaultView.frameElement as HTMLIFrameElement | null;
+        if (!iframe) return;
+        const iframeRect = iframe.getBoundingClientRect();
+
+        setPopoverAnnotation(matched);
+        setPopoverPos({
+          x: iframeRect.left + rect.left + rect.width / 2,
+          y: iframeRect.top + rect.top - 10,
+        });
+        setToolbarPos(null);
+      } catch { /* ignore */ }
+    };
+
+    rendition.on("markClicked", onMarkClicked);
+    return () => rendition.off("markClicked", onMarkClicked);
+  }, [isLoaded]);
 
   // Text selection → show toolbar
   useEffect(() => {
@@ -191,10 +268,10 @@ function ReaderPage() {
   // ─── Reader chrome ───
 
   useEffect(() => {
-    if (!controlsVisible || tocOpen || settingsOpen) return;
+    if (!controlsVisible || sidebarOpen || settingsOpen) return;
     const timer = setTimeout(() => setControlsVisible(false), 3000);
     return () => clearTimeout(timer);
-  }, [controlsVisible, tocOpen, settingsOpen]);
+  }, [controlsVisible, sidebarOpen, settingsOpen]);
 
   const toggleControls = useCallback(() => setControlsVisible((v) => !v), []);
 
@@ -251,12 +328,40 @@ function ReaderPage() {
         title={bookQuery.data?.title ?? ""}
         visible={controlsVisible}
         onClose={handleClose}
-        onToggleToc={() => { setTocOpen((v) => !v); setControlsVisible(true); }}
+        onToggleSidebar={() => { setSidebarOpen((v) => !v); setControlsVisible(true); }}
         onToggleSettings={() => { setSettingsOpen((v) => !v); setControlsVisible(true); }}
+        onToggleBookmark={handleToggleBookmark}
+        isBookmarked={isBookmarked}
       />
       <ReaderBottomBar percentage={percentage} visible={controlsVisible} />
 
-      <TOCPanel toc={toc} currentChapter={currentChapter} open={tocOpen} onClose={() => setTocOpen(false)} onNavigate={(href) => { goTo(href); syncNow(); }} />
+      <ReaderSidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        book={bookQuery.data ? {
+          id: bookQuery.data.id,
+          title: bookQuery.data.title,
+          author: bookQuery.data.author,
+          coverPath: bookQuery.data.coverPath,
+          updatedAt: bookQuery.data.updatedAt,
+        } : null}
+        toc={toc}
+        currentChapter={currentChapter}
+        onNavigate={(href) => { goTo(href); syncNow(); }}
+        bookmarks={bookmarksQuery.data ?? []}
+        onDeleteBookmark={(bmId) => deleteBookmark.mutate({ id: bmId })}
+        onBookmarkNavigate={(cfi) => { goTo(cfi); syncNow(); }}
+        annotations={annotationsQuery.data ?? []}
+        onDeleteAnnotation={(annId) => {
+          const ann = annotationsQuery.data?.find((a) => a.id === annId);
+          if (ann) {
+            try { renditionRef.current?.annotations.remove(ann.cfiPosition, "highlight"); } catch {}
+            addedHighlightsRef.current.delete(ann.cfiPosition);
+          }
+          deleteAnnotation.mutate({ id: annId });
+        }}
+        onAnnotationNavigate={(cfi) => { goTo(cfi); syncNow(); }}
+      />
       <SettingsPanel settings={settings} open={settingsOpen} onClose={() => setSettingsOpen(false)} onUpdate={updateSettings} />
 
       <HighlightToolbar position={toolbarPos} onHighlight={handleHighlight} onDismiss={handleDismissToolbar} />
@@ -265,7 +370,15 @@ function ReaderPage() {
         position={popoverPos}
         onUpdateColor={(aid, color) => updateAnnotation.mutate({ id: aid, color: color as any })}
         onUpdateNote={(aid, note) => updateAnnotation.mutate({ id: aid, note })}
-        onDelete={(aid) => { deleteAnnotation.mutate({ id: aid }); setPopoverAnnotation(null); addedHighlightsRef.current.clear(); }}
+        onDelete={(aid) => {
+          const ann = annotationsQuery.data?.find((a) => a.id === aid);
+          if (ann) {
+            try { renditionRef.current?.annotations.remove(ann.cfiPosition, "highlight"); } catch {}
+            addedHighlightsRef.current.delete(ann.cfiPosition);
+          }
+          deleteAnnotation.mutate({ id: aid });
+          setPopoverAnnotation(null);
+        }}
         onDismiss={() => setPopoverAnnotation(null)}
       />
 

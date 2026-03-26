@@ -182,6 +182,7 @@ function BookDetailPage() {
               <Link
                 to="/books/$id/read"
                 params={{ id }}
+                search={{ cfi: undefined }}
                 className="inline-flex items-center px-6 py-2.5 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
                 style={{ backgroundColor: "var(--warm)" }}
               >

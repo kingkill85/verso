@@ -22,8 +22,10 @@ describe("ReaderTopBar", () => {
         title="Test Book"
         visible={true}
         onClose={vi.fn()}
-        onToggleToc={vi.fn()}
+        onToggleSidebar={vi.fn()}
         onToggleSettings={vi.fn()}
+        onToggleBookmark={vi.fn()}
+        isBookmarked={false}
       />
     );
     expect(screen.getByText("Test Book")).toBeInTheDocument();
@@ -39,27 +41,31 @@ describe("ReaderTopBar", () => {
         title="Test"
         visible={true}
         onClose={onClose}
-        onToggleToc={vi.fn()}
+        onToggleSidebar={vi.fn()}
         onToggleSettings={vi.fn()}
+        onToggleBookmark={vi.fn()}
+        isBookmarked={false}
       />
     );
     fireEvent.click(screen.getByText("✕"));
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("calls onToggleToc when TOC button is clicked", () => {
-    const onToggleToc = vi.fn();
+  it("calls onToggleSidebar when TOC button is clicked", () => {
+    const onToggleSidebar = vi.fn();
     render(
       <ReaderTopBar
         title="Test"
         visible={true}
         onClose={vi.fn()}
-        onToggleToc={onToggleToc}
+        onToggleSidebar={onToggleSidebar}
         onToggleSettings={vi.fn()}
+        onToggleBookmark={vi.fn()}
+        isBookmarked={false}
       />
     );
     fireEvent.click(screen.getByText("☰"));
-    expect(onToggleToc).toHaveBeenCalledOnce();
+    expect(onToggleSidebar).toHaveBeenCalledOnce();
   });
 
   it("calls onToggleSettings when settings button is clicked", () => {
@@ -69,8 +75,10 @@ describe("ReaderTopBar", () => {
         title="Test"
         visible={true}
         onClose={vi.fn()}
-        onToggleToc={vi.fn()}
+        onToggleSidebar={vi.fn()}
         onToggleSettings={onToggleSettings}
+        onToggleBookmark={vi.fn()}
+        isBookmarked={false}
       />
     );
     fireEvent.click(screen.getByText("⚙"));
@@ -83,8 +91,10 @@ describe("ReaderTopBar", () => {
         title="Test"
         visible={false}
         onClose={vi.fn()}
-        onToggleToc={vi.fn()}
+        onToggleSidebar={vi.fn()}
         onToggleSettings={vi.fn()}
+        onToggleBookmark={vi.fn()}
+        isBookmarked={false}
       />
     );
     const bar = container.firstElementChild as HTMLElement;

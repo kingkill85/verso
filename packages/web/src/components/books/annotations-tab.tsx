@@ -87,6 +87,7 @@ export function AnnotationsTab({ bookId }: AnnotationsTabProps) {
                     <Link
                       to="/books/$id/read"
                       params={{ id: bookId }}
+                      search={{ cfi: ann.cfiPosition ?? undefined }}
                       className="block hover:opacity-80 transition-opacity"
                     >
                       <p className="text-sm leading-relaxed" style={{ color: "var(--text)" }}>
