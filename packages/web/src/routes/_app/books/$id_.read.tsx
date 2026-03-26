@@ -152,6 +152,44 @@ function ReaderPage() {
     return () => clearTimeout(timer);
   }, [annotationsQuery.data, isLoaded, settingsVersion]);
 
+  // After page navigation, clear stale highlight tracking so they get re-rendered
+  // with correct SVG positions for the new page layout.
+  useEffect(() => {
+    const rendition = renditionRef.current;
+    if (!rendition || !isLoaded) return;
+
+    const onRelocated = () => {
+      // Clear tracking so next render cycle re-adds highlights fresh
+      addedHighlightsRef.current.clear();
+      // Remove stale highlights from epub.js internal store and re-add
+      const annotations = annotationsQuery.data;
+      if (!annotations) return;
+      for (const ann of annotations) {
+        if (!ann.cfiPosition) continue;
+        try { rendition.annotations.remove(ann.cfiPosition, "highlight"); } catch {}
+      }
+      // Re-add with delay for layout to settle
+      setTimeout(() => {
+        for (const ann of annotations) {
+          if (!ann.cfiPosition) continue;
+          try {
+            rendition.annotations.highlight(
+              ann.cfiPosition,
+              { id: ann.id },
+              undefined,
+              "epubjs-hl",
+              HL_COLORS[ann.color || "yellow"] || HL_COLORS.yellow,
+            );
+            addedHighlightsRef.current.add(ann.cfiPosition);
+          } catch { /* CFI not in current section */ }
+        }
+      }, 300);
+    };
+
+    rendition.on("relocated", onRelocated);
+    return () => rendition.off("relocated", onRelocated);
+  }, [isLoaded, annotationsQuery.data]);
+
   // Enable pointer-events on highlight <g> elements so clicks reach them
   // directly instead of relying on marks-pane's broken mouse proxy.
   // Uses MutationObserver to catch highlights added by epub.js on page turns.
