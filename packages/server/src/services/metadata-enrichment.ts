@@ -262,11 +262,211 @@ export async function searchOpenLibrary(
 const GR_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
+// Read-only Goodreads API key from LazyLibrarian (Goodreads stopped issuing new keys Dec 2020)
+const GR_API_KEY = "ckvsiSDsuqh7omh74ZZ6Q";
+
 /**
- * Search Goodreads by scraping search results, then fetching book pages for JSON-LD.
+ * Search Goodreads via XML API (more reliable than scraping). Returns [] on error.
+ */
+async function searchGoodreadsApi(
+  query: string,
+  isbn?: string
+): Promise<ExternalBook[]> {
+  try {
+    const q = isbn || query;
+    const searchUrl = `https://www.goodreads.com/search/index.xml?key=${GR_API_KEY}&q=${encodeURIComponent(q)}`;
+    const res = await fetch(searchUrl);
+    if (!res.ok) return [];
+    const xml = await res.text();
+
+    // Extract book IDs from search results
+    const bookIds: string[] = [];
+    const idRegex = /<best_book[^>]*>[\s\S]*?<id[^>]*>(\d+)<\/id>/g;
+    let match;
+    while ((match = idRegex.exec(xml)) !== null) {
+      bookIds.push(match[1]);
+      if (bookIds.length >= 3) break;
+    }
+
+    if (bookIds.length === 0) return [];
+
+    // Fetch full details for each book
+    const results = await Promise.all(
+      bookIds.map(async (bookId) => {
+        try {
+          const detailUrl = `https://www.goodreads.com/book/show/${bookId}.xml?key=${GR_API_KEY}`;
+          const detailRes = await fetch(detailUrl);
+          if (!detailRes.ok) return null;
+          return parseGoodreadsXml(await detailRes.text(), bookId);
+        } catch { return null; }
+      })
+    );
+
+    return results.filter((r): r is ExternalBook => r !== null);
+  } catch {
+    return [];
+  }
+}
+
+/** Parse Goodreads book detail XML into ExternalBook */
+function parseGoodreadsXml(xml: string, bookId: string): ExternalBook | null {
+  const tag = (name: string) => {
+    const m = xml.match(new RegExp(`<${name}>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?</${name}>`));
+    return m ? m[1].trim() : undefined;
+  };
+
+  const title = tag("title");
+  if (!title) return null;
+
+  // Parse series from title "Title (Series, #N)"
+  let cleanTitle = title;
+  let series: string | undefined;
+  let seriesIndex: number | undefined;
+  const seriesMatch = title.match(/^(.+?)\s*\(([^,]+),\s*#(\d+)\)$/);
+  if (seriesMatch) {
+    cleanTitle = seriesMatch[1].trim();
+    series = seriesMatch[2].trim();
+    seriesIndex = parseInt(seriesMatch[3], 10) || undefined;
+  }
+
+  // Also try series_works section for series name
+  if (!series) {
+    const seriesTitle = xml.match(/<series>[\s\S]*?<title>[\s\S]*?(?:<!\[CDATA\[)?\s*([^\]<]+)/);
+    if (seriesTitle) series = seriesTitle[1].trim();
+    const seriesPos = xml.match(/<user_position>(\d+)<\/user_position>/);
+    if (seriesPos) seriesIndex = parseInt(seriesPos[1], 10) || undefined;
+  }
+
+  // First author only (skip translators)
+  const authorMatch = xml.match(/<authors>\s*<author>[\s\S]*?<name>(?:<!\[CDATA\[)?([^\]<]+)/);
+  const author = authorMatch ? authorMatch[1].trim() : "";
+
+  // Description — strip HTML
+  let description = tag("description");
+  if (description) {
+    description = description
+      .replace(/<br\s*\/?>/g, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+      .trim();
+  }
+
+  const isbn13 = tag("isbn13");
+  const isbn10 = tag("isbn");
+
+  // Cover — strip size suffix for larger image
+  let coverUrl = tag("image_url");
+  if (coverUrl && !coverUrl.includes("nophoto")) {
+    coverUrl = coverUrl.replace(/\._[A-Z]+\d+_\./, ".");
+  } else {
+    coverUrl = undefined;
+  }
+
+  const yearStr = xml.match(/<original_publication_year[^>]*>(\d+)<\/original_publication_year>/);
+
+  return {
+    source: "goodreads",
+    sourceId: bookId,
+    title: cleanTitle,
+    author,
+    isbn: isbn13 || isbn10,
+    publisher: tag("publisher"),
+    year: yearStr ? parseInt(yearStr[1], 10) : undefined,
+    description,
+    language: tag("language_code"),
+    pageCount: tag("num_pages") ? parseInt(tag("num_pages")!, 10) : undefined,
+    coverUrl,
+    series,
+    seriesIndex,
+    confidence: 0,
+  };
+}
+
+/**
+ * Search Amazon Kindle for high-res cover images. Returns [] on error.
+ * Only provides: title, author, ASIN, cover URL. Metadata is sparse.
+ */
+export async function searchAmazonCovers(
+  query: string,
+): Promise<ExternalBook[]> {
+  try {
+    const searchUrl = `https://www.amazon.de/s?k=${encodeURIComponent(query)}&i=digital-text`;
+    const res = await fetch(searchUrl, {
+      headers: {
+        "User-Agent": GR_USER_AGENT,
+        "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
+      },
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+
+    // Extract results: ASIN, title, image
+    const results: ExternalBook[] = [];
+    // Find data-asin attributes
+    const asinRegex = /data-asin="([A-Z0-9]{10})"/g;
+    const asins = new Set<string>();
+    let m;
+    while ((m = asinRegex.exec(html)) !== null) {
+      if (m[1] && m[1] !== "") asins.add(m[1]);
+    }
+
+    // For each ASIN, find the cover image nearby in the HTML
+    for (const asin of asins) {
+      if (results.length >= 3) break;
+      // Find the image srcset for this result
+      const asinSection = html.indexOf(`data-asin="${asin}"`);
+      if (asinSection === -1) continue;
+      const chunk = html.substring(asinSection, asinSection + 3000);
+
+      // Extract image ID from srcset
+      const imgMatch = chunk.match(/images\/I\/([A-Za-z0-9+_-]+)\._AC/);
+      if (!imgMatch) continue;
+      const imageId = imgMatch[1];
+      const coverUrl = `https://m.media-amazon.com/images/I/${imageId}.jpg`;
+
+      // Extract title
+      const titleMatch = chunk.match(/<span[^>]*class="[^"]*a-text-normal[^"]*"[^>]*>([^<]+)/);
+      const title = titleMatch ? titleMatch[1].trim() : undefined;
+      if (!title) continue;
+
+      results.push({
+        source: "google" as any, // We'll mark these differently in the UI later
+        sourceId: `asin:${asin}`,
+        title,
+        author: "",
+        coverUrl,
+        confidence: 0,
+      });
+    }
+
+    return results;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Search Goodreads: try XML API first, fall back to HTML scraping.
  * Returns [] on any error.
  */
 export async function searchGoodreads(
+  query: string,
+  isbn?: string
+): Promise<ExternalBook[]> {
+  // Try API first (more reliable, structured data)
+  const apiResults = await searchGoodreadsApi(query, isbn);
+  if (apiResults.length > 0) return apiResults;
+
+  // Fall back to HTML scraping
+  return searchGoodreadsScrape(query, isbn);
+}
+
+/**
+ * Search Goodreads by scraping search results, then fetching book pages for JSON-LD.
+ * Fallback when the XML API fails. Returns [] on any error.
+ */
+async function searchGoodreadsScrape(
   query: string,
   isbn?: string
 ): Promise<ExternalBook[]> {
@@ -415,6 +615,7 @@ export function parseGoodreadsBookPage(html: string, url: string): ExternalBook 
 
 /**
  * Search all APIs in parallel, score all results, deduplicate, and return sorted.
+ * Also fetches high-res covers from Amazon Kindle and upgrades matching results.
  */
 export async function searchExternalMetadata(
   bookQuery: { title: string; author: string; isbn?: string },
@@ -422,10 +623,11 @@ export async function searchExternalMetadata(
 ): Promise<ExternalBook[]> {
   const query = `${bookQuery.title} ${bookQuery.author}`.trim();
 
-  const [googleResults, openLibraryResults, goodreadsResults] = await Promise.all([
+  const [googleResults, openLibraryResults, goodreadsResults, amazonCovers] = await Promise.all([
     searchGoogleBooks(query, bookQuery.isbn),
     searchOpenLibrary(query, bookQuery.isbn),
     searchGoodreads(query, bookQuery.isbn),
+    searchAmazonCovers(query),
   ]);
 
   const allResults = [...googleResults, ...openLibraryResults, ...goodreadsResults];
@@ -435,5 +637,21 @@ export async function searchExternalMetadata(
     result.confidence = scoreMatch(bookQuery, result, localYear);
   }
 
-  return deduplicateResults(allResults);
+  const deduplicated = deduplicateResults(allResults);
+
+  // Upgrade covers: if Amazon has a high-res cover for the top result, use it
+  if (amazonCovers.length > 0 && deduplicated.length > 0) {
+    const bestCover = amazonCovers[0].coverUrl;
+    if (bestCover) {
+      // Apply Amazon's high-res cover to the top Goodreads/Google result if it has a low-res one
+      for (const result of deduplicated) {
+        if (result.coverUrl && result.coverUrl.includes("compressed.photo.goodreads")) {
+          result.coverUrl = bestCover;
+          break;
+        }
+      }
+    }
+  }
+
+  return deduplicated;
 }
