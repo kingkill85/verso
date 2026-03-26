@@ -236,6 +236,7 @@ function ReaderPage() {
       <div ref={containerRef} className="absolute inset-0 z-0" />
 
       <TapZones
+        containerRef={containerRef}
         onPrev={() => { prevPage(); syncNow(); }}
         onNext={() => { nextPage(); syncNow(); }}
         onCenter={toggleControls}
