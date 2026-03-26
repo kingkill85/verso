@@ -37,7 +37,7 @@ function saveSettings(settings: ReaderSettings) {
 const FONT_MAP: Record<ReaderSettings["fontFamily"], string> = {
   serif: "'Libre Baskerville', Georgia, serif",
   "sans-serif": "'Outfit', -apple-system, sans-serif",
-  dyslexic: "'OpenDyslexic', 'Comic Sans MS', sans-serif",
+  dyslexic: "'OpenDyslexic', sans-serif",
 };
 
 const LINE_HEIGHT_MAP: Record<ReaderSettings["lineSpacing"], number> = {
@@ -120,6 +120,31 @@ export function useEpubReader({ bookId, initialCfi, enabled = true }: UseEpubRea
         allowScriptedContent: true,
       });
       renditionRef.current = rendition;
+
+      // Inject OpenDyslexic font-face into each iframe content
+      rendition.hooks.content.register((contents: any) => {
+        const doc = contents.document;
+        if (!doc) return;
+        const style = doc.createElement("style");
+        style.textContent = `
+          @font-face {
+            font-family: "OpenDyslexic";
+            src: url("https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/woff/OpenDyslexic-Regular.woff") format("woff");
+            font-weight: 400; font-style: normal; font-display: swap;
+          }
+          @font-face {
+            font-family: "OpenDyslexic";
+            src: url("https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/woff/OpenDyslexic-Bold.woff") format("woff");
+            font-weight: 700; font-style: normal; font-display: swap;
+          }
+          @font-face {
+            font-family: "OpenDyslexic";
+            src: url("https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/woff/OpenDyslexic-Italic.woff") format("woff");
+            font-weight: 400; font-style: italic; font-display: swap;
+          }
+        `;
+        doc.head.appendChild(style);
+      });
 
       const s = loadSettings();
       applyStyles(rendition, s);
