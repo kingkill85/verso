@@ -109,6 +109,8 @@ export function useEpubReader({ bookId, initialCfi, enabled = true }: UseEpubRea
 
       const book = ePub(arrayBuffer);
       bookRef.current = book;
+      await book.opened;
+      if (cancelled) return;
 
       const rendition = book.renderTo(container, {
         width: "100%",
