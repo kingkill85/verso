@@ -159,6 +159,28 @@ function ReaderPage() {
     return () => clearTimeout(timer);
   }, [annotationsQuery.data, isLoaded, settingsVersion]);
 
+  // After page navigation, force SVG highlight rects to recalculate positions.
+  // epub.js calculates rects before layout fully settles — this fixes the offset.
+  useEffect(() => {
+    const rendition = renditionRef.current;
+    if (!rendition || !isLoaded) return;
+
+    const onRelocated = () => {
+      setTimeout(() => {
+        try {
+          const views = rendition.views();
+          if (views?.forEach) {
+            views.forEach((view: any) => {
+              if (view.pane) view.pane.render();
+            });
+          }
+        } catch { /* ignore */ }
+      }, 200);
+    };
+
+    rendition.on("relocated", onRelocated);
+    return () => rendition.off("relocated", onRelocated);
+  }, [isLoaded]);
 
   // Enable pointer-events on highlight <g> elements so clicks reach them
   // directly instead of relying on marks-pane's broken mouse proxy.
