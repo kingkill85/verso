@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createTestContext } from "../test-utils.js";
-import { books, readingProgress } from "@verso/shared";
+import { books, readingProgress, readingSessions } from "@verso/shared";
+import { eq } from "drizzle-orm";
 
 describe("progress router", () => {
   let ctx: Awaited<ReturnType<typeof createTestContext>>;
@@ -94,6 +95,55 @@ describe("progress router", () => {
       const first = await authedCaller.progress.sync({ bookId, percentage: 5 });
       const second = await authedCaller.progress.sync({ bookId, percentage: 20 });
       expect(second.startedAt).toBe(first.startedAt);
+    });
+
+    it("creates a reading session on first sync with time", async () => {
+      await authedCaller.progress.sync({
+        bookId,
+        percentage: 10,
+        timeSpentMinutes: 2,
+      });
+
+      const sessions = await ctx.db
+        .select()
+        .from(readingSessions)
+        .where(eq(readingSessions.bookId, bookId));
+      expect(sessions).toHaveLength(1);
+      expect(sessions[0].durationMinutes).toBe(2);
+    });
+
+    it("extends existing session if last ended < 5 min ago", async () => {
+      await authedCaller.progress.sync({
+        bookId,
+        percentage: 10,
+        timeSpentMinutes: 2,
+      });
+      // Second sync immediately after — should extend, not create new
+      await authedCaller.progress.sync({
+        bookId,
+        percentage: 15,
+        timeSpentMinutes: 1,
+      });
+
+      const sessions = await ctx.db
+        .select()
+        .from(readingSessions)
+        .where(eq(readingSessions.bookId, bookId));
+      expect(sessions).toHaveLength(1);
+      expect(sessions[0].durationMinutes).toBe(3);
+    });
+
+    it("does not create session when timeSpentMinutes is 0 or missing", async () => {
+      await authedCaller.progress.sync({
+        bookId,
+        percentage: 10,
+      });
+
+      const sessions = await ctx.db
+        .select()
+        .from(readingSessions)
+        .where(eq(readingSessions.bookId, bookId));
+      expect(sessions).toHaveLength(0);
     });
   });
 });
