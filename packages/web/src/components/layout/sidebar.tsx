@@ -1,6 +1,7 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/trpc";
+import { getAccessToken } from "@/lib/auth";
 
 export function Sidebar({ onClose }: { onClose?: () => void }) {
   const { user } = useAuth();
@@ -64,10 +65,44 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
         <div className="px-3 mb-2 mt-6 text-[10px] font-medium uppercase tracking-[1.5px]" style={{ color: "var(--text-faint)" }}>
           Actions
         </div>
+        <SidebarItem to="/stats" label="Stats" emoji="📊" active={isActive("/stats")} onClick={onClose} />
         <SidebarItem to="/upload" label="Upload" emoji="📤" active={isActive("/upload")} onClick={onClose} />
+        <SidebarItem to="/import" label="Import" emoji="📥" active={isActive("/import")} onClick={onClose} />
       </nav>
 
       <div className="p-4 border-t" style={{ borderColor: "var(--border)" }}>
+        {/* Export button */}
+        <button
+          onClick={async () => {
+            const token = getAccessToken();
+            if (!token) return;
+            try {
+              const res = await fetch("/api/export/library", {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (!res.ok) throw new Error("Export failed");
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              const date = new Date().toISOString().slice(0, 10);
+              a.href = url;
+              a.download = `verso-backup-${date}.zip`;
+              a.click();
+              URL.revokeObjectURL(url);
+            } catch (err) {
+              console.error("Export failed:", err);
+            }
+          }}
+          className="w-full flex items-center gap-3 rounded-lg mb-3 transition-colors hover:opacity-80"
+          style={{
+            padding: "10px 22px",
+            fontSize: "13.5px",
+            color: "var(--text-dim)",
+          }}
+        >
+          <span className="w-[22px] text-base">💾</span>
+          <span className="flex-1 text-left">Export Library</span>
+        </button>
         <div className="flex items-center gap-3 px-2">
           <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
             style={{ backgroundColor: "var(--card)", color: "var(--text-dim)" }}>

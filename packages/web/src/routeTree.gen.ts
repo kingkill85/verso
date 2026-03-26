@@ -16,6 +16,7 @@ import { Route as AuthSetupRouteImport } from './routes/_auth/setup'
 import { Route as AuthRegisterRouteImport } from './routes/_auth/register'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AppUploadRouteImport } from './routes/_app/upload'
+import { Route as AppStatsRouteImport } from './routes/_app/stats'
 import { Route as AppSearchRouteImport } from './routes/_app/search'
 import { Route as AppShelvesNewRouteImport } from './routes/_app/shelves/new'
 import { Route as AppShelvesIdRouteImport } from './routes/_app/shelves/$id'
@@ -56,6 +57,11 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
 const AppUploadRoute = AppUploadRouteImport.update({
   id: '/upload',
   path: '/upload',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppStatsRoute = AppStatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSearchRoute = AppSearchRouteImport.update({
@@ -102,6 +108,7 @@ const AppBooksIdEditRoute = AppBooksIdEditRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/search': typeof AppSearchRoute
+  '/stats': typeof AppStatsRoute
   '/upload': typeof AppUploadRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/search': typeof AppSearchRoute
+  '/stats': typeof AppStatsRoute
   '/upload': typeof AppUploadRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/_auth': typeof AuthRouteWithChildren
   '/_app/search': typeof AppSearchRoute
+  '/_app/stats': typeof AppStatsRoute
   '/_app/upload': typeof AppUploadRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/register': typeof AuthRegisterRoute
@@ -152,6 +161,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/search'
+    | '/stats'
     | '/upload'
     | '/login'
     | '/register'
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/search'
+    | '/stats'
     | '/upload'
     | '/login'
     | '/register'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/_auth'
     | '/_app/search'
+    | '/_app/stats'
     | '/_app/upload'
     | '/_auth/login'
     | '/_auth/register'
@@ -253,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUploadRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/stats': {
+      id: '/_app/stats'
+      path: '/stats'
+      fullPath: '/stats'
+      preLoaderRoute: typeof AppStatsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/search': {
       id: '/_app/search'
       path: '/search'
@@ -314,6 +333,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppSearchRoute: typeof AppSearchRoute
+  AppStatsRoute: typeof AppStatsRoute
   AppUploadRoute: typeof AppUploadRoute
   AppIndexRoute: typeof AppIndexRoute
   AppBooksIdRoute: typeof AppBooksIdRoute
@@ -327,6 +347,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppSearchRoute: AppSearchRoute,
+  AppStatsRoute: AppStatsRoute,
   AppUploadRoute: AppUploadRoute,
   AppIndexRoute: AppIndexRoute,
   AppBooksIdRoute: AppBooksIdRoute,
