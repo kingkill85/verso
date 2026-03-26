@@ -273,6 +273,19 @@ function ReaderPage() {
     setSelectionData(null);
   };
 
+  // Clear any active text selection + toolbar/popover — call before any navigation
+  const clearSelection = useCallback(() => {
+    setToolbarPos(null);
+    setSelectionData(null);
+    setPopoverAnnotation(null);
+    try {
+      renditionRef.current?.manager?.container
+        ?.querySelector("iframe")
+        ?.contentWindow?.getSelection()
+        ?.removeAllRanges();
+    } catch { /* ignore */ }
+  }, []);
+
   // ─── Reader chrome ───
 
   useEffect(() => {
@@ -289,11 +302,13 @@ function ReaderPage() {
         case "ArrowRight":
         case " ":
           e.preventDefault();
+          clearSelection();
           nextPage();
           syncNow();
           break;
         case "ArrowLeft":
           e.preventDefault();
+          clearSelection();
           prevPage();
           syncNow();
           break;
@@ -304,7 +319,7 @@ function ReaderPage() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [nextPage, prevPage, navigate, id, syncNow]);
+  }, [nextPage, prevPage, navigate, id, syncNow, clearSelection]);
 
   const handleClose = useCallback(() => navigate({ to: "/books/$id", params: { id } }), [navigate, id]);
 
@@ -323,8 +338,8 @@ function ReaderPage() {
       <TapZones
         renditionRef={renditionRef}
         isLoaded={isLoaded}
-        onPrev={() => { prevPage(); syncNow(); }}
-        onNext={() => { nextPage(); syncNow(); }}
+        onPrev={() => { clearSelection(); prevPage(); syncNow(); }}
+        onNext={() => { clearSelection(); nextPage(); syncNow(); }}
         onCenter={toggleControls}
       />
 
@@ -355,10 +370,10 @@ function ReaderPage() {
         } : null}
         toc={toc}
         currentChapter={currentChapter}
-        onNavigate={(href) => { goTo(href); syncNow(); }}
+        onNavigate={(href) => { clearSelection(); goTo(href); syncNow(); }}
         bookmarks={bookmarksQuery.data ?? []}
         onDeleteBookmark={(bmId) => deleteBookmark.mutate({ id: bmId })}
-        onBookmarkNavigate={(cfi) => { goTo(cfi); syncNow(); }}
+        onBookmarkNavigate={(cfi) => { clearSelection(); goTo(cfi); syncNow(); }}
         annotations={annotationsQuery.data ?? []}
         onDeleteAnnotation={(annId) => {
           const ann = annotationsQuery.data?.find((a) => a.id === annId);
@@ -368,7 +383,7 @@ function ReaderPage() {
           }
           deleteAnnotation.mutate({ id: annId });
         }}
-        onAnnotationNavigate={(cfi) => { goTo(cfi); syncNow(); }}
+        onAnnotationNavigate={(cfi) => { clearSelection(); goTo(cfi); syncNow(); }}
       />
       <SettingsPanel settings={settings} open={settingsOpen} onClose={() => setSettingsOpen(false)} onUpdate={updateSettings} />
 
