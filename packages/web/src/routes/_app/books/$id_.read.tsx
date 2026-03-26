@@ -299,7 +299,7 @@ function ReaderPage() {
     setSelectionData(null);
     // Clear selection in iframe
     try {
-      renditionRef.current?.manager?.container
+      (renditionRef.current as any)?.manager?.container
         ?.querySelector("iframe")
         ?.contentWindow?.getSelection()
         ?.removeAllRanges();
@@ -317,7 +317,7 @@ function ReaderPage() {
     setSelectionData(null);
     setPopoverAnnotation(null);
     try {
-      renditionRef.current?.manager?.container
+      (renditionRef.current as any)?.manager?.container
         ?.querySelector("iframe")
         ?.contentWindow?.getSelection()
         ?.removeAllRanges();
