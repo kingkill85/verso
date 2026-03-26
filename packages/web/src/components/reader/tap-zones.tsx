@@ -23,14 +23,18 @@ export function TapZones({ renditionRef, isLoaded, onPrev, onNext, onCenter }: T
     if (!rendition || !isLoaded) return;
 
     const handler = (e: MouseEvent) => {
-      // Don't navigate if text is selected
-      const win = (e.view || window) as Window;
-      const sel = win.getSelection?.();
+      const iframeWin = (e.view || window) as Window;
+      const sel = iframeWin.getSelection?.();
       if (sel && sel.toString().trim().length > 0) return;
 
-      // Get click position relative to the viewport
-      const viewWidth = win.innerWidth;
-      const relX = e.clientX / viewWidth;
+      // e.clientX is relative to the iframe viewport.
+      // Get the iframe element's position in the parent page to calculate
+      // the absolute position relative to the full browser window.
+      const iframe = iframeWin.frameElement as HTMLIFrameElement | null;
+      const iframeRect = iframe?.getBoundingClientRect();
+      const absoluteX = (iframeRect?.left ?? 0) + e.clientX;
+      const pageWidth = window.innerWidth;
+      const relX = absoluteX / pageWidth;
 
       if (relX < 0.25) {
         callbacksRef.current.onPrev();
