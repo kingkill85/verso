@@ -81,26 +81,22 @@ export const statsRouter = router({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    for (let i = 0; i < dailySessions.length; i++) {
-      const sessionDate = new Date(dailySessions[i].day + "T00:00:00");
-      const expectedDate = new Date(today);
-      expectedDate.setDate(expectedDate.getDate() - i);
-      expectedDate.setHours(0, 0, 0, 0);
-
-      // Allow streak to start from today or yesterday
-      if (i === 0) {
-        const diffDays = Math.floor((today.getTime() - sessionDate.getTime()) / 86400000);
-        if (diffDays > 1) break; // No recent reading
-        if (diffDays === 1) {
-          // Started from yesterday — shift expected dates
-          expectedDate.setDate(expectedDate.getDate() - 1);
+    if (dailySessions.length > 0) {
+      const firstSessionDate = new Date(dailySessions[0].day + "T00:00:00");
+      const diffDays = Math.floor((today.getTime() - firstSessionDate.getTime()) / 86400000);
+      if (diffDays <= 1) {
+        // Streak starts from today (diffDays=0) or yesterday (diffDays=1)
+        const streakStart = new Date(firstSessionDate);
+        for (let i = 0; i < dailySessions.length; i++) {
+          const sessionDate = new Date(dailySessions[i].day + "T00:00:00");
+          const expectedDate = new Date(streakStart);
+          expectedDate.setDate(expectedDate.getDate() - i);
+          if (sessionDate.getTime() === expectedDate.getTime()) {
+            currentStreak++;
+          } else {
+            break;
+          }
         }
-      }
-
-      if (sessionDate.getTime() === expectedDate.getTime()) {
-        currentStreak++;
-      } else {
-        break;
       }
     }
 

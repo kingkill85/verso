@@ -36,11 +36,12 @@ export function RestoreBackup() {
       }
 
       const data = await res.json();
+      const imported = data.imported ?? data;
       setState({
         phase: "done",
-        books: data.books ?? 0,
-        shelves: data.shelves ?? 0,
-        annotations: data.annotations ?? 0,
+        books: imported.books ?? 0,
+        shelves: imported.shelves ?? 0,
+        annotations: imported.annotations ?? 0,
       });
     } catch (err: any) {
       setState({ phase: "error", message: err.message || "Restore failed" });

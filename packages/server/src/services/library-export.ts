@@ -20,19 +20,16 @@ export async function buildExportData(db: AppDatabase, userId: string) {
     .from(shelves)
     .where(eq(shelves.userId, userId));
 
-  const bookIds = userBooks.map((b) => b.id);
-
   let userShelfBooks: (typeof shelfBooks.$inferSelect)[] = [];
-  if (bookIds.length > 0) {
-    // Get all shelf books for the user's shelves
-    const shelfIds = userShelves.map((s) => s.id);
-    if (shelfIds.length > 0) {
-      const allShelfBooks = await db.select().from(shelfBooks);
-      userShelfBooks = allShelfBooks.filter(
-        (sb) => shelfIds.includes(sb.shelfId) || bookIds.includes(sb.bookId)
-      );
-    }
+  const shelfIds = userShelves.map((s) => s.id);
+  if (shelfIds.length > 0) {
+    const allShelfBooks = await db.select().from(shelfBooks);
+    userShelfBooks = allShelfBooks.filter(
+      (sb) => shelfIds.includes(sb.shelfId)
+    );
   }
+
+  const bookIds = userBooks.map((b) => b.id);
 
   let userAnnotations: (typeof annotations.$inferSelect)[] = [];
   let userProgress: (typeof readingProgress.$inferSelect)[] = [];

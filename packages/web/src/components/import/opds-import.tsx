@@ -3,20 +3,29 @@ import { getAccessToken } from "@/lib/auth";
 
 type Phase = "connect" | "browse" | "importing";
 
-type OpdsFeed = {
+type OpdsNavigationEntry = {
   title: string;
-  entries: OpdsEntry[];
+  href: string;
+  description?: string;
 };
 
-type OpdsEntry = {
+type OpdsBookEntry = {
   id: string;
   title: string;
   author?: string;
+  summary?: string;
+  acquisitionUrl: string;
+  coverUrl?: string;
   format?: string;
-  downloadUrl?: string;
-  navigationUrl?: string;
-  isNavigation: boolean;
 };
+
+type OpdsCatalog = {
+  title: string;
+  nextUrl?: string;
+} & (
+  | { type: "navigation"; entries: OpdsNavigationEntry[] }
+  | { type: "acquisition"; entries: OpdsBookEntry[] }
+);
 
 type ImportStatus = {
   id: string;
@@ -35,8 +44,8 @@ export function OpdsImport() {
 
   // Browse state
   const [catalogTitle, setCatalogTitle] = useState("");
-  const [feedStack, setFeedStack] = useState<OpdsFeed[]>([]);
-  const [currentFeed, setCurrentFeed] = useState<OpdsFeed | null>(null);
+  const [feedStack, setFeedStack] = useState<OpdsCatalog[]>([]);
+  const [currentFeed, setCurrentFeed] = useState<OpdsCatalog | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // Import state
@@ -64,9 +73,9 @@ export function OpdsImport() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || `Connection failed (${res.status})`);
       }
-      const feed: OpdsFeed = await res.json();
-      setCatalogTitle(feed.title || "OPDS Catalog");
-      setCurrentFeed(feed);
+      const catalog: OpdsCatalog = await res.json();
+      setCatalogTitle(catalog.title || "OPDS Catalog");
+      setCurrentFeed(catalog);
       setFeedStack([]);
       setSelected(new Set());
       setPhase("browse");
@@ -97,9 +106,9 @@ export function OpdsImport() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || `Navigation failed (${res.status})`);
       }
-      const feed: OpdsFeed = await res.json();
+      const catalog: OpdsCatalog = await res.json();
       setFeedStack((prev) => [...prev, currentFeed!]);
-      setCurrentFeed(feed);
+      setCurrentFeed(catalog);
       setSelected(new Set());
     } catch (err: any) {
       setError(err.message || "Navigation failed");
@@ -119,10 +128,11 @@ export function OpdsImport() {
     setError(null);
   };
 
-  const acquisitionEntries =
-    currentFeed?.entries.filter((e) => !e.isNavigation) ?? [];
-  const navigationEntries =
-    currentFeed?.entries.filter((e) => e.isNavigation) ?? [];
+  const isNavFeed = currentFeed?.type === "navigation";
+  const navigationEntries = isNavFeed ? (currentFeed?.entries as OpdsNavigationEntry[]) : [];
+  const acquisitionEntries = !isNavFeed && currentFeed?.type === "acquisition"
+    ? (currentFeed.entries as OpdsBookEntry[])
+    : [];
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -404,12 +414,10 @@ export function OpdsImport() {
       {/* Navigation entries */}
       {navigationEntries.length > 0 && (
         <div className="space-y-2 mb-4">
-          {navigationEntries.map((entry) => (
+          {navigationEntries.map((entry, i) => (
             <button
-              key={entry.id}
-              onClick={() =>
-                entry.navigationUrl && navigateTo(entry.navigationUrl)
-              }
+              key={entry.href || i}
+              onClick={() => entry.href && navigateTo(entry.href)}
               className="w-full flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-opacity hover:opacity-80"
               style={{ backgroundColor: "var(--card)" }}
             >
