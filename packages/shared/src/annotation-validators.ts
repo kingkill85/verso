@@ -6,7 +6,7 @@ export const annotationListInput = z.object({
 
 export const annotationCreateInput = z.object({
   bookId: z.string().uuid(),
-  type: z.literal("highlight").default("highlight"),
+  type: z.enum(["highlight", "bookmark"]).default("highlight"),
   content: z.string().optional(),
   note: z.string().optional(),
   cfiPosition: z.string(),
@@ -23,4 +23,15 @@ export const annotationUpdateInput = z.object({
 
 export const annotationDeleteInput = z.object({
   id: z.string().uuid(),
+});
+
+export const bookmarkCreateInput = z.object({
+  bookId: z.string().uuid(),
+  cfiPosition: z.string(),
+  chapter: z.string().max(255).optional(),
+  percentage: z.number().min(0).max(100).optional(),
+});
+
+export const bookmarkListInput = z.object({
+  bookId: z.string().uuid(),
 });
