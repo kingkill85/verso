@@ -112,6 +112,13 @@ function ReaderPage() {
   const annotationsRef = useRef<Annotation[]>([]);
   useEffect(() => {
     annotationsRef.current = annotationsQuery.data || [];
+    // Keep popover in sync with latest annotation data after mutations
+    if (popoverAnnotation) {
+      const updated = annotationsQuery.data?.find((a) => a.id === popoverAnnotation.id);
+      if (updated && (updated.color !== popoverAnnotation.color || updated.note !== popoverAnnotation.note)) {
+        setPopoverAnnotation(updated);
+      }
+    }
   }, [annotationsQuery.data]);
 
   // Track which CFIs we've already added to avoid duplicates
