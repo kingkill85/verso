@@ -1,76 +1,51 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import type { Rendition } from "epubjs";
 
 type TapZonesProps = {
+  renditionRef: React.RefObject<Rendition | null>;
+  isLoaded: boolean;
   onPrev: () => void;
   onNext: () => void;
   onCenter: () => void;
 };
 
 /**
- * Overlay for tap navigation. On pointerdown, starts a timer.
- * If the pointer is held for >150ms (selection gesture), the overlay
- * hides itself so the content underneath receives the events.
- * On quick taps, it navigates.
+ * No overlay. Registers a click handler inside the epub.js rendition
+ * (iframe content). Text selection is never blocked.
+ * Only navigates on clicks with no active text selection.
  */
-export function TapZones({ onPrev, onNext, onCenter }: TapZonesProps) {
-  const [passThrough, setPassThrough] = useState(false);
-  const downRef = useRef<{ time: number; x: number; y: number } | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+export function TapZones({ renditionRef, isLoaded, onPrev, onNext, onCenter }: TapZonesProps) {
+  const callbacksRef = useRef({ onPrev, onNext, onCenter });
+  callbacksRef.current = { onPrev, onNext, onCenter };
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    downRef.current = { time: Date.now(), x: e.clientX, y: e.clientY };
+  useEffect(() => {
+    const rendition = renditionRef.current;
+    if (!rendition || !isLoaded) return;
 
-    // After 150ms, assume it's a selection gesture — hide overlay
-    timerRef.current = setTimeout(() => {
-      setPassThrough(true);
-    }, 150);
-  };
+    const handler = (e: MouseEvent) => {
+      // Don't navigate if text is selected
+      const win = (e.view || window) as Window;
+      const sel = win.getSelection?.();
+      if (sel && sel.toString().trim().length > 0) return;
 
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
+      // Get click position relative to the viewport
+      const viewWidth = win.innerWidth;
+      const relX = e.clientX / viewWidth;
 
-    // If we passed through, restore overlay on next tick
-    if (passThrough) {
-      setTimeout(() => setPassThrough(false), 50);
-      downRef.current = null;
-      return;
-    }
+      if (relX < 0.25) {
+        callbacksRef.current.onPrev();
+      } else if (relX > 0.75) {
+        callbacksRef.current.onNext();
+      } else {
+        callbacksRef.current.onCenter();
+      }
+    };
 
-    if (!downRef.current) return;
-    const dt = Date.now() - downRef.current.time;
-    const dx = Math.abs(e.clientX - downRef.current.x);
-    const dy = Math.abs(e.clientY - downRef.current.y);
-    const startX = downRef.current.x;
-    downRef.current = null;
+    rendition.on("click", handler);
+    return () => {
+      rendition.off("click", handler);
+    };
+  }, [renditionRef, isLoaded]);
 
-    if (dt >= 300 || dx >= 10 || dy >= 10) return;
-
-    // Determine zone
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const relX = (startX - rect.left) / rect.width;
-
-    if (relX < 0.25) {
-      onPrev();
-    } else if (relX > 0.75) {
-      onNext();
-    } else {
-      onCenter();
-    }
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-20"
-      style={{
-        top: 48,
-        bottom: 40,
-        pointerEvents: passThrough ? "none" : "auto",
-      }}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-    />
-  );
+  return null;
 }
