@@ -170,7 +170,7 @@ function ContentsTab({
         return (
           <button
             key={item.id}
-            onClick={() => { onNavigate(item.href); onClose(); }}
+            onClick={() => { onClose(); setTimeout(() => onNavigate(item.href), 350); }}
             className="w-full text-left px-3 py-2 rounded-md text-[13px] transition-colors hover:opacity-80"
             style={{
               backgroundColor: isActive ? "var(--warm-glow)" : "transparent",
@@ -215,7 +215,7 @@ function BookmarksTab({
           key={bm.id}
           className="flex items-center justify-between px-4 py-3 hover:opacity-80 transition-opacity cursor-pointer"
           style={{ borderBottom: "1px solid var(--border)" }}
-          onClick={() => { onNavigate(bm.cfiPosition); onClose(); }}
+          onClick={() => { onClose(); setTimeout(() => onNavigate(bm.cfiPosition), 350); }}
         >
           <div className="min-w-0 flex-1">
             <p className="text-[13px] truncate" style={{ color: "var(--text)" }}>
@@ -288,7 +288,7 @@ function AnnotationsTab({
                 key={ann.id}
                 className="flex items-start gap-2 mx-3 my-1 px-3 py-2 rounded cursor-pointer hover:opacity-80 transition-opacity"
                 style={{ borderLeft: `3px solid ${borderColor}` }}
-                onClick={() => { onNavigate(ann.cfiPosition); onClose(); }}
+                onClick={() => { onClose(); setTimeout(() => onNavigate(ann.cfiPosition), 350); }}
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-xs leading-relaxed" style={{ color: "var(--text)" }}>
