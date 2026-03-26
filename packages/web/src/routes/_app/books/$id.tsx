@@ -181,19 +181,21 @@ function BookDetailPage() {
 
             {/* Actions */}
             <div className="flex flex-wrap gap-3 mt-6">
-              <Link
-                to="/books/$id/read"
-                params={{ id }}
-                search={{ cfi: undefined }}
-                className="inline-flex items-center px-6 py-2.5 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
-                style={{ backgroundColor: "var(--warm)" }}
-              >
-                {progressQuery.data?.finishedAt
-                  ? "Read Again"
-                  : progressQuery.data?.percentage
-                    ? `Continue Reading (${Math.round(progressQuery.data.percentage)}%)`
-                    : "Start Reading"}
-              </Link>
+              {book.fileFormat === "epub" && (
+                <Link
+                  to="/books/$id/read"
+                  params={{ id }}
+                  search={{ cfi: undefined }}
+                  className="inline-flex items-center px-6 py-2.5 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
+                  style={{ backgroundColor: "var(--warm)" }}
+                >
+                  {progressQuery.data?.finishedAt
+                    ? "Read Again"
+                    : progressQuery.data?.percentage
+                      ? `Continue Reading (${Math.round(progressQuery.data.percentage)}%)`
+                      : "Start Reading"}
+                </Link>
+              )}
               <button
                 onClick={handleDelete}
                 disabled={deleteMutation.isPending}
