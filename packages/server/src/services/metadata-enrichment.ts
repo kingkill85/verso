@@ -125,7 +125,9 @@ export async function searchGoogleBooks(
 ): Promise<ExternalBook[]> {
   try {
     const q = isbn ? `isbn:${isbn}` : encodeURIComponent(query);
-    const url = `https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=5`;
+    const apiKey = process.env.GOOGLE_BOOKS_API_KEY;
+    const keyParam = apiKey ? `&key=${apiKey}` : "";
+    const url = `https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=5${keyParam}`;
     const response = await fetch(url);
     if (!response.ok) return [];
 
