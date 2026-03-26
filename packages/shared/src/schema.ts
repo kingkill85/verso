@@ -140,6 +140,21 @@ export const annotations = sqliteTable("annotations", {
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 
+export const readingSessions = sqliteTable("reading_sessions", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id),
+  bookId: text("book_id")
+    .notNull()
+    .references(() => books.id, { onDelete: "cascade" }),
+  startedAt: text("started_at").notNull(),
+  endedAt: text("ended_at").notNull(),
+  durationMinutes: integer("duration_minutes").notNull().default(0),
+});
+
 export const metadataCache = sqliteTable("metadata_cache", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   queryKey: text("query_key", { length: 255 }).notNull(),
