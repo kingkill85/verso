@@ -37,7 +37,7 @@ COPY --from=build /app/pnpm-workspace.yaml ./
 
 RUN pnpm install --frozen-lockfile --prod
 
-RUN addgroup -g 1000 verso && adduser -u 1000 -G verso -s /bin/sh -D verso
+RUN addgroup -g 1001 verso && adduser -u 1001 -G verso -s /bin/sh -D verso
 RUN mkdir -p /data/files && chown -R verso:verso /data
 
 ENV NODE_ENV=production
