@@ -55,6 +55,7 @@ describe("OPDS client", () => {
       expect(result.type).toBe("acquisition");
       expect(result.entries).toHaveLength(2);
 
+      if (result.type !== "acquisition") throw new Error("expected acquisition");
       const dune = result.entries[0];
       expect(dune.id).toBe("book-1");
       expect(dune.title).toBe("Dune");
@@ -72,6 +73,7 @@ describe("OPDS client", () => {
 
     it("handles entry without cover", () => {
       const result = parseOpdsCatalog(ACQUISITION_FEED);
+      if (result.type !== "acquisition") throw new Error("expected acquisition");
       expect(result.entries[1].coverUrl).toBeUndefined();
     });
   });

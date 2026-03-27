@@ -310,7 +310,7 @@ describe("opds-server service", () => {
       });
 
       const book = await insertBook({ title: "Shelf Book" });
-      await ctx.db.insert(shelfBooks).values({ shelfId, bookId: book.id, position: 0 });
+      await ctx.db.insert(shelfBooks).values({ shelfId, bookId: book.id as string, position: 0 });
 
       const feed = await buildShelfBooks(ctx.db, userId, shelfId, 1);
       expect(feed.type).toBe("acquisition");

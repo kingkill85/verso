@@ -68,7 +68,7 @@ async function createMinimalEpub(epubPath: string): Promise<void> {
   zip.end();
 
   const ws = createWriteStream(epubPath);
-  await pipeline(zip.outputStream as Readable, ws);
+  await pipeline(zip.outputStream as InstanceType<typeof Readable>, ws);
 }
 
 // ---------------------------------------------------------------------------
