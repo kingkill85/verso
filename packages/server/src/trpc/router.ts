@@ -7,6 +7,7 @@ import { metadataRouter } from "./routers/metadata.js";
 import { annotationsRouter } from "./routers/annotations.js";
 import { statsRouter } from "./routers/stats.js";
 import { apiKeysRouter } from "./routers/api-keys.js";
+import { adminRouter } from "./routers/admin.js";
 
 export const appRouter = router({
   auth: authRouter,
@@ -17,6 +18,7 @@ export const appRouter = router({
   annotations: annotationsRouter,
   stats: statsRouter,
   apiKeys: apiKeysRouter,
+  admin: adminRouter,
 });
 
 export type AppRouter = typeof appRouter;

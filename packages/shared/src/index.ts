@@ -6,3 +6,4 @@ export * from "./metadata-validators.js";
 export * from "./annotation-validators.js";
 export * from "./stats-validators.js";
 export * from "./schemas/api-keys.js";
+export * from "./admin-validators.js";
