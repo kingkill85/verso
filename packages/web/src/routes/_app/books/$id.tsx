@@ -7,6 +7,7 @@ import { AnnotationsTab } from "@/components/books/annotations-tab";
 import { BookmarksTab } from "@/components/books/bookmarks-tab";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { getAccessToken } from "@/lib/auth";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_app/books/$id")({
   component: BookDetailPage,
@@ -30,6 +31,7 @@ function BookDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const utils = trpc.useUtils();
+  const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<"details" | "annotations" | "bookmarks">("details");
   const bookQuery = trpc.books.byId.useQuery({ id });
@@ -210,6 +212,7 @@ function BookDetailPage() {
                 isFinished={!!progressQuery.data?.finishedAt}
                 onDelete={handleDelete}
                 isDeleting={deleteMutation.isPending}
+                isAdmin={user?.role === "admin"}
               />
             </div>
           </div>
@@ -359,6 +362,7 @@ function OverflowMenu({
   isFinished,
   onDelete,
   isDeleting,
+  isAdmin,
 }: {
   bookId: string;
   bookTitle: string;
@@ -367,6 +371,7 @@ function OverflowMenu({
   isFinished: boolean;
   onDelete: () => void;
   isDeleting: boolean;
+  isAdmin?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -434,15 +439,17 @@ function OverflowMenu({
           >
             Download
           </button>
-          <Link
-            to="/books/$id/edit"
-            params={{ id: bookId }}
-            className="block px-4 py-2 text-sm hover:opacity-80"
-            style={{ color: "var(--text)" }}
-            onClick={() => setOpen(false)}
-          >
-            Edit
-          </Link>
+          {isAdmin && (
+            <Link
+              to="/books/$id/edit"
+              params={{ id: bookId }}
+              className="block px-4 py-2 text-sm hover:opacity-80"
+              style={{ color: "var(--text)" }}
+              onClick={() => setOpen(false)}
+            >
+              Edit
+            </Link>
+          )}
           {!isFinished && (
             <button
               onClick={() => { finishMutation.mutate({ bookId }); setOpen(false); }}
@@ -464,14 +471,16 @@ function OverflowMenu({
               Reset Progress
             </button>
           )}
-          <button
-            onClick={() => { onDelete(); setOpen(false); }}
-            disabled={isDeleting}
-            className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
-            style={{ color: "#ef4444" }}
-          >
-            {isDeleting ? "Deleting..." : "Delete"}
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => { onDelete(); setOpen(false); }}
+              disabled={isDeleting}
+              className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
+              style={{ color: "#ef4444" }}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </button>
+          )}
         </div>
       )}
       <ConfirmDialog

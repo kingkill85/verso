@@ -63,13 +63,16 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
           Actions
         </div>
         <SidebarItem to="/stats" label="Stats" emoji="📊" active={isActive("/stats")} onClick={onClose} />
-        <SidebarItem to="/upload" label="Upload" emoji="📤" active={isActive("/upload")} onClick={onClose} />
-        <SidebarItem to="/import" label="Import" emoji="📥" active={isActive("/import")} onClick={onClose} />
+        {user?.role === "admin" && (<>
+          <SidebarItem to="/upload" label="Upload" emoji="📤" active={isActive("/upload")} onClick={onClose} />
+          <SidebarItem to="/import" label="Import" emoji="📥" active={isActive("/import")} onClick={onClose} />
+          <SidebarItem to="/admin/users" label="Users" emoji="👥" active={isActive("/admin/users")} onClick={onClose} />
+        </>)}
       </nav>
 
       <div className="p-4 border-t" style={{ borderColor: "var(--border)" }}>
         {/* Export button */}
-        <button
+        {user?.role === "admin" && (<button
           onClick={async () => {
             const token = getAccessToken();
             if (!token) return;
@@ -99,7 +102,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
         >
           <span className="w-[22px] text-base">💾</span>
           <span className="flex-1 text-left">Export Library</span>
-        </button>
+        </button>)}
         <div className="flex items-center gap-3 px-2">
           <Link to="/account" onClick={onClose}
             className="flex items-center gap-3 flex-1 min-w-0 transition-opacity hover:opacity-80">
