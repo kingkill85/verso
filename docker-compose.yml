@@ -5,7 +5,18 @@ services:
       - "3000:3000"
     volumes:
       - verso-data:/data
-    env_file: .env
+    environment:
+      JWT_SECRET: change-me-run-openssl-rand-hex-32
+      DB_DRIVER: sqlite
+      DATABASE_URL: file:/data/db.sqlite
+      STORAGE_DRIVER: local
+      STORAGE_PATH: /data/files
+      AUTH_MODE: local
+      PORT: 3000
+      HOST: 0.0.0.0
+      NODE_ENV: production
+      MAX_UPLOAD_SIZE: 104857600
+      CORS_ORIGIN: http://localhost:3000
     restart: unless-stopped
 
 volumes:

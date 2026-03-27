@@ -3,7 +3,10 @@ services:
     image: postgres:16-alpine
     volumes:
       - pgdata:/var/lib/postgresql/data
-    env_file: .env
+    environment:
+      POSTGRES_DB: verso
+      POSTGRES_USER: verso
+      POSTGRES_PASSWORD: change-me
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U verso"]
       interval: 5s
@@ -17,10 +20,18 @@ services:
       - "3000:3000"
     volumes:
       - verso-data:/data
-    env_file: .env
     environment:
+      JWT_SECRET: change-me-run-openssl-rand-hex-32
       DB_DRIVER: postgres
-      DATABASE_URL: postgresql://verso:${POSTGRES_PASSWORD}@postgres:5432/verso
+      DATABASE_URL: postgresql://verso:change-me@postgres:5432/verso
+      STORAGE_DRIVER: local
+      STORAGE_PATH: /data/files
+      AUTH_MODE: local
+      PORT: 3000
+      HOST: 0.0.0.0
+      NODE_ENV: production
+      MAX_UPLOAD_SIZE: 104857600
+      CORS_ORIGIN: http://localhost:3000
     depends_on:
       postgres:
         condition: service_healthy
