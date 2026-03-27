@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { trpc } from "@/trpc";
 import { BookGrid } from "@/components/books/book-grid";
 import { BookCard } from "@/components/books/book-card";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_app/shelves/$id")({
   component: ShelfDetailPage,
@@ -65,10 +66,10 @@ function ShelfDetailPage() {
   const canEditSmart = !shelf.isDefault && shelf.isSmart;
   const canManageBooks = !shelf.isSmart; // manual shelves only
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   const handleDelete = () => {
-    if (window.confirm(`Delete "${shelf.name}"? Books won't be deleted.`)) {
-      deleteMutation.mutate({ id });
-    }
+    setConfirmDelete(true);
   };
 
   return (
@@ -170,6 +171,18 @@ function ShelfDetailPage() {
         <BookGrid books={filteredBooks} />
       )}
 
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete shelf"
+        message={`Delete "${shelf.name}"? Books won't be deleted.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          setConfirmDelete(false);
+          deleteMutation.mutate({ id });
+        }}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }

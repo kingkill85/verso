@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import archiver from "archiver";
-import { createAuthHook } from "../middleware/auth.js";
+import { createAdminAuthHook } from "../middleware/auth.js";
 import { buildExportData } from "../services/library-export.js";
 import type { StorageService } from "../services/storage.js";
 import type { AppDatabase } from "../db/client.js";
@@ -13,7 +13,7 @@ export function registerExportRoute(
   storage: StorageService,
   config: Config
 ) {
-  const authHook = createAuthHook(config);
+  const authHook = createAdminAuthHook(config);
 
   app.get(
     "/api/export/library",

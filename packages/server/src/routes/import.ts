@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { createHash } from "node:crypto";
-import { createAuthHook } from "../middleware/auth.js";
+import { createAdminAuthHook } from "../middleware/auth.js";
 import { fetchOpdsCatalog, downloadBook } from "../services/opds-client.js";
 import { parseEpub } from "../services/epub-parser.js";
 import { parsePdf } from "../services/pdf-parser.js";
@@ -41,7 +41,7 @@ export function registerImportRoutes(
   storage: StorageService,
   config: Config
 ) {
-  const authHook = createAuthHook(config);
+  const authHook = createAdminAuthHook(config);
 
   // POST /api/import/opds/browse — Browse OPDS catalog
   app.post<{ Body: OpdsBrowseBody }>(

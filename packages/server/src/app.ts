@@ -12,6 +12,7 @@ import { appRouter } from "./trpc/router.js";
 import { createContextFactory } from "./trpc/index.js";
 import { createDb } from "./db/client.js";
 import { runMigrations } from "./db/migrate.js";
+import { backfillDefaultShelves } from "./trpc/routers/seed-shelves.js";
 import { StorageService } from "./services/storage.js";
 import { registerUploadRoute } from "./routes/upload.js";
 import { registerStreamRoute } from "./routes/stream.js";
@@ -28,6 +29,13 @@ export async function buildApp(config: Config) {
 
   const db = createDb(config);
   runMigrations(db);
+
+  // Backfill any missing default shelves for all existing users
+  const { users } = await import("@verso/shared");
+  const allUsers = db.select({ id: users.id }).from(users).all();
+  for (const u of allUsers) {
+    await backfillDefaultShelves(db, u.id);
+  }
 
   const storage = new StorageService(config);
 

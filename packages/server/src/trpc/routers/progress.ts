@@ -97,4 +97,48 @@ export const progressRouter = router({
       .returning();
     return created;
   }),
+
+  finish: protectedProcedure.input(progressGetInput).mutation(async ({ ctx, input }) => {
+    const now = new Date().toISOString();
+    const existing = await ctx.db.query.readingProgress.findFirst({
+      where: and(
+        eq(readingProgress.bookId, input.bookId),
+        eq(readingProgress.userId, ctx.user.sub),
+      ),
+    });
+
+    if (existing) {
+      const [updated] = await ctx.db
+        .update(readingProgress)
+        .set({ percentage: 100, finishedAt: existing.finishedAt ?? now, lastReadAt: now })
+        .where(eq(readingProgress.id, existing.id))
+        .returning();
+      return updated;
+    }
+
+    const [created] = await ctx.db
+      .insert(readingProgress)
+      .values({
+        userId: ctx.user.sub,
+        bookId: input.bookId,
+        percentage: 100,
+        startedAt: now,
+        lastReadAt: now,
+        finishedAt: now,
+      })
+      .returning();
+    return created;
+  }),
+
+  reset: protectedProcedure.input(progressGetInput).mutation(async ({ ctx, input }) => {
+    await ctx.db
+      .delete(readingProgress)
+      .where(
+        and(
+          eq(readingProgress.bookId, input.bookId),
+          eq(readingProgress.userId, ctx.user.sub),
+        ),
+      );
+    return { success: true };
+  }),
 });

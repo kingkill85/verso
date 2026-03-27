@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useTheme } from "@/hooks/use-theme";
 
-export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
+export function TopBar({ sidebarOpen, onMenuClick }: { sidebarOpen: boolean; onMenuClick: () => void }) {
   const { resolvedTheme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [searchValue, setSearchValue] = useState("");
@@ -18,9 +18,13 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   return (
     <header className="sticky top-0 z-30 flex items-center gap-4 px-6 h-14 border-b"
       style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
-      <button onClick={onMenuClick} className="lg:hidden p-2 -ml-2 rounded-lg" style={{ color: "var(--text-dim)" }}>
-        ☰
+      <button onClick={onMenuClick} className="p-2 -ml-2 rounded-lg" style={{ color: "var(--text-dim)" }}>
+        {sidebarOpen ? "✕" : "☰"}
       </button>
+
+      <Link to="/" className="font-display text-xl font-bold shrink-0" style={{ color: "var(--warm)" }}>
+        Verso
+      </Link>
 
       <form onSubmit={handleSubmit} className="flex-1 max-w-md">
         <input

@@ -12,10 +12,12 @@ function SetupPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState("");
+  const utils = trpc.useUtils();
 
   const registerMutation = trpc.auth.register.useMutation({
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       login(data);
+      await utils.auth.hasUsers.invalidate();
       navigate({ to: "/" });
     },
     onError: (err) => setError(err.message),

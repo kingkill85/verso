@@ -6,7 +6,7 @@ import { books } from "@verso/shared";
 import type { StorageService } from "../services/storage.js";
 import type { AppDatabase } from "../db/client.js";
 import type { Config } from "../config.js";
-import { createAuthHook } from "../middleware/auth.js";
+import { createAdminAuthHook } from "../middleware/auth.js";
 import sharp from "sharp";
 
 export function registerUploadRoute(
@@ -15,7 +15,7 @@ export function registerUploadRoute(
   storage: StorageService,
   config: Config
 ) {
-  const authHook = createAuthHook(config);
+  const authHook = createAdminAuthHook(config);
 
   app.post(
     "/api/upload",

@@ -90,6 +90,14 @@ export const authRouter = router({
       .get();
     const isFirstUser = (existingUsers?.count ?? 0) === 0;
 
+    // Only allow public registration for the very first user (setup)
+    if (!isFirstUser) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Registration is closed. Ask an admin to create your account.",
+      });
+    }
+
     const passwordHash = await hash(input.password, BCRYPT_ROUNDS);
 
     let newUser: typeof users.$inferSelect;

@@ -26,6 +26,17 @@ export function createAuthHook(config: Config) {
   };
 }
 
+export function createAdminAuthHook(config: Config) {
+  const authHook = createAuthHook(config);
+  return async (req: FastifyRequest, reply: FastifyReply) => {
+    await authHook(req, reply);
+    if (reply.sent) return;
+    if (req.user?.role !== "admin") {
+      return reply.status(403).send({ error: "Admin access required" });
+    }
+  };
+}
+
 export function createFlexAuthHook(config: Config, db: AppDatabase, basicScope: string) {
   const bearerHook = createAuthHook(config);
   const basicHook = createBasicAuthHook(db, basicScope);

@@ -1,10 +1,11 @@
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/trpc";
 import { getAccessToken } from "@/lib/auth";
 
 export function Sidebar({ onClose }: { onClose?: () => void }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
   const shelvesQuery = trpc.shelves.list.useQuery();
@@ -14,12 +15,8 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   const userShelves = allShelves.filter((s) => !s.isDefault);
 
   return (
-    <aside className="h-screen flex flex-col overflow-y-auto" style={{ backgroundColor: "var(--sidebar-bg)" }}>
-      <div className="p-6 pb-4">
-        <h1 className="font-display text-xl font-bold" style={{ color: "var(--warm)" }}>Verso</h1>
-      </div>
-
-      <nav className="flex-1 px-3">
+    <aside className="h-full flex flex-col overflow-y-auto" style={{ backgroundColor: "var(--sidebar-bg)" }}>
+      <nav className="flex-1 px-3 pt-4">
         <div className="px-3 mb-2 text-[10px] font-medium uppercase tracking-[1.5px]" style={{ color: "var(--text-faint)" }}>
           Library
         </div>
@@ -104,13 +101,31 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
           <span className="flex-1 text-left">Export Library</span>
         </button>
         <div className="flex items-center gap-3 px-2">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
-            style={{ backgroundColor: "var(--card)", color: "var(--text-dim)" }}>
-            {user?.displayName?.[0]?.toUpperCase() || "?"}
-          </div>
-          <span className="text-sm truncate" style={{ color: "var(--text-dim)" }}>
-            {user?.displayName}
-          </span>
+          <Link to="/account" onClick={onClose}
+            className="flex items-center gap-3 flex-1 min-w-0 transition-opacity hover:opacity-80">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium shrink-0"
+              style={{ backgroundColor: "var(--card)", color: "var(--text-dim)" }}>
+              {user?.displayName?.[0]?.toUpperCase() || "?"}
+            </div>
+            <span className="text-sm truncate" style={{ color: "var(--text-dim)" }}>
+              {user?.displayName}
+            </span>
+          </Link>
+          <button
+            onClick={() => {
+              logout();
+              navigate({ to: "/login" });
+            }}
+            title="Log out"
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:opacity-80"
+            style={{ color: "var(--text-faint)" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import { BookCover } from "@/components/books/book-cover";
 import { AddToShelfMenu } from "@/components/shelves/add-to-shelf-menu";
 import { AnnotationsTab } from "@/components/books/annotations-tab";
 import { BookmarksTab } from "@/components/books/bookmarks-tab";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { getAccessToken } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/books/$id")({
@@ -38,14 +39,18 @@ function BookDetailPage() {
   const deleteMutation = trpc.books.delete.useMutation({
     onSuccess: () => {
       utils.books.list.invalidate();
+      utils.books.currentlyReading.invalidate();
+      utils.shelves.list.invalidate();
+      utils.shelves.byId.invalidate();
+      utils.stats.overview.invalidate();
       navigate({ to: "/" });
     },
   });
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   const handleDelete = () => {
-    if (window.confirm("Are you sure you want to delete this book? This cannot be undone.")) {
-      deleteMutation.mutate({ id });
-    }
+    setConfirmDelete(true);
   };
 
   if (bookQuery.isLoading) {
@@ -201,6 +206,8 @@ function BookDetailPage() {
                 bookId={id}
                 bookTitle={book.title}
                 fileFormat={book.fileFormat}
+                hasProgress={!!progressQuery.data && progressQuery.data.percentage > 0}
+                isFinished={!!progressQuery.data?.finishedAt}
                 onDelete={handleDelete}
                 isDeleting={deleteMutation.isPending}
               />
@@ -328,6 +335,18 @@ function BookDetailPage() {
         <BookmarksTab bookId={id} />
       )}
 
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete book"
+        message="Are you sure you want to delete this book? This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          setConfirmDelete(false);
+          deleteMutation.mutate({ id });
+        }}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }
@@ -336,17 +355,39 @@ function OverflowMenu({
   bookId,
   bookTitle,
   fileFormat,
+  hasProgress,
+  isFinished,
   onDelete,
   isDeleting,
 }: {
   bookId: string;
   bookTitle: string;
   fileFormat: string;
+  hasProgress: boolean;
+  isFinished: boolean;
   onDelete: () => void;
   isDeleting: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const utils = trpc.useUtils();
+
+  const invalidateProgress = () => {
+    utils.progress.get.invalidate({ bookId });
+    utils.books.currentlyReading.invalidate();
+    utils.shelves.list.invalidate();
+    utils.shelves.byId.invalidate();
+    utils.stats.overview.invalidate();
+  };
+
+  const finishMutation = trpc.progress.finish.useMutation({
+    onSuccess: invalidateProgress,
+  });
+
+  const resetMutation = trpc.progress.reset.useMutation({
+    onSuccess: invalidateProgress,
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -368,7 +409,7 @@ function OverflowMenu({
       </button>
       {open && (
         <div
-          className="absolute top-full mt-1 right-0 rounded-xl py-1 min-w-[140px] shadow-lg z-10"
+          className="absolute top-full mt-1 right-0 rounded-xl py-1 min-w-[160px] shadow-lg z-10"
           style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)" }}
         >
           <button
@@ -402,6 +443,27 @@ function OverflowMenu({
           >
             Edit
           </Link>
+          {!isFinished && (
+            <button
+              onClick={() => { finishMutation.mutate({ bookId }); setOpen(false); }}
+              className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
+              style={{ color: "var(--green)" }}
+            >
+              Mark as Finished
+            </button>
+          )}
+          {hasProgress && (
+            <button
+              onClick={() => {
+                setOpen(false);
+                setConfirmReset(true);
+              }}
+              className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
+              style={{ color: "var(--text-dim)" }}
+            >
+              Reset Progress
+            </button>
+          )}
           <button
             onClick={() => { onDelete(); setOpen(false); }}
             disabled={isDeleting}
@@ -412,6 +474,18 @@ function OverflowMenu({
           </button>
         </div>
       )}
+      <ConfirmDialog
+        open={confirmReset}
+        title="Reset progress"
+        message="Reset all reading progress for this book? This cannot be undone."
+        confirmLabel="Reset"
+        destructive
+        onConfirm={() => {
+          setConfirmReset(false);
+          resetMutation.mutate({ bookId });
+        }}
+        onCancel={() => setConfirmReset(false)}
+      />
     </div>
   );
 }

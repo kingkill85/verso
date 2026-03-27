@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { eq, and } from "drizzle-orm";
 import { books, metadataCache, metadataSearchInput, metadataApplyInput } from "@verso/shared";
 import type { ExternalBook } from "@verso/shared";
-import { router, protectedProcedure } from "../index.js";
+import { router, protectedProcedure, adminProcedure } from "../index.js";
 import { searchExternalMetadata } from "../../services/metadata-enrichment.js";
 import { updateEpubMetadata, getEpubFileHash } from "../../services/epub-writer.js";
 import sharp from "sharp";
@@ -10,7 +10,7 @@ import sharp from "sharp";
 const CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 export const metadataRouter = router({
-  search: protectedProcedure.input(metadataSearchInput).query(async ({ ctx, input }) => {
+  search: adminProcedure.input(metadataSearchInput).query(async ({ ctx, input }) => {
     // Verify book exists and belongs to user
     const book = await ctx.db.query.books.findFirst({
       where: eq(books.id, input.bookId),
@@ -74,7 +74,7 @@ export const metadataRouter = router({
     return results;
   }),
 
-  applyFields: protectedProcedure.input(metadataApplyInput).mutation(async ({ ctx, input }) => {
+  applyFields: adminProcedure.input(metadataApplyInput).mutation(async ({ ctx, input }) => {
     // Verify book exists and belongs to user
     const book = await ctx.db.query.books.findFirst({
       where: eq(books.id, input.bookId),

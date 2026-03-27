@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { eq, and, desc, asc, sql, isNull, isNotNull } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { books, readingProgress, bookListInput, bookByIdInput, bookUpdateInput, bookDeleteInput, searchInput } from "@verso/shared";
-import { router, protectedProcedure } from "../index.js";
+import { router, protectedProcedure, adminProcedure } from "../index.js";
 import { updateEpubMetadata, getEpubFileHash } from "../../services/epub-writer.js";
 import sharp from "sharp";
 
@@ -59,7 +59,7 @@ export const booksRouter = router({
     return book;
   }),
 
-  update: protectedProcedure.input(bookUpdateInput).mutation(async ({ ctx, input }) => {
+  update: adminProcedure.input(bookUpdateInput).mutation(async ({ ctx, input }) => {
     const { id, tags, coverUrl, ...fields } = input;
     const existing = await ctx.db.query.books.findFirst({
       where: eq(books.id, id),
@@ -112,7 +112,7 @@ export const booksRouter = router({
     return book;
   }),
 
-  delete: protectedProcedure.input(bookDeleteInput).mutation(async ({ ctx, input }) => {
+  delete: adminProcedure.input(bookDeleteInput).mutation(async ({ ctx, input }) => {
     const existing = await ctx.db.query.books.findFirst({
       where: eq(books.id, input.id),
     });
