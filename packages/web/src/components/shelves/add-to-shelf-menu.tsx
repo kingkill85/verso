@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { trpc } from "@/trpc";
+import { CheckIcon, BookmarkIcon } from "@/components/icons";
 
 type AddToShelfMenuProps = {
   bookId: string;
@@ -76,9 +77,9 @@ export function AddToShelfMenu({ bookId }: AddToShelfMenuProps) {
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                 >
                   <span className="w-5 text-center" style={{ color: "var(--warm)" }}>
-                    {isIn ? "✓" : ""}
+                    {isIn ? <CheckIcon size={14} /> : ""}
                   </span>
-                  <span>{shelf.emoji ?? "📁"}</span>
+                  <span>{shelf.emoji ?? <BookmarkIcon size={16} />}</span>
                   <span className="flex-1 truncate">{shelf.name}</span>
                 </button>
               );

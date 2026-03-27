@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { BookOpenIcon } from "@/components/icons";
 
 interface ReadingLogItem {
   id: string;
@@ -81,7 +82,7 @@ export function ReadingLog({ items, hasMore, onLoadMore }: ReadingLogProps) {
                       className="w-full h-full flex items-center justify-center text-[10px]"
                       style={{ color: "var(--text-faint)" }}
                     >
-                      📖
+                      <BookOpenIcon size={14} />
                     </div>
                   )}
                 </div>

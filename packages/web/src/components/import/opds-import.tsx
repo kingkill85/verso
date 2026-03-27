@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { getAccessToken } from "@/lib/auth";
+import { CheckIcon, FolderIcon } from "@/components/icons";
 
 type Phase = "connect" | "browse" | "importing";
 
@@ -365,7 +366,7 @@ export function OpdsImport() {
                 {s.status === "pending" && "Waiting..."}
                 {s.status === "downloading" && "Downloading..."}
                 {s.status === "processing" && "Processing..."}
-                {s.status === "done" && "✓ Done"}
+                {s.status === "done" && <><CheckIcon size={14} className="inline -mt-0.5" /> Done</>}
                 {s.status === "failed" && (s.error || "Failed")}
               </span>
             </div>
@@ -421,7 +422,7 @@ export function OpdsImport() {
               className="w-full flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-opacity hover:opacity-80"
               style={{ backgroundColor: "var(--card)" }}
             >
-              <span className="text-lg">📁</span>
+              <FolderIcon size={20} />
               <div className="flex-1 min-w-0">
                 <p
                   className="text-sm font-medium truncate"

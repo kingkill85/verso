@@ -3,6 +3,7 @@ import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { trpc } from "@/trpc";
 import { getAccessToken } from "@/lib/auth";
+import { XIcon, CheckIcon } from "@/components/icons";
 
 type UploadItem = {
   file: File;
@@ -188,7 +189,7 @@ function UploadPage() {
                     className="text-xs px-2 py-1 rounded"
                     style={{ color: "var(--text-faint)" }}
                   >
-                    ✕
+                    <XIcon size={14} />
                   </button>
                 )}
                 {item.status === "uploading" && (
@@ -204,7 +205,7 @@ function UploadPage() {
                     className="text-xs font-medium"
                     style={{ color: "var(--green)" }}
                   >
-                    ✓ Done
+                    <CheckIcon size={14} className="inline -mt-0.5" /> Done
                   </span>
                 )}
                 {item.status === "error" && (

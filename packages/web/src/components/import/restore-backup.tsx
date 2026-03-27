@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { getAccessToken } from "@/lib/auth";
+import { CheckIcon } from "@/components/icons";
 
 type RestoreState =
   | { phase: "idle" }
@@ -87,7 +88,7 @@ export function RestoreBackup() {
           className="font-display text-xl font-bold mb-2"
           style={{ color: "var(--green)" }}
         >
-          ✓ Restore Complete
+          <CheckIcon size={22} className="inline -mt-0.5" /> Restore Complete
         </p>
         <div
           className="flex justify-center gap-6 mt-4 text-sm"

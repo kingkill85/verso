@@ -3,6 +3,7 @@ import { trpc } from "@/trpc";
 import { ContinueReadingRow } from "@/components/books/continue-reading-row";
 import { BookCover } from "@/components/books/book-cover";
 import { useAuth } from "@/hooks/use-auth";
+import { BookmarkIcon, CheckCircleIcon } from "@/components/icons";
 
 export const Route = createFileRoute("/_app/home")({
   component: HomePage,
@@ -118,7 +119,7 @@ function HomePage() {
                 style={{ backgroundColor: "var(--card)" }}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-lg">{shelf.emoji ?? "📁"}</span>
+                  <span className="text-lg">{shelf.emoji ?? <BookmarkIcon size={20} />}</span>
                   <span
                     className="font-display text-sm font-semibold truncate"
                     style={{ color: "var(--text)" }}
@@ -153,7 +154,7 @@ function HomePage() {
             className="inline-flex items-center gap-3 rounded-xl p-4 transition-transform duration-200 hover:-translate-y-0.5"
             style={{ backgroundColor: "var(--card)" }}
           >
-            <span className="text-2xl">✅</span>
+            <CheckCircleIcon size={28} className="shrink-0" />
             <div>
               <p
                 className="font-display text-sm font-semibold"

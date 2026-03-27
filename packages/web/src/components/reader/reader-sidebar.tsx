@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { NavItem } from "epubjs";
 import type { Annotation } from "@verso/shared";
 import { BookCover } from "@/components/books/book-cover";
+import { XIcon } from "@/components/icons";
 
 type ReaderSidebarProps = {
   open: boolean;
@@ -230,7 +231,7 @@ function BookmarksTab({
             className="shrink-0 ml-3 text-sm hover:opacity-80"
             style={{ color: "var(--text-faint)" }}
           >
-            ✕
+            <XIcon size={14} />
           </button>
         </div>
       ))}
@@ -308,7 +309,7 @@ function AnnotationsTab({
                   className="shrink-0 text-sm hover:opacity-80 pt-0.5"
                   style={{ color: "var(--text-faint)" }}
                 >
-                  ✕
+                  <XIcon size={14} />
                 </button>
               </div>
             );
