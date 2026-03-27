@@ -68,19 +68,20 @@ Depth features that make the app feel complete.
 
 **Result:** Rich metadata, annotations while reading, reading stats dashboard.
 
-## Session 5: "Share and deploy"
+## Session 5: "Share and deploy" ✅ COMPLETE
 
 External access and production readiness.
 
-- OPDS catalog: root feed, acquisition feeds, search, navigation
-- API key / app password auth for OPDS (HTTP Basic)
-- OIDC integration (PKCE flow) with Authentik/Keycloak/etc.
-- Multi-stage Dockerfile (Node 20 Alpine)
-- docker-compose.yml (SQLite) + docker-compose.postgres.yml
-- Health check endpoint (GET /health)
-- Reverse proxy examples (Nginx, Caddy, Traefik)
-- Backup scripts (SQLite copy, pg_dump)
-- Rate limiting on auth endpoints
+- ✅ OPDS catalog server: root feed, acquisition feeds, search, navigation (per-user scoped)
+- ✅ API key / app password auth for OPDS (HTTP Basic with vso_ prefixed keys)
+- ✅ OIDC integration (PKCE flow) with Authentik/Keycloak/etc. (completed in Session 4a)
+- ✅ Multi-stage Dockerfile (Node 20 Alpine, non-root user)
+- ✅ docker-compose.yml (SQLite) + docker-compose.postgres.yml
+- ✅ Health check endpoint (GET /health with DB connectivity check)
+- ✅ Reverse proxy examples (Nginx, Caddy, Traefik) in deployment docs
+- ✅ Backup commands (SQLite copy, pg_dump) in deployment docs
+- ✅ Rate limiting on auth endpoints (via @fastify/rate-limit, completed in Session 1)
+- ✅ Comprehensive deployment guide with OPDS setup for KOReader/Moon+ Reader/Librera
 
 **Result:** Production-deployable, accessible via OPDS readers, SSO-enabled.
 
