@@ -3,10 +3,7 @@ services:
     image: postgres:16-alpine
     volumes:
       - pgdata:/var/lib/postgresql/data
-    environment:
-      POSTGRES_DB: verso
-      POSTGRES_USER: verso
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    env_file: .env
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U verso"]
       interval: 5s
