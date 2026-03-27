@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import multipart from "@fastify/multipart";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
+import { sql } from "drizzle-orm";
 import { appRouter } from "./trpc/router.js";
 import { createContextFactory } from "./trpc/index.js";
 import { createDb } from "./db/client.js";
@@ -13,6 +14,7 @@ import { registerStreamRoute } from "./routes/stream.js";
 import { registerCoversRoute } from "./routes/covers.js";
 import { registerImportRoutes } from "./routes/import.js";
 import { registerExportRoute } from "./routes/export.js";
+import { registerOpdsRoutes } from "./routes/opds.js";
 import type { Config } from "./config.js";
 
 export async function buildApp(config: Config) {
@@ -49,8 +51,26 @@ export async function buildApp(config: Config) {
   registerCoversRoute(app, db, storage, config);
   registerImportRoutes(app, db, storage, config);
   registerExportRoute(app, db, storage, config);
+  registerOpdsRoutes(app, db, config);
 
-  app.get("/health", async () => ({ status: "ok" }));
+  app.get("/health", async (_req, reply) => {
+    try {
+      db.run(sql`SELECT 1`);
+      return reply.send({
+        status: "ok",
+        version: "1.0.0",
+        uptime: Math.floor(process.uptime()),
+        database: "connected",
+      });
+    } catch {
+      return reply.status(503).send({
+        status: "error",
+        version: "1.0.0",
+        uptime: Math.floor(process.uptime()),
+        database: "disconnected",
+      });
+    }
+  });
 
   return app;
 }
