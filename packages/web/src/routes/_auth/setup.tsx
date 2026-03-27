@@ -18,7 +18,7 @@ function SetupPage() {
     onSuccess: async (data) => {
       login(data);
       await utils.auth.hasUsers.invalidate();
-      navigate({ to: "/" });
+      navigate({ to: "/home" });
     },
     onError: (err) => setError(err.message),
   });

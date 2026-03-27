@@ -45,7 +45,7 @@ function BookDetailPage() {
       utils.shelves.list.invalidate();
       utils.shelves.byId.invalidate();
       utils.stats.overview.invalidate();
-      navigate({ to: "/" });
+      navigate({ to: "/library" });
     },
   });
 
@@ -76,7 +76,7 @@ function BookDetailPage() {
           Book not found
         </p>
         <Link
-          to="/"
+          to="/library"
           className="text-sm mt-2"
           style={{ color: "var(--warm)" }}
         >
@@ -107,7 +107,7 @@ function BookDetailPage() {
     <div className="max-w-4xl mx-auto animate-in fade-in">
       {/* Back link */}
       <Link
-        to="/"
+        to="/library"
         className="inline-flex items-center text-sm mb-6 transition-colors hover:opacity-80"
         style={{ color: "var(--text-dim)" }}
       >

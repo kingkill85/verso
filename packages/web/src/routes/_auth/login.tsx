@@ -17,7 +17,7 @@ function LoginPage() {
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: (data) => {
       login(data);
-      navigate({ to: "/" });
+      navigate({ to: "/home" });
     },
     onError: (err) => setError(err.message),
   });

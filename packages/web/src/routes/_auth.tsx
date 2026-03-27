@@ -18,7 +18,7 @@ function AuthLayout() {
   useEffect(() => {
     if (isLoading || hasUsersQuery.isLoading) return;
     if (isAuthenticated) {
-      navigate({ to: "/", replace: true });
+      navigate({ to: "/home", replace: true });
       return;
     }
     if (noUsers && location.pathname !== "/setup") {

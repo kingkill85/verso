@@ -22,7 +22,7 @@ export function TopBar({ sidebarOpen, onMenuClick }: { sidebarOpen: boolean; onM
         {sidebarOpen ? "✕" : "☰"}
       </button>
 
-      <Link to="/" className="font-display text-xl font-bold shrink-0" style={{ color: "var(--warm)" }}>
+      <Link to="/home" className="font-display text-xl font-bold shrink-0" style={{ color: "var(--warm)" }}>
         Verso
       </Link>
 

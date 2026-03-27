@@ -20,7 +20,8 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
         <div className="px-3 mb-2 text-[10px] font-medium uppercase tracking-[1.5px]" style={{ color: "var(--text-faint)" }}>
           Library
         </div>
-        <SidebarItem to="/" label="All Books" emoji="📚" active={isActive("/")} onClick={onClose} />
+        <SidebarItem to="/home" label="Home" emoji="🏠" active={isActive("/home")} onClick={onClose} />
+        <SidebarItem to="/library" label="Library" emoji="📚" active={isActive("/library")} onClick={onClose} />
         {defaultShelves.map((shelf) => (
           <SidebarItem
             key={shelf.id}
