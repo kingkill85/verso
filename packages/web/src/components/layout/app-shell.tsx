@@ -6,7 +6,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
+    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: "var(--bg)" }}>
       <div className="hidden lg:block w-64 shrink-0">
         <Sidebar />
       </div>

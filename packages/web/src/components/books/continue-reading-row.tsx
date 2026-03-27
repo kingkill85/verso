@@ -38,6 +38,7 @@ export function ContinueReadingRow() {
             key={item.id}
             to="/books/$id/read"
             params={{ id: item.id }}
+            search={{ cfi: undefined }}
             className="shrink-0 flex gap-3 rounded-xl p-3 transition-transform hover:translate-y-[-2px]"
             style={{ backgroundColor: "var(--card)", width: 220 }}
           >

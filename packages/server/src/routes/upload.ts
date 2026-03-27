@@ -55,7 +55,8 @@ export function registerUploadRoute(
         } else {
           metadata = await parsePdf(fullFilePath);
         }
-      } catch {
+      } catch (err) {
+        console.error("Metadata extraction failed:", err);
         metadata = {
           title: filename.replace(/\.[^.]+$/, ""),
           author: "Unknown Author",
@@ -88,12 +89,15 @@ export function registerUploadRoute(
           language: metadata.language,
           description: metadata.description,
           genre: metadata.genre,
+          tags: metadata.tags ? JSON.stringify(metadata.tags) : null,
           coverPath: coverPath || null,
           filePath,
           fileFormat: ext,
           fileSize: buffer.length,
           fileHash,
           pageCount: metadata.pageCount,
+          series: metadata.series,
+          seriesIndex: metadata.seriesIndex,
           addedBy: user.sub,
           metadataSource: "extracted",
         })

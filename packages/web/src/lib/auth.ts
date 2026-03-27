@@ -28,29 +28,41 @@ export function isTokenExpired(token: string): boolean {
   }
 }
 
-export async function refreshTokens(): Promise<boolean> {
+// Single in-flight refresh promise — ALL callers share this.
+// Prevents race conditions where multiple 401s each try to rotate the session.
+let inflightRefresh: Promise<boolean> | null = null;
+
+export function refreshTokens(): Promise<boolean> {
+  if (inflightRefresh) return inflightRefresh;
+  inflightRefresh = doRefresh().finally(() => { inflightRefresh = null; });
+  return inflightRefresh;
+}
+
+async function doRefresh(): Promise<boolean> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return false;
   try {
     const res = await fetch("/trpc/auth.refresh", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ json: { refreshToken } }),
+      body: JSON.stringify({ refreshToken }),
     });
     if (!res.ok) {
-      clearTokens();
+      // Any non-OK response means refresh is dead — clear and go to login
+      window.dispatchEvent(new Event("verso:auth-failed"));
       return false;
     }
     const data = await res.json();
-    const result = data.result?.data?.json;
+    const result = data?.result?.data;
     if (result?.accessToken && result?.refreshToken) {
       setTokens(result.accessToken, result.refreshToken);
       return true;
     }
-    clearTokens();
+    // Got 200 but no tokens — session is dead
+    window.dispatchEvent(new Event("verso:auth-failed"));
     return false;
   } catch {
-    clearTokens();
+    // Network error — keep tokens so we can retry when server comes back
     return false;
   }
 }

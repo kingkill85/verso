@@ -1,27 +1,55 @@
+import { useEffect, useRef } from "react";
+import type { Rendition } from "epubjs";
+
 type TapZonesProps = {
+  renditionRef: React.RefObject<Rendition | null>;
+  isLoaded: boolean;
   onPrev: () => void;
   onNext: () => void;
   onCenter: () => void;
 };
 
-export function TapZones({ onPrev, onNext, onCenter }: TapZonesProps) {
-  return (
-    <div className="fixed inset-0 z-20 flex" style={{ top: 48, bottom: 40 }}>
-      <button
-        className="flex-1 cursor-default"
-        onClick={onPrev}
-        aria-label="Previous page"
-      />
-      <button
-        className="flex-1 cursor-default"
-        onClick={onCenter}
-        aria-label="Toggle controls"
-      />
-      <button
-        className="flex-1 cursor-default"
-        onClick={onNext}
-        aria-label="Next page"
-      />
-    </div>
-  );
+/**
+ * No overlay. Registers a click handler inside the epub.js rendition
+ * (iframe content). Text selection is never blocked.
+ * Only navigates on clicks with no active text selection.
+ */
+export function TapZones({ renditionRef, isLoaded, onPrev, onNext, onCenter }: TapZonesProps) {
+  const callbacksRef = useRef({ onPrev, onNext, onCenter });
+  callbacksRef.current = { onPrev, onNext, onCenter };
+
+  useEffect(() => {
+    const rendition = renditionRef.current;
+    if (!rendition || !isLoaded) return;
+
+    const handler = (e: MouseEvent) => {
+      const iframeWin = (e.view || window) as Window;
+      const sel = iframeWin.getSelection?.();
+      if (sel && sel.toString().trim().length > 0) return;
+
+      // e.clientX is relative to the iframe viewport.
+      // Get the iframe element's position in the parent page to calculate
+      // the absolute position relative to the full browser window.
+      const iframe = iframeWin.frameElement as HTMLIFrameElement | null;
+      const iframeRect = iframe?.getBoundingClientRect();
+      const absoluteX = (iframeRect?.left ?? 0) + e.clientX;
+      const pageWidth = window.innerWidth;
+      const relX = absoluteX / pageWidth;
+
+      if (relX < 0.25) {
+        callbacksRef.current.onPrev();
+      } else if (relX > 0.75) {
+        callbacksRef.current.onNext();
+      } else {
+        callbacksRef.current.onCenter();
+      }
+    };
+
+    rendition.on("click", handler);
+    return () => {
+      rendition.off("click", handler);
+    };
+  }, [renditionRef, isLoaded]);
+
+  return null;
 }

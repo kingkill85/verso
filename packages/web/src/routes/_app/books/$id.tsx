@@ -1,7 +1,11 @@
+import { useState, useRef, useEffect } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { trpc } from "@/trpc";
 import { BookCover } from "@/components/books/book-cover";
 import { AddToShelfMenu } from "@/components/shelves/add-to-shelf-menu";
+import { AnnotationsTab } from "@/components/books/annotations-tab";
+import { BookmarksTab } from "@/components/books/bookmarks-tab";
+import { getAccessToken } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/books/$id")({
   component: BookDetailPage,
@@ -26,8 +30,11 @@ function BookDetailPage() {
   const navigate = useNavigate();
   const utils = trpc.useUtils();
 
+  const [activeTab, setActiveTab] = useState<"details" | "annotations" | "bookmarks">("details");
   const bookQuery = trpc.books.byId.useQuery({ id });
   const progressQuery = trpc.progress.get.useQuery({ bookId: id });
+  const annotationsQuery = trpc.annotations.list.useQuery({ bookId: id });
+  const bookmarksQuery = trpc.annotations.listBookmarks.useQuery({ bookId: id });
   const deleteMutation = trpc.books.delete.useMutation({
     onSuccess: () => {
       utils.books.list.invalidate();
@@ -126,6 +133,7 @@ function BookDetailPage() {
               title={book.title}
               author={book.author}
               coverPath={book.coverPath}
+              updatedAt={book.updatedAt}
               size="xl"
             />
           </div>
@@ -144,6 +152,14 @@ function BookDetailPage() {
             >
               {book.author}
             </p>
+            {book.series && (
+              <p
+                className="text-sm mt-1"
+                style={{ color: "var(--text-faint)" }}
+              >
+                Book {book.seriesIndex || "?"} of {book.series}
+              </p>
+            )}
 
             {/* Tags */}
             {tags.length > 0 && (
@@ -164,31 +180,30 @@ function BookDetailPage() {
             )}
 
             {/* Actions */}
-            <div className="flex flex-wrap gap-3 mt-6">
-              <Link
-                to="/books/$id/read"
-                params={{ id }}
-                className="inline-flex items-center px-6 py-2.5 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
-                style={{ backgroundColor: "var(--warm)" }}
-              >
-                {progressQuery.data?.finishedAt
-                  ? "Read Again"
-                  : progressQuery.data?.percentage
-                    ? `Continue Reading (${Math.round(progressQuery.data.percentage)}%)`
-                    : "Start Reading"}
-              </Link>
-              <button
-                onClick={handleDelete}
-                disabled={deleteMutation.isPending}
-                className="px-5 py-2.5 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
-                style={{
-                  borderColor: "var(--border)",
-                  color: "var(--text-dim)",
-                }}
-              >
-                {deleteMutation.isPending ? "Deleting..." : "Delete"}
-              </button>
+            <div className="flex flex-wrap items-center gap-3 mt-6">
+              {book.fileFormat === "epub" && (
+                <Link
+                  to="/books/$id/read"
+                  params={{ id }}
+                  search={{ cfi: undefined }}
+                  className="inline-flex items-center px-6 py-2.5 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
+                  style={{ backgroundColor: "var(--warm)" }}
+                >
+                  {progressQuery.data?.finishedAt
+                    ? "Read Again"
+                    : progressQuery.data?.percentage
+                      ? `Continue Reading (${Math.round(progressQuery.data.percentage)}%)`
+                      : "Start Reading"}
+                </Link>
+              )}
               <AddToShelfMenu bookId={id} />
+              <OverflowMenu
+                bookId={id}
+                bookTitle={book.title}
+                fileFormat={book.fileFormat}
+                onDelete={handleDelete}
+                isDeleting={deleteMutation.isPending}
+              />
             </div>
           </div>
         </div>
@@ -233,7 +248,7 @@ function BookDetailPage() {
             Description
           </h2>
           <p
-            className="font-display italic leading-relaxed text-sm"
+            className="font-display italic leading-relaxed text-sm whitespace-pre-line"
             style={{ color: "var(--text-dim)" }}
           >
             {book.description}
@@ -241,15 +256,49 @@ function BookDetailPage() {
         </div>
       )}
 
-      {/* Details grid */}
-      {details.length > 0 && (
-        <div>
-          <h2
-            className="font-display text-lg font-semibold mb-3"
-            style={{ color: "var(--text)" }}
-          >
-            Details
-          </h2>
+      {/* Tab bar */}
+      <div
+        className="flex gap-6 mb-6 border-b"
+        style={{ borderColor: "var(--border)" }}
+      >
+        <button
+          onClick={() => setActiveTab("details")}
+          className="pb-2 text-sm font-medium transition-colors"
+          style={{
+            color: activeTab === "details" ? "var(--warm)" : "var(--text-dim)",
+            borderBottom: activeTab === "details" ? "2px solid var(--warm)" : "2px solid transparent",
+            marginBottom: "-1px",
+          }}
+        >
+          Details
+        </button>
+        <button
+          onClick={() => setActiveTab("annotations")}
+          className="pb-2 text-sm font-medium transition-colors"
+          style={{
+            color: activeTab === "annotations" ? "var(--warm)" : "var(--text-dim)",
+            borderBottom: activeTab === "annotations" ? "2px solid var(--warm)" : "2px solid transparent",
+            marginBottom: "-1px",
+          }}
+        >
+          Annotations ({annotationsQuery.data?.length ?? 0})
+        </button>
+        <button
+          onClick={() => setActiveTab("bookmarks")}
+          className="pb-2 text-sm font-medium transition-colors"
+          style={{
+            color: activeTab === "bookmarks" ? "var(--warm)" : "var(--text-dim)",
+            borderBottom: activeTab === "bookmarks" ? "2px solid var(--warm)" : "2px solid transparent",
+            marginBottom: "-1px",
+          }}
+        >
+          Bookmarks ({bookmarksQuery.data?.length ?? 0})
+        </button>
+      </div>
+
+      {/* Tab content */}
+      {activeTab === "details" ? (
+        details.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {details.map((detail) => (
               <div
@@ -272,6 +321,95 @@ function BookDetailPage() {
               </div>
             ))}
           </div>
+        ) : null
+      ) : activeTab === "annotations" ? (
+        <AnnotationsTab bookId={id} />
+      ) : (
+        <BookmarksTab bookId={id} />
+      )}
+
+    </div>
+  );
+}
+
+function OverflowMenu({
+  bookId,
+  bookTitle,
+  fileFormat,
+  onDelete,
+  isDeleting,
+}: {
+  bookId: string;
+  bookTitle: string;
+  fileFormat: string;
+  onDelete: () => void;
+  isDeleting: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="px-3 py-2.5 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
+        style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
+      >
+        ⋯
+      </button>
+      {open && (
+        <div
+          className="absolute top-full mt-1 right-0 rounded-xl py-1 min-w-[140px] shadow-lg z-10"
+          style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)" }}
+        >
+          <button
+            onClick={async () => {
+              const token = getAccessToken();
+              const res = await fetch(`/api/books/${bookId}/file?t=${Date.now()}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                cache: "no-store",
+              });
+              if (!res.ok) return;
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `${bookTitle}.${fileFormat}`;
+              a.click();
+              URL.revokeObjectURL(url);
+              setOpen(false);
+            }}
+            className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
+            style={{ color: "var(--text)" }}
+          >
+            Download
+          </button>
+          <Link
+            to="/books/$id/edit"
+            params={{ id: bookId }}
+            className="block px-4 py-2 text-sm hover:opacity-80"
+            style={{ color: "var(--text)" }}
+            onClick={() => setOpen(false)}
+          >
+            Edit
+          </Link>
+          <button
+            onClick={() => { onDelete(); setOpen(false); }}
+            disabled={isDeleting}
+            className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
+            style={{ color: "#ef4444" }}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </button>
         </div>
       )}
     </div>

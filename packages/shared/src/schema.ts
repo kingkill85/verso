@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, primaryKey } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, primaryKey, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 export const users = sqliteTable("users", {
@@ -42,6 +42,8 @@ export const books = sqliteTable("books", {
     .references(() => users.id),
   metadataSource: text("metadata_source", { length: 20 }),
   metadataLocked: integer("metadata_locked", { mode: "boolean" }).default(false),
+  series: text("series", { length: 255 }),
+  seriesIndex: real("series_index"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -121,4 +123,44 @@ export const shelfBooks = sqliteTable("shelf_books", {
     .default(sql`(datetime('now'))`),
 }, (table) => [
   primaryKey({ columns: [table.shelfId, table.bookId] }),
+]);
+
+export const annotations = sqliteTable("annotations", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => users.id),
+  bookId: text("book_id").notNull().references(() => books.id, { onDelete: "cascade" }),
+  type: text("type", { length: 20 }).notNull().default("highlight"),
+  content: text("content"),
+  note: text("note"),
+  cfiPosition: text("cfi_position").notNull(),
+  cfiEnd: text("cfi_end"),
+  color: text("color", { length: 20 }).default("yellow"),
+  chapter: text("chapter", { length: 255 }),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+});
+
+export const readingSessions = sqliteTable("reading_sessions", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id),
+  bookId: text("book_id")
+    .notNull()
+    .references(() => books.id, { onDelete: "cascade" }),
+  startedAt: text("started_at").notNull(),
+  endedAt: text("ended_at").notNull(),
+  durationMinutes: integer("duration_minutes").notNull().default(0),
+});
+
+export const metadataCache = sqliteTable("metadata_cache", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  queryKey: text("query_key", { length: 255 }).notNull(),
+  source: text("source", { length: 20 }).notNull(),
+  data: text("data").notNull(),
+  fetchedAt: text("fetched_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  uniqueIndex("metadata_cache_query_source_idx").on(table.queryKey, table.source),
 ]);

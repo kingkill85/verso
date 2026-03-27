@@ -7,6 +7,7 @@ import { AuthProvider } from "./hooks/use-auth";
 import { routeTree } from "./routeTree.gen";
 import { ErrorBoundary } from "./components/error-boundary";
 import "./styles/globals.css";
+import "./lib/debug-auth";
 
 const queryClient = new QueryClient({
   defaultOptions: {

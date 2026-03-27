@@ -1,5 +1,5 @@
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
-import type { users, books, sessions, readingProgress, shelves, shelfBooks } from "./schema.js";
+import type { users, books, sessions, readingProgress, shelves, shelfBooks, annotations, metadataCache } from "./schema.js";
 
 export type User = InferSelectModel<typeof users>;
 export type NewUser = InferInsertModel<typeof users>;
@@ -20,6 +20,28 @@ export type AuthResponse = {
   user: SafeUser;
   accessToken: string;
   refreshToken: string;
+};
+
+export type Annotation = InferSelectModel<typeof annotations>;
+export type NewAnnotation = InferInsertModel<typeof annotations>;
+export type MetadataCache = InferSelectModel<typeof metadataCache>;
+
+export type ExternalBook = {
+  source: "google" | "openlibrary" | "goodreads";
+  sourceId: string;
+  title: string;
+  author: string;
+  isbn?: string;
+  publisher?: string;
+  year?: number;
+  description?: string;
+  genre?: string;
+  language?: string;
+  pageCount?: number;
+  coverUrl?: string;
+  series?: string;
+  seriesIndex?: number;
+  confidence: number;
 };
 
 export type TokenPayload = {

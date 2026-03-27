@@ -1,10 +1,8 @@
 import { useState, useMemo } from "react";
-import { createPortal } from "react-dom";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { trpc } from "@/trpc";
 import { BookGrid } from "@/components/books/book-grid";
 import { BookCard } from "@/components/books/book-card";
-import { ShelfDialog } from "@/components/shelves/shelf-dialog";
 
 export const Route = createFileRoute("/_app/shelves/$id")({
   component: ShelfDetailPage,
@@ -16,7 +14,6 @@ function ShelfDetailPage() {
   const utils = trpc.useUtils();
   const shelfQuery = trpc.shelves.byId.useQuery({ id });
   const [search, setSearch] = useState("");
-  const [editOpen, setEditOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const deleteMutation = trpc.shelves.delete.useMutation({
@@ -117,15 +114,14 @@ function ShelfDetailPage() {
                     className="absolute right-0 top-full mt-1 w-36 rounded-xl border shadow-lg overflow-hidden z-40"
                     style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
                   >
-                    <button
-                      onClick={() => { setMenuOpen(false); setEditOpen(true); }}
-                      className="w-full text-left px-4 py-2.5 text-sm transition-colors"
+                    <Link to="/shelves/$id/edit" params={{ id }}
+                      onClick={() => setMenuOpen(false)}
+                      className="w-full block text-left px-4 py-2.5 text-sm transition-colors"
                       style={{ color: "var(--text)" }}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--card)")}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                    >
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
                       Edit
-                    </button>
+                    </Link>
                     <button
                       onClick={() => { setMenuOpen(false); handleDelete(); }}
                       className="w-full text-left px-4 py-2.5 text-sm transition-colors"
@@ -174,20 +170,6 @@ function ShelfDetailPage() {
         <BookGrid books={filteredBooks} />
       )}
 
-      {editOpen && createPortal(
-        <ShelfDialog
-          onClose={() => { setEditOpen(false); utils.shelves.byId.invalidate({ id }); }}
-          editShelf={{
-            id: shelf.id,
-            name: shelf.name,
-            emoji: shelf.emoji,
-            description: shelf.description,
-            isSmart: shelf.isSmart,
-            smartFilter: shelf.smartFilter,
-          }}
-        />,
-        document.body,
-      )}
     </div>
   );
 }

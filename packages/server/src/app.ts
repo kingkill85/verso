@@ -11,6 +11,8 @@ import { StorageService } from "./services/storage.js";
 import { registerUploadRoute } from "./routes/upload.js";
 import { registerStreamRoute } from "./routes/stream.js";
 import { registerCoversRoute } from "./routes/covers.js";
+import { registerImportRoutes } from "./routes/import.js";
+import { registerExportRoute } from "./routes/export.js";
 import type { Config } from "./config.js";
 
 export async function buildApp(config: Config) {
@@ -45,6 +47,8 @@ export async function buildApp(config: Config) {
   registerUploadRoute(app, db, storage, config);
   registerStreamRoute(app, db, storage, config);
   registerCoversRoute(app, db, storage, config);
+  registerImportRoutes(app, db, storage, config);
+  registerExportRoute(app, db, storage, config);
 
   app.get("/health", async () => ({ status: "ok" }));
 

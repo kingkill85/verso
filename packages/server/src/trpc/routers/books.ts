@@ -2,6 +2,8 @@ import { TRPCError } from "@trpc/server";
 import { eq, and, desc, asc, sql, isNull, isNotNull } from "drizzle-orm";
 import { books, readingProgress, bookListInput, bookByIdInput, bookUpdateInput, bookDeleteInput, searchInput } from "@verso/shared";
 import { router, protectedProcedure } from "../index.js";
+import { updateEpubMetadata, getEpubFileHash } from "../../services/epub-writer.js";
+import sharp from "sharp";
 
 const timestamp = () => ({ updatedAt: new Date().toISOString() });
 
@@ -57,7 +59,7 @@ export const booksRouter = router({
   }),
 
   update: protectedProcedure.input(bookUpdateInput).mutation(async ({ ctx, input }) => {
-    const { id, tags, ...fields } = input;
+    const { id, tags, coverUrl, ...fields } = input;
     const existing = await ctx.db.query.books.findFirst({
       where: and(eq(books.id, id), eq(books.addedBy, ctx.user.sub)),
     });
@@ -66,7 +68,46 @@ export const booksRouter = router({
     const updateData: Record<string, any> = { ...fields, ...timestamp(), metadataLocked: true };
     if (tags !== undefined) updateData.tags = JSON.stringify(tags);
 
+    // Handle cover URL — fetch and store
+    let coverImageBuffer: Buffer | undefined;
+    if (coverUrl) {
+      try {
+        const response = await fetch(coverUrl);
+        if (response.ok) {
+          const buffer = Buffer.from(await response.arrayBuffer());
+          coverImageBuffer = await sharp(buffer)
+            .resize(600, undefined, { withoutEnlargement: true })
+            .jpeg({ quality: 85 })
+            .toBuffer();
+          const coverPath = `covers/${id}.jpg`;
+          await ctx.storage.put(coverPath, coverImageBuffer);
+          updateData.coverPath = coverPath;
+        }
+      } catch (err) {
+        console.error("Cover fetch failed:", err);
+      }
+    }
+
     const [book] = await ctx.db.update(books).set(updateData).where(eq(books.id, id)).returning();
+
+    // EPUB write-back (non-fatal)
+    if (existing.fileFormat === "epub") {
+      try {
+        const filePath = ctx.storage.fullPath(existing.filePath);
+        const { coverUrl: _, tags: __, ...metaFields } = input;
+        const epubUpdates: Record<string, any> = { ...metaFields };
+        if (coverImageBuffer) {
+          epubUpdates.coverImageBuffer = coverImageBuffer;
+          epubUpdates.coverMimeType = "image/jpeg";
+        }
+        await updateEpubMetadata(filePath, epubUpdates, existing.fileHash ?? undefined);
+        const newHash = await getEpubFileHash(filePath);
+        await ctx.db.update(books).set({ fileHash: newHash }).where(eq(books.id, id));
+      } catch (err) {
+        console.error("EPUB write-back failed:", err);
+      }
+    }
+
     return book;
   }),
 

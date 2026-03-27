@@ -1,12 +1,12 @@
 import { useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/trpc";
-import { getAccessToken } from "@/lib/auth";
 
 type UseProgressSyncOptions = {
   bookId: string;
   percentage: number;
   cfiPosition: string | null;
   enabled: boolean;
+  getTimeMinutes?: () => number;
 };
 
 const DEBOUNCE_MS = 30_000; // 30 seconds
@@ -16,6 +16,7 @@ export function useProgressSync({
   percentage,
   cfiPosition,
   enabled,
+  getTimeMinutes,
 }: UseProgressSyncOptions) {
   const syncMutation = trpc.progress.sync.useMutation();
   const mutateRef = useRef(syncMutation.mutate);
@@ -26,11 +27,20 @@ export function useProgressSync({
     cfi: null,
   });
 
+  const getTimeRef = useRef(getTimeMinutes);
+  getTimeRef.current = getTimeMinutes;
+
+  // Keep latest values in refs so the unmount cleanup always has current data
+  const latestRef = useRef({ bookId, percentage, cfiPosition, enabled });
+  latestRef.current = { bookId, percentage, cfiPosition, enabled };
+
   const doSync = useCallback(() => {
     if (!enabled || percentage === 0) return;
+    const timeSpentMinutes = getTimeRef.current ? Math.round(getTimeRef.current()) : undefined;
     if (
       percentage === lastSyncedRef.current.percentage &&
-      cfiPosition === lastSyncedRef.current.cfi
+      cfiPosition === lastSyncedRef.current.cfi &&
+      !timeSpentMinutes
     ) return;
 
     lastSyncedRef.current = { percentage, cfi: cfiPosition };
@@ -38,6 +48,7 @@ export function useProgressSync({
       bookId,
       percentage,
       ...(cfiPosition ? { cfiPosition } : {}),
+      ...(timeSpentMinutes ? { timeSpentMinutes } : {}),
     });
   }, [bookId, percentage, cfiPosition, enabled]);
 
@@ -57,27 +68,23 @@ export function useProgressSync({
     doSync();
   }, [doSync]);
 
-  // Sync on unmount — use fetch with keepalive for reliability
+  // Sync on unmount — use tRPC mutation via ref (SPA navigation keeps JS alive)
   useEffect(() => {
     return () => {
-      if (lastSyncedRef.current.percentage !== percentage || lastSyncedRef.current.cfi !== cfiPosition) {
-        if (enabled && percentage > 0) {
-          const token = getAccessToken();
-          fetch("/trpc/progress.sync", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            body: JSON.stringify({
-              json: { bookId, percentage, ...(cfiPosition ? { cfiPosition } : {}) },
-            }),
-            keepalive: true,
-          }).catch(() => {});
+      const { bookId: bid, percentage: pct, cfiPosition: cfi, enabled: on } = latestRef.current;
+      const timeSpentMinutes = getTimeRef.current ? Math.round(getTimeRef.current()) : undefined;
+      if (lastSyncedRef.current.percentage !== pct || lastSyncedRef.current.cfi !== cfi || timeSpentMinutes) {
+        if (on && pct > 0) {
+          mutateRef.current({
+            bookId: bid,
+            percentage: pct,
+            ...(cfi ? { cfiPosition: cfi } : {}),
+            ...(timeSpentMinutes ? { timeSpentMinutes } : {}),
+          });
         }
       }
     };
-  }, [bookId, percentage, cfiPosition, enabled]);
+  }, []);
 
   return { syncNow };
 }

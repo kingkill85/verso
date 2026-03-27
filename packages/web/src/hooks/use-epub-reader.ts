@@ -37,7 +37,7 @@ function saveSettings(settings: ReaderSettings) {
 const FONT_MAP: Record<ReaderSettings["fontFamily"], string> = {
   serif: "'Libre Baskerville', Georgia, serif",
   "sans-serif": "'Outfit', -apple-system, sans-serif",
-  dyslexic: "'OpenDyslexic', 'Comic Sans MS', sans-serif",
+  dyslexic: "'OpenDyslexic', sans-serif",
 };
 
 const LINE_HEIGHT_MAP: Record<ReaderSettings["lineSpacing"], number> = {
@@ -70,6 +70,7 @@ export function useEpubReader({ bookId, initialCfi, enabled = true }: UseEpubRea
   const renditionRef = useRef<Rendition | null>(null);
 
   const [isLoaded, setIsLoaded] = useState(false);
+  const [settingsVersion, setSettingsVersion] = useState(0);
   const [currentCfi, setCurrentCfi] = useState<string | null>(initialCfi ?? null);
   const [percentage, setPercentage] = useState(0);
   const [toc, setToc] = useState<NavItem[]>([]);
@@ -108,6 +109,8 @@ export function useEpubReader({ bookId, initialCfi, enabled = true }: UseEpubRea
 
       const book = ePub(arrayBuffer);
       bookRef.current = book;
+      await book.opened;
+      if (cancelled) return;
 
       const rendition = book.renderTo(container, {
         width: "100%",
@@ -117,6 +120,31 @@ export function useEpubReader({ bookId, initialCfi, enabled = true }: UseEpubRea
         allowScriptedContent: true,
       });
       renditionRef.current = rendition;
+
+      // Inject OpenDyslexic font-face into each iframe content
+      rendition.hooks.content.register((contents: any) => {
+        const doc = contents.document;
+        if (!doc) return;
+        const style = doc.createElement("style");
+        style.textContent = `
+          @font-face {
+            font-family: "OpenDyslexic";
+            src: url("https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/woff/OpenDyslexic-Regular.woff") format("woff");
+            font-weight: 400; font-style: normal; font-display: swap;
+          }
+          @font-face {
+            font-family: "OpenDyslexic";
+            src: url("https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/woff/OpenDyslexic-Bold.woff") format("woff");
+            font-weight: 700; font-style: normal; font-display: swap;
+          }
+          @font-face {
+            font-family: "OpenDyslexic";
+            src: url("https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/woff/OpenDyslexic-Italic.woff") format("woff");
+            font-weight: 400; font-style: italic; font-display: swap;
+          }
+        `;
+        doc.head.appendChild(style);
+      });
 
       const s = loadSettings();
       applyStyles(rendition, s);
@@ -200,6 +228,7 @@ export function useEpubReader({ bookId, initialCfi, enabled = true }: UseEpubRea
   }, []);
 
   const updateSettings = useCallback((partial: Partial<ReaderSettings>) => {
+    setSettingsVersion((v) => v + 1);
     setSettingsState((prev) => {
       const next = { ...prev, ...partial };
       saveSettings(next);
@@ -212,26 +241,28 @@ export function useEpubReader({ bookId, initialCfi, enabled = true }: UseEpubRea
         if (partial.flow && partial.flow !== prev.flow) {
           const cfiValue = currentCfiRef.current;
           const container = containerRef.current;
-          if (container && bookRef.current) {
+          const book = bookRef.current;
+          if (container && book) {
             rendition.destroy();
-            const newRendition = bookRef.current.renderTo(container, {
-              width: "100%",
-              height: "100%",
-              flow: next.flow === "scrolled" ? "scrolled" : "paginated",
-              spread: "none",
-              allowScriptedContent: true,
+            book.opened.then(() => {
+              const newRendition = book.renderTo(container, {
+                width: "100%",
+                height: "100%",
+                flow: next.flow === "scrolled" ? "scrolled" : "paginated",
+                spread: "none",
+                allowScriptedContent: true,
+              });
+              renditionRef.current = newRendition;
+              applyStyles(newRendition, next);
+              newRendition.themes.override("padding", `0 ${MARGIN_MAP[next.margins]}px`);
+              const onRelocated = (book as any)._onRelocated;
+              if (onRelocated) newRendition.on("relocated", onRelocated);
+              if (cfiValue) {
+                newRendition.display(cfiValue);
+              } else {
+                newRendition.display();
+              }
             });
-            renditionRef.current = newRendition;
-            applyStyles(newRendition, next);
-            newRendition.themes.override("padding", `0 ${MARGIN_MAP[next.margins]}px`);
-            // Re-register relocated handler on new rendition
-            const onRelocated = (bookRef.current as any)._onRelocated;
-            if (onRelocated) newRendition.on("relocated", onRelocated);
-            if (cfiValue) {
-              newRendition.display(cfiValue);
-            } else {
-              newRendition.display();
-            }
           }
         }
       }
@@ -242,6 +273,7 @@ export function useEpubReader({ bookId, initialCfi, enabled = true }: UseEpubRea
 
   return {
     containerRef,
+    renditionRef,
     isLoaded,
     currentCfi,
     percentage,
@@ -252,5 +284,6 @@ export function useEpubReader({ bookId, initialCfi, enabled = true }: UseEpubRea
     prevPage,
     goTo,
     updateSettings,
+    settingsVersion,
   };
 }
