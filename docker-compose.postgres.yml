@@ -12,12 +12,20 @@ services:
     restart: unless-stopped
 
   verso:
+    image: ghcr.io/kingkill85/verso:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - verso-data:/data
+    env_file: .env
     environment:
       DB_DRIVER: postgres
       DATABASE_URL: postgresql://verso:${POSTGRES_PASSWORD}@postgres:5432/verso
     depends_on:
       postgres:
         condition: service_healthy
+    restart: unless-stopped
 
 volumes:
+  verso-data:
   pgdata:
