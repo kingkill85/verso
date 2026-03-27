@@ -4,6 +4,7 @@ import { trpc } from "@/trpc";
 import { BookGrid } from "@/components/books/book-grid";
 import { BookCard } from "@/components/books/book-card";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { MoreHorizontalIcon, XIcon, BookmarkIcon } from "@/components/icons";
 
 export const Route = createFileRoute("/_app/shelves/$id")({
   component: ShelfDetailPage,
@@ -31,6 +32,8 @@ function ShelfDetailPage() {
     },
   });
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   const filteredBooks = useMemo(() => {
     if (!shelfQuery.data?.books) return [];
     if (!search.trim()) return shelfQuery.data.books;
@@ -54,7 +57,7 @@ function ShelfDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <p className="font-display text-lg" style={{ color: "var(--text)" }}>Shelf not found</p>
-        <Link to="/library" className="text-sm mt-2" style={{ color: "var(--warm)" }}>Back to library</Link>
+        <Link to="/home" className="text-sm mt-2" style={{ color: "var(--warm)" }}>Back</Link>
       </div>
     );
   }
@@ -66,8 +69,6 @@ function ShelfDetailPage() {
   const canEditSmart = !shelf.isDefault && shelf.isSmart;
   const canManageBooks = !shelf.isSmart; // manual shelves only
 
-  const [confirmDelete, setConfirmDelete] = useState(false);
-
   const handleDelete = () => {
     setConfirmDelete(true);
   };
@@ -75,19 +76,19 @@ function ShelfDetailPage() {
   return (
     <div className="animate-in fade-in">
       <Link
-        to="/library"
+        to="/home"
         className="inline-flex items-center text-sm mb-6 transition-colors hover:opacity-80"
         style={{ color: "var(--text-dim)" }}
       >
         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
-        Back to library
+        Back
       </Link>
 
       <div className="mb-6">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{shelf.emoji ?? "📁"}</span>
+          <span className="text-2xl">{shelf.emoji ? shelf.emoji : <BookmarkIcon size={24} />}</span>
           <h1 className="font-display text-[26px] font-bold flex-1" style={{ color: "var(--text)" }}>
             {shelf.name}
           </h1>
@@ -106,7 +107,7 @@ function ShelfDetailPage() {
                 className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:opacity-80"
                 style={{ color: "var(--text-dim)" }}
               >
-                ⋯
+                <MoreHorizontalIcon size={18} />
               </button>
               {menuOpen && (
                 <>
@@ -225,7 +226,7 @@ function RemovableBookGrid({ books, onRemove, isRemoving }: {
             style={{ backgroundColor: "rgba(0,0,0,0.6)", color: "white" }}
             title="Remove from shelf"
           >
-            ✕
+            <XIcon size={14} />
           </button>
         </div>
       ))}

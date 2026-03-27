@@ -2,6 +2,17 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/trpc";
 import { getAccessToken } from "@/lib/auth";
+import type { ReactNode } from "react";
+import {
+  HomeIcon,
+  BookOpenIcon,
+  BarChartIcon,
+  UploadIcon,
+  DownloadIcon,
+  UsersIcon,
+  ArchiveIcon,
+  BookmarkIcon,
+} from "@/components/icons";
 
 export function Sidebar({ onClose }: { onClose?: () => void }) {
   const { user, logout } = useAuth();
@@ -20,15 +31,15 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
         <div className="px-3 mb-2 text-[10px] font-medium uppercase tracking-[1.5px]" style={{ color: "var(--text-faint)" }}>
           Library
         </div>
-        <SidebarItem to="/home" label="Home" emoji="🏠" active={isActive("/home")} onClick={onClose} />
-        <SidebarItem to="/library" label="Library" emoji="📚" active={isActive("/library")} onClick={onClose} />
+        <SidebarItem to="/home" label="Home" icon={<HomeIcon />} active={isActive("/home")} onClick={onClose} />
+        <SidebarItem to="/library" label="Library" icon={<BookOpenIcon />} active={isActive("/library")} onClick={onClose} />
         {defaultShelves.map((shelf) => (
           <SidebarItem
             key={shelf.id}
             to="/shelves/$id"
             params={{ id: shelf.id }}
             label={shelf.name}
-            emoji={shelf.emoji ?? "📁"}
+            icon={shelf.emoji ? <span className="text-base leading-none">{shelf.emoji}</span> : <BookmarkIcon />}
             active={isActive(`/shelves/${shelf.id}`)}
             count={shelf.bookCount}
             badge={shelf.isSmart ? "smart" : undefined}
@@ -52,7 +63,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
             to="/shelves/$id"
             params={{ id: shelf.id }}
             label={shelf.name}
-            emoji={shelf.emoji ?? "📁"}
+            icon={shelf.emoji ? <span className="text-base leading-none">{shelf.emoji}</span> : <BookmarkIcon />}
             active={isActive(`/shelves/${shelf.id}`)}
             count={shelf.bookCount}
             badge={shelf.isSmart ? "smart" : undefined}
@@ -63,11 +74,11 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
         <div className="px-3 mb-2 mt-6 text-[10px] font-medium uppercase tracking-[1.5px]" style={{ color: "var(--text-faint)" }}>
           Actions
         </div>
-        <SidebarItem to="/stats" label="Stats" emoji="📊" active={isActive("/stats")} onClick={onClose} />
+        <SidebarItem to="/stats" label="Stats" icon={<BarChartIcon />} active={isActive("/stats")} onClick={onClose} />
         {user?.role === "admin" && (<>
-          <SidebarItem to="/upload" label="Upload" emoji="📤" active={isActive("/upload")} onClick={onClose} />
-          <SidebarItem to="/import" label="Import" emoji="📥" active={isActive("/import")} onClick={onClose} />
-          <SidebarItem to="/admin/users" label="Users" emoji="👥" active={isActive("/admin/users")} onClick={onClose} />
+          <SidebarItem to="/upload" label="Upload" icon={<UploadIcon />} active={isActive("/upload")} onClick={onClose} />
+          <SidebarItem to="/import" label="Import" icon={<DownloadIcon />} active={isActive("/import")} onClick={onClose} />
+          <SidebarItem to="/admin/users" label="Users" icon={<UsersIcon />} active={isActive("/admin/users")} onClick={onClose} />
         </>)}
       </nav>
 
@@ -101,7 +112,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
             color: "var(--text-dim)",
           }}
         >
-          <span className="w-[22px] text-base">💾</span>
+          <span className="w-[22px] flex items-center justify-center"><ArchiveIcon /></span>
           <span className="flex-1 text-left">Export Library</span>
         </button>)}
         <div className="flex items-center gap-3 px-2">
@@ -137,8 +148,8 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   );
 }
 
-function SidebarItem({ to, params, label, emoji, active, count, badge, onClick }: {
-  to: string; params?: Record<string, string>; label: string; emoji: string; active: boolean; count?: number; badge?: string; onClick?: () => void;
+function SidebarItem({ to, params, label, icon, active, count, badge, onClick }: {
+  to: string; params?: Record<string, string>; label: string; icon: ReactNode; active: boolean; count?: number; badge?: string; onClick?: () => void;
 }) {
   return (
     <Link to={to} params={params} onClick={onClick}
@@ -149,7 +160,7 @@ function SidebarItem({ to, params, label, emoji, active, count, badge, onClick }
         backgroundColor: active ? "var(--warm-glow)" : "transparent",
         fontWeight: active ? 500 : 400,
       }}>
-      <span className="w-[22px] text-base">{emoji}</span>
+      <span className="w-[22px] flex items-center justify-center">{icon}</span>
       <span className="flex-1">{label}</span>
       {badge ? (
         <span className="text-[11px] italic opacity-60">{badge}</span>

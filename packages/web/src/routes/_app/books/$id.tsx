@@ -8,6 +8,7 @@ import { BookmarksTab } from "@/components/books/bookmarks-tab";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { getAccessToken } from "@/lib/auth";
 import { useAuth } from "@/hooks/use-auth";
+import { MoreHorizontalIcon } from "@/components/icons";
 
 export const Route = createFileRoute("/_app/books/$id")({
   component: BookDetailPage,
@@ -45,7 +46,7 @@ function BookDetailPage() {
       utils.shelves.list.invalidate();
       utils.shelves.byId.invalidate();
       utils.stats.overview.invalidate();
-      navigate({ to: "/library" });
+      navigate({ to: "/home" });
     },
   });
 
@@ -76,11 +77,11 @@ function BookDetailPage() {
           Book not found
         </p>
         <Link
-          to="/library"
+          to="/home"
           className="text-sm mt-2"
           style={{ color: "var(--warm)" }}
         >
-          Back to library
+          Back
         </Link>
       </div>
     );
@@ -107,7 +108,7 @@ function BookDetailPage() {
     <div className="max-w-4xl mx-auto animate-in fade-in">
       {/* Back link */}
       <Link
-        to="/library"
+        to="/home"
         className="inline-flex items-center text-sm mb-6 transition-colors hover:opacity-80"
         style={{ color: "var(--text-dim)" }}
       >
@@ -410,7 +411,7 @@ function OverflowMenu({
         className="px-3 py-2.5 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
         style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
       >
-        ⋯
+        <MoreHorizontalIcon size={20} />
       </button>
       {open && (
         <div

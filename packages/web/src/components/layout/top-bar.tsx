@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useTheme } from "@/hooks/use-theme";
+import { MenuIcon, XIcon, SunIcon, MoonIcon } from "@/components/icons";
 
 export function TopBar({ sidebarOpen, onMenuClick }: { sidebarOpen: boolean; onMenuClick: () => void }) {
   const { resolvedTheme, setTheme } = useTheme();
@@ -19,7 +20,7 @@ export function TopBar({ sidebarOpen, onMenuClick }: { sidebarOpen: boolean; onM
     <header className="sticky top-0 z-30 flex items-center gap-4 px-6 h-14 border-b"
       style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
       <button onClick={onMenuClick} className="p-2 -ml-2 rounded-lg" style={{ color: "var(--text-dim)" }}>
-        {sidebarOpen ? "✕" : "☰"}
+        {sidebarOpen ? <XIcon size={20} /> : <MenuIcon size={20} />}
       </button>
 
       <Link to="/home" className="font-display text-xl font-bold shrink-0" style={{ color: "var(--warm)" }}>
@@ -42,7 +43,7 @@ export function TopBar({ sidebarOpen, onMenuClick }: { sidebarOpen: boolean; onM
       <button onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
         className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
         style={{ color: "var(--text-dim)" }} title="Toggle theme">
-        {resolvedTheme === "dark" ? "☀️" : "🌙"}
+        {resolvedTheme === "dark" ? <SunIcon size={20} /> : <MoonIcon size={20} />}
       </button>
     </header>
   );
