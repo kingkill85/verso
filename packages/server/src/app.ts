@@ -2,8 +2,12 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import multipart from "@fastify/multipart";
+import fastifyStatic from "@fastify/static";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import { sql } from "drizzle-orm";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import fs from "node:fs";
 import { appRouter } from "./trpc/router.js";
 import { createContextFactory } from "./trpc/index.js";
 import { createDb } from "./db/client.js";
@@ -16,6 +20,8 @@ import { registerImportRoutes } from "./routes/import.js";
 import { registerExportRoute } from "./routes/export.js";
 import { registerOpdsRoutes } from "./routes/opds.js";
 import type { Config } from "./config.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export async function buildApp(config: Config) {
   const app = Fastify({ logger: true });
@@ -71,6 +77,20 @@ export async function buildApp(config: Config) {
       });
     }
   });
+
+  // Serve frontend static files in production
+  const webDistPath = path.resolve(__dirname, "../../web/dist");
+  if (config.NODE_ENV === "production" && fs.existsSync(webDistPath)) {
+    await app.register(fastifyStatic, {
+      root: webDistPath,
+      wildcard: false,
+    });
+
+    // SPA fallback: serve index.html for all unmatched routes
+    app.setNotFoundHandler((_req, reply) => {
+      return reply.sendFile("index.html");
+    });
+  }
 
   return app;
 }
