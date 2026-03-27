@@ -1,15 +1,18 @@
 services:
   verso:
-    build: .
+    image: ghcr.io/kingkill85/verso:latest
     ports:
       - "3000:3000"
     volumes:
       - verso-data:/data
     environment:
-      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in .env (min 32 chars)}
-      - DATABASE_URL=file:/data/db.sqlite
-      - STORAGE_PATH=/data/files
-      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (min 32 chars)}
+      DATABASE_URL: file:/data/db.sqlite
+      STORAGE_PATH: /data/files
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      AUTH_MODE: ${AUTH_MODE:-local}
+      MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE:-104857600}
+      NODE_ENV: production
     restart: unless-stopped
 
 volumes:
