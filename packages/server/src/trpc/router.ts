@@ -6,6 +6,7 @@ import { shelvesRouter } from "./routers/shelves.js";
 import { metadataRouter } from "./routers/metadata.js";
 import { annotationsRouter } from "./routers/annotations.js";
 import { statsRouter } from "./routers/stats.js";
+import { apiKeysRouter } from "./routers/api-keys.js";
 
 export const appRouter = router({
   auth: authRouter,
@@ -15,6 +16,7 @@ export const appRouter = router({
   metadata: metadataRouter,
   annotations: annotationsRouter,
   stats: statsRouter,
+  apiKeys: apiKeysRouter,
 });
 
 export type AppRouter = typeof appRouter;
