@@ -216,13 +216,13 @@ export async function buildAuthorsList(db: AppDatabase, userId: string): Promise
   const entries: FeedEntry[] = rows.map((row) => {
     const encodedAuthor = encodeURIComponent(row.author);
     return {
-      id: `${BASE_URL}/author/${encodedAuthor}`,
+      id: `${BASE_URL}/authors/${encodedAuthor}`,
       title: `${row.author} (${row.count})`,
       updated: now,
       links: [
         {
           rel: "subsection",
-          href: `${BASE_URL}/author/${encodedAuthor}`,
+          href: `${BASE_URL}/authors/${encodedAuthor}`,
           type: "application/atom+xml;profile=opds-catalog;kind=acquisition",
         },
       ],
@@ -252,7 +252,7 @@ export async function buildAuthorBooks(
   });
 
   const encodedAuthor = encodeURIComponent(author);
-  const baseUrl = `${BASE_URL}/author/${encodedAuthor}`;
+  const baseUrl = `${BASE_URL}/authors/${encodedAuthor}`;
   const { items, nextUrl, prevUrl } = paginate(allBooks, page, baseUrl);
 
   return {
@@ -286,13 +286,13 @@ export async function buildGenresList(db: AppDatabase, userId: string): Promise<
       const genre = row.genre!;
       const encodedGenre = encodeURIComponent(genre);
       return {
-        id: `${BASE_URL}/genre/${encodedGenre}`,
+        id: `${BASE_URL}/genres/${encodedGenre}`,
         title: `${genre} (${row.count})`,
         updated: now,
         links: [
           {
             rel: "subsection",
-            href: `${BASE_URL}/genre/${encodedGenre}`,
+            href: `${BASE_URL}/genres/${encodedGenre}`,
             type: "application/atom+xml;profile=opds-catalog;kind=acquisition",
           },
         ],
@@ -322,7 +322,7 @@ export async function buildGenreBooks(
   });
 
   const encodedGenre = encodeURIComponent(genre);
-  const baseUrl = `${BASE_URL}/genre/${encodedGenre}`;
+  const baseUrl = `${BASE_URL}/genres/${encodedGenre}`;
   const { items, nextUrl, prevUrl } = paginate(allBooks, page, baseUrl);
 
   return {
@@ -346,14 +346,14 @@ export async function buildShelvesList(db: AppDatabase, userId: string): Promise
 
   const now = new Date().toISOString();
   const entries: FeedEntry[] = userShelves.map((shelf) => ({
-    id: `${BASE_URL}/shelf/${shelf.id}`,
+    id: `${BASE_URL}/shelves/${shelf.id}`,
     title: shelf.name,
     updated: now,
     content: shelf.description ?? undefined,
     links: [
       {
         rel: "subsection",
-        href: `${BASE_URL}/shelf/${shelf.id}`,
+        href: `${BASE_URL}/shelves/${shelf.id}`,
         type: "application/atom+xml;profile=opds-catalog;kind=acquisition",
       },
     ],
@@ -385,7 +385,7 @@ export async function buildShelfBooks(
     .orderBy(shelfBooks.position);
 
   const allBooks = rows.map((r) => r.book);
-  const baseUrl = `${BASE_URL}/shelf/${shelfId}`;
+  const baseUrl = `${BASE_URL}/shelves/${shelfId}`;
   const { items, nextUrl, prevUrl } = paginate(allBooks, page, baseUrl);
 
   return {

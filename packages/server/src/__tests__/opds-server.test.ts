@@ -275,7 +275,7 @@ describe("opds-server service", () => {
       const feed = await buildShelvesList(ctx.db, userId);
       for (const entry of feed.entries) {
         // Each href should reference only user1 shelves (just check it's a valid href)
-        expect(entry.links[0].href).toMatch(/^\/opds\/shelf\//);
+        expect(entry.links[0].href).toMatch(/^\/opds\/shelves\//);
       }
     });
 
