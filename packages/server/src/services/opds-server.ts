@@ -53,14 +53,14 @@ function bookToEntry(book: typeof books.$inferSelect): FeedEntry {
 
   links.push({
     rel: "http://opds-spec.org/acquisition",
-    href: `/download/${book.id}.${book.fileFormat}`,
+    href: `/api/books/${book.id}/file`,
     type: mimeType,
   });
 
   if (book.coverPath) {
     links.push({
       rel: "http://opds-spec.org/image",
-      href: `/covers/${book.coverPath}`,
+      href: `/api/covers/${book.id}`,
       type: "image/jpeg",
     });
   }

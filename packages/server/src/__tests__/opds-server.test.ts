@@ -403,7 +403,7 @@ describe("opds-server service", () => {
       if (catalog.type === "acquisition") {
         expect(catalog.entries[0].title).toBe("Round Trip");
         expect(catalog.entries[0].author).toBe("Author X");
-        expect(catalog.entries[0].acquisitionUrl).toContain("/download/");
+        expect(catalog.entries[0].acquisitionUrl).toContain("/api/books/");
         expect(catalog.entries[0].coverUrl).toBeDefined();
       }
     });
