@@ -45,7 +45,6 @@ ENV STORAGE_PATH=/data/files
 ENV DATABASE_URL=file:/data/db.sqlite
 
 EXPOSE 3000
-VOLUME /data
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
   CMD wget -qO- http://localhost:3000/health || exit 1
