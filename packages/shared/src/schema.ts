@@ -164,3 +164,15 @@ export const metadataCache = sqliteTable("metadata_cache", {
 }, (table) => [
   uniqueIndex("metadata_cache_query_source_idx").on(table.queryKey, table.source),
 ]);
+
+export const apiKeys = sqliteTable("api_keys", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name", { length: 100 }).notNull(),
+  keyHash: text("key_hash", { length: 255 }).notNull(),
+  keyPrefix: text("key_prefix", { length: 12 }).notNull(),
+  scopes: text("scopes").notNull().default('["opds"]'),
+  lastUsedAt: text("last_used_at"),
+  expiresAt: text("expires_at"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+});
