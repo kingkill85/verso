@@ -37,17 +37,21 @@ COPY --from=build /app/pnpm-workspace.yaml ./
 
 RUN pnpm install --frozen-lockfile --prod
 
+RUN apk add --no-cache su-exec
 RUN addgroup -g 1001 verso && adduser -u 1001 -G verso -s /bin/sh -D verso
-RUN mkdir -p /data/files && chown -R verso:verso /data
 
 ENV NODE_ENV=production
 ENV STORAGE_PATH=/data/files
 ENV DATABASE_URL=file:/data/db.sqlite
 
 EXPOSE 3000
+VOLUME /data
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
   CMD wget -qO- http://localhost:3000/health || exit 1
 
-USER verso
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "packages/server/dist/index.js"]
