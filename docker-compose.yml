@@ -1,0 +1,16 @@
+services:
+  verso:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - verso-data:/data
+    environment:
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in .env (min 32 chars)}
+      - DATABASE_URL=file:/data/db.sqlite
+      - STORAGE_PATH=/data/files
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
+    restart: unless-stopped
+
+volumes:
+  verso-data:
