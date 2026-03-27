@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/trpc";
@@ -107,15 +107,6 @@ function LoginPage() {
         </button>
       </form>
 
-      <p
-        className="text-center text-sm mt-6"
-        style={{ color: "var(--text-dim)" }}
-      >
-        Don't have an account?{" "}
-        <Link to="/register" style={{ color: "var(--warm)" }}>
-          Create one
-        </Link>
-      </p>
     </div>
   );
 }

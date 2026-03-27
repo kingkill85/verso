@@ -13,7 +13,6 @@ import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AuthSetupRouteImport } from './routes/_auth/setup'
-import { Route as AuthRegisterRouteImport } from './routes/_auth/register'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AppUploadRouteImport } from './routes/_app/upload'
 import { Route as AppStatsRouteImport } from './routes/_app/stats'
@@ -44,11 +43,6 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AuthSetupRoute = AuthSetupRouteImport.update({
   id: '/setup',
   path: '/setup',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthRegisterRoute = AuthRegisterRouteImport.update({
-  id: '/register',
-  path: '/register',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
@@ -125,7 +119,6 @@ export interface FileRoutesByFullPath {
   '/stats': typeof AppStatsRoute
   '/upload': typeof AppUploadRoute
   '/login': typeof AuthLoginRoute
-  '/register': typeof AuthRegisterRoute
   '/setup': typeof AuthSetupRoute
   '/books/$id': typeof AppBooksIdRoute
   '/shelves/$id': typeof AppShelvesIdRoute
@@ -143,7 +136,6 @@ export interface FileRoutesByTo {
   '/stats': typeof AppStatsRoute
   '/upload': typeof AppUploadRoute
   '/login': typeof AuthLoginRoute
-  '/register': typeof AuthRegisterRoute
   '/setup': typeof AuthSetupRoute
   '/books/$id': typeof AppBooksIdRoute
   '/shelves/$id': typeof AppShelvesIdRoute
@@ -163,7 +155,6 @@ export interface FileRoutesById {
   '/_app/stats': typeof AppStatsRoute
   '/_app/upload': typeof AppUploadRoute
   '/_auth/login': typeof AuthLoginRoute
-  '/_auth/register': typeof AuthRegisterRoute
   '/_auth/setup': typeof AuthSetupRoute
   '/_app/': typeof AppIndexRoute
   '/_app/books/$id': typeof AppBooksIdRoute
@@ -184,7 +175,6 @@ export interface FileRouteTypes {
     | '/stats'
     | '/upload'
     | '/login'
-    | '/register'
     | '/setup'
     | '/books/$id'
     | '/shelves/$id'
@@ -202,7 +192,6 @@ export interface FileRouteTypes {
     | '/stats'
     | '/upload'
     | '/login'
-    | '/register'
     | '/setup'
     | '/books/$id'
     | '/shelves/$id'
@@ -221,7 +210,6 @@ export interface FileRouteTypes {
     | '/_app/stats'
     | '/_app/upload'
     | '/_auth/login'
-    | '/_auth/register'
     | '/_auth/setup'
     | '/_app/'
     | '/_app/books/$id'
@@ -266,13 +254,6 @@ declare module '@tanstack/react-router' {
       path: '/setup'
       fullPath: '/setup'
       preLoaderRoute: typeof AuthSetupRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/register': {
-      id: '/_auth/register'
-      path: '/register'
-      fullPath: '/register'
-      preLoaderRoute: typeof AuthRegisterRouteImport
       parentRoute: typeof AuthRoute
     }
     '/_auth/login': {
@@ -405,13 +386,11 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface AuthRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
-  AuthRegisterRoute: typeof AuthRegisterRoute
   AuthSetupRoute: typeof AuthSetupRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
-  AuthRegisterRoute: AuthRegisterRoute,
   AuthSetupRoute: AuthSetupRoute,
 }
 
