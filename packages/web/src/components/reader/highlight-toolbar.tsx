@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 const COLORS = [
   { name: "yellow", bg: "#fef08a", ring: "#eab308" },
@@ -14,6 +15,7 @@ type HighlightToolbarProps = {
 };
 
 export function HighlightToolbar({ position, onHighlight, onDismiss }: HighlightToolbarProps) {
+  const { t } = useTranslation();
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [noteColor, setNoteColor] = useState("yellow");
@@ -75,7 +77,7 @@ export function HighlightToolbar({ position, onHighlight, onDismiss }: Highlight
             <textarea
               className="w-full rounded-lg px-2 py-1.5 text-sm resize-none focus:outline-none bg-stone-800 text-stone-200 border border-stone-600"
               rows={3}
-              placeholder="Add a note..."
+              placeholder={t("reader.addNote")}
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
               autoFocus
@@ -90,7 +92,7 @@ export function HighlightToolbar({ position, onHighlight, onDismiss }: Highlight
                   setNoteColor("yellow");
                 }}
               >
-                Save
+                {t("reader.save")}
               </button>
             </div>
           </div>

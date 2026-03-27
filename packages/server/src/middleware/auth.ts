@@ -37,9 +37,9 @@ export function createAdminAuthHook(config: Config) {
   };
 }
 
-export function createFlexAuthHook(config: Config, db: AppDatabase, basicScope: string) {
+export function createFlexAuthHook(config: Config, db: AppDatabase) {
   const bearerHook = createAuthHook(config);
-  const basicHook = createBasicAuthHook(db, basicScope);
+  const basicHook = createBasicAuthHook(db);
 
   return async (req: FastifyRequest, reply: FastifyReply) => {
     const authHeader = req.headers.authorization;

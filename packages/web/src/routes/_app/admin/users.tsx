@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
 import { useAuth } from "@/hooks/use-auth";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -9,6 +10,7 @@ export const Route = createFileRoute("/_app/admin/users")({
 });
 
 function AdminUsersPage() {
+  const { t } = useTranslation();
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const utils = trpc.useUtils();
@@ -42,7 +44,7 @@ function AdminUsersPage() {
     open: false,
     title: "",
     message: "",
-    confirmLabel: "Confirm",
+    confirmLabel: t("confirm.confirm"),
     destructive: false,
     onConfirm: () => {},
   });
@@ -72,7 +74,7 @@ function AdminUsersPage() {
     e.preventDefault();
     setCreateError("");
     if (createPassword.length < 8) {
-      setCreateError("Password must be at least 8 characters");
+      setCreateError(t("account.tooShort"));
       return;
     }
     createUser.mutate({
@@ -87,9 +89,9 @@ function AdminUsersPage() {
     const newRole = currentRole === "admin" ? "user" : "admin";
     setConfirmDialog({
       open: true,
-      title: "Change Role",
-      message: `Change ${displayName}'s role from ${currentRole} to ${newRole}?`,
-      confirmLabel: "Change Role",
+      title: t("admin.changeRole"),
+      message: t("admin.changeRoleConfirm", { name: displayName, from: currentRole, to: newRole }),
+      confirmLabel: t("admin.changeRole"),
       destructive: false,
       onConfirm: () => {
         updateRole.mutate({ userId, role: newRole });
@@ -101,9 +103,9 @@ function AdminUsersPage() {
   const handleDelete = (userId: string, displayName: string) => {
     setConfirmDialog({
       open: true,
-      title: "Delete User",
-      message: `Are you sure you want to delete ${displayName}? This action cannot be undone.`,
-      confirmLabel: "Delete",
+      title: t("admin.deleteUser"),
+      message: t("admin.deleteUserConfirm", { name: displayName }),
+      confirmLabel: t("confirm.delete"),
       destructive: true,
       onConfirm: () => {
         deleteUser.mutate({ userId });
@@ -121,14 +123,14 @@ function AdminUsersPage() {
           className="font-display text-2xl font-bold"
           style={{ color: "var(--text)" }}
         >
-          Users
+          {t("admin.users")}
         </h1>
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
           className="px-4 py-2 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
           style={{ backgroundColor: "var(--warm)" }}
         >
-          {showCreateForm ? "Cancel" : "Create User"}
+          {showCreateForm ? t("admin.cancel") : t("admin.createUser")}
         </button>
       </div>
 
@@ -142,7 +144,7 @@ function AdminUsersPage() {
             className="text-sm font-medium uppercase tracking-wider mb-4"
             style={{ color: "var(--text-dim)" }}
           >
-            New User
+            {t("admin.newUser")}
           </h2>
           <form onSubmit={handleCreateSubmit} className="space-y-4">
             {createError && (
@@ -162,7 +164,7 @@ function AdminUsersPage() {
                 className="block text-xs font-medium uppercase tracking-wider mb-1.5"
                 style={{ color: "var(--text-dim)" }}
               >
-                Display Name
+                {t("admin.displayName")}
               </label>
               <input
                 type="text"
@@ -183,7 +185,7 @@ function AdminUsersPage() {
                 className="block text-xs font-medium uppercase tracking-wider mb-1.5"
                 style={{ color: "var(--text-dim)" }}
               >
-                Email
+                {t("admin.email")}
               </label>
               <input
                 type="email"
@@ -204,7 +206,7 @@ function AdminUsersPage() {
                 className="block text-xs font-medium uppercase tracking-wider mb-1.5"
                 style={{ color: "var(--text-dim)" }}
               >
-                Password
+                {t("admin.password")}
               </label>
               <input
                 type="password"
@@ -223,7 +225,7 @@ function AdminUsersPage() {
                 className="text-xs mt-1"
                 style={{ color: "var(--text-faint)" }}
               >
-                At least 8 characters
+                {t("account.minChars")}
               </p>
             </div>
 
@@ -232,7 +234,7 @@ function AdminUsersPage() {
                 className="block text-xs font-medium uppercase tracking-wider mb-1.5"
                 style={{ color: "var(--text-dim)" }}
               >
-                Role
+                {t("admin.role")}
               </label>
               <div className="flex gap-2">
                 <button
@@ -247,7 +249,7 @@ function AdminUsersPage() {
                     color: createRole === "user" ? "white" : "var(--text-dim)",
                   }}
                 >
-                  User
+                  {t("admin.user")}
                 </button>
                 <button
                   type="button"
@@ -261,7 +263,7 @@ function AdminUsersPage() {
                     color: createRole === "admin" ? "white" : "var(--text-dim)",
                   }}
                 >
-                  Admin
+                  {t("admin.admin")}
                 </button>
               </div>
             </div>
@@ -272,7 +274,7 @@ function AdminUsersPage() {
               className="w-full py-2.5 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
               style={{ backgroundColor: "var(--warm)" }}
             >
-              {createUser.isPending ? "Creating..." : "Create User"}
+              {createUser.isPending ? t("admin.creating") : t("admin.createUser")}
             </button>
           </form>
         </div>
@@ -282,7 +284,7 @@ function AdminUsersPage() {
       <div className="space-y-3">
         {usersQuery.isLoading && (
           <p className="text-sm" style={{ color: "var(--text-dim)" }}>
-            Loading users...
+            {t("admin.loadingUsers")}
           </p>
         )}
 
@@ -340,8 +342,8 @@ function AdminUsersPage() {
               style={{ color: "var(--text-faint)" }}
               title={
                 u.id === currentUser?.id
-                  ? "You cannot delete yourself"
-                  : `Delete ${u.displayName}`
+                  ? t("admin.cantDeleteSelf")
+                  : t("admin.deleteUser")
               }
             >
               <svg
@@ -362,7 +364,7 @@ function AdminUsersPage() {
 
         {usersQuery.data?.length === 0 && (
           <p className="text-sm" style={{ color: "var(--text-dim)" }}>
-            No users found.
+            {t("admin.noUsers")}
           </p>
         )}
       </div>

@@ -1,179 +1,88 @@
+// Re-export Lucide icons with our old names for backward compatibility
+export {
+  House as HomeIcon,
+  BookOpen as BookOpenIcon,
+  BarChart3 as BarChartIcon,
+  Upload as UploadIcon,
+  Download as DownloadIcon,
+  Users as UsersIcon,
+  Archive as ArchiveIcon,
+  Menu as MenuIcon,
+  X as XIcon,
+  Sun as SunIcon,
+  Moon as MoonIcon,
+  MoreHorizontal as MoreHorizontalIcon,
+  Bookmark as BookmarkIcon,
+  Check as CheckIcon,
+  CheckCircle as CheckCircleIcon,
+  Folder as FolderIcon,
+  BookOpen as ReadingIcon,
+  BookmarkPlus as BookmarkPlusIcon,
+  Star as StarIcon,
+  Clock as ClockIcon,
+  Heart as HeartIcon,
+  Glasses as GlassesIcon,
+  Flame as FlameIcon,
+  Tag as TagIcon,
+  Layers as LayersIcon,
+} from "lucide-react";
+
 import type { ReactNode } from "react";
+import type { LucideProps } from "lucide-react";
+import {
+  BookOpen, BookmarkPlus, Star, Clock, CheckCircle, Bookmark,
+  Heart, Glasses, Flame, Tag, Layers, Folder, BarChart3,
+} from "lucide-react";
 
-interface IconProps {
-  size?: number;
-  className?: string;
+// Map of all choosable shelf icons (for the icon picker)
+export const SHELF_ICONS: Record<string, React.ComponentType<LucideProps>> = {
+  bookmark: Bookmark,
+  "book-open": BookOpen,
+  "bookmark-plus": BookmarkPlus,
+  star: Star,
+  clock: Clock,
+  "check-circle": CheckCircle,
+  heart: Heart,
+  glasses: Glasses,
+  flame: Flame,
+  tag: Tag,
+  layers: Layers,
+  folder: Folder,
+  "bar-chart": BarChart3,
+};
+
+/** Render a shelf icon — supports "icon:key" strings, emoji strings, or null (falls back by name) */
+export function renderShelfIcon(emoji: string | null | undefined, shelfName: string, size = 18): ReactNode {
+  if (emoji?.startsWith("icon:")) {
+    const key = emoji.slice(5);
+    const IconComponent = SHELF_ICONS[key];
+    if (IconComponent) return <IconComponent size={size} />;
+  }
+  if (emoji) return emoji;
+  return getShelfIcon(shelfName, size);
 }
 
-function Icon({ size = 18, className, children }: IconProps & { children: ReactNode }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      {children}
-    </svg>
-  );
+/** Translate a default shelf name if it has a translation key */
+export function translateShelfName(name: string, t: (key: string) => string): string {
+  const keyMap: Record<string, string> = {
+    "Currently Reading": "shelf.currentlyReading",
+    "Want to Read": "shelf.wantToRead",
+    "Favorites": "shelf.favorites",
+    "Recently Added": "shelf.recentlyAdded",
+    "Finished": "shelf.finished",
+  };
+  const key = keyMap[name];
+  return key ? t(key) : name;
 }
 
-export function HomeIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-      <polyline points="9 22 9 12 15 12 15 22" />
-    </Icon>
-  );
-}
-
-export function BookOpenIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-    </Icon>
-  );
-}
-
-export function BarChartIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <line x1="12" y1="20" x2="12" y2="10" />
-      <line x1="18" y1="20" x2="18" y2="4" />
-      <line x1="6" y1="20" x2="6" y2="16" />
-    </Icon>
-  );
-}
-
-export function UploadIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <polyline points="16 16 12 12 8 16" />
-      <line x1="12" y1="12" x2="12" y2="21" />
-      <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
-    </Icon>
-  );
-}
-
-export function DownloadIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="7 10 12 15 17 10" />
-      <line x1="12" y1="15" x2="12" y2="3" />
-    </Icon>
-  );
-}
-
-export function UsersIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </Icon>
-  );
-}
-
-export function ArchiveIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <polyline points="21 8 21 21 3 21 3 8" />
-      <rect x="1" y="3" width="22" height="5" />
-      <line x1="10" y1="12" x2="14" y2="12" />
-    </Icon>
-  );
-}
-
-export function MenuIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <line x1="3" y1="12" x2="21" y2="12" />
-      <line x1="3" y1="6" x2="21" y2="6" />
-      <line x1="3" y1="18" x2="21" y2="18" />
-    </Icon>
-  );
-}
-
-export function XIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
-    </Icon>
-  );
-}
-
-export function SunIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <circle cx="12" cy="12" r="5" />
-      <line x1="12" y1="1" x2="12" y2="3" />
-      <line x1="12" y1="21" x2="12" y2="23" />
-      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-      <line x1="1" y1="12" x2="3" y2="12" />
-      <line x1="21" y1="12" x2="23" y2="12" />
-      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-    </Icon>
-  );
-}
-
-export function MoonIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-    </Icon>
-  );
-}
-
-export function MoreHorizontalIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <circle cx="12" cy="12" r="1" />
-      <circle cx="19" cy="12" r="1" />
-      <circle cx="5" cy="12" r="1" />
-    </Icon>
-  );
-}
-
-export function BookmarkIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-    </Icon>
-  );
-}
-
-export function CheckIcon({ size = 18, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
-
-export function CheckCircleIcon({ size = 18, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <polyline points="22 4 12 14.01 9 11.01" />
-    </svg>
-  );
-}
-
-export function FolderIcon({ size = 18, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-    </svg>
-  );
+/** Map a default shelf name to its icon component */
+export function getShelfIcon(shelfName: string, size = 18): ReactNode {
+  switch (shelfName) {
+    case "Currently Reading": return <BookOpen size={size} />;
+    case "Want to Read": return <BookmarkPlus size={size} />;
+    case "Favorites": return <Star size={size} />;
+    case "Recently Added": return <Clock size={size} />;
+    case "Finished": return <CheckCircle size={size} />;
+    default: return <Bookmark size={size} />;
+  }
 }

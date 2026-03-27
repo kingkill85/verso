@@ -13,7 +13,7 @@ const MIME_TYPES: Record<string, string> = {
 };
 
 export function registerStreamRoute(app: FastifyInstance, db: AppDatabase, storage: StorageService, config: Config) {
-  const authHook = createFlexAuthHook(config, db, "opds");
+  const authHook = createFlexAuthHook(config, db);
   app.get("/api/books/:id/file", { preHandler: authHook }, async (req, reply) => {
     const user = req.user!;
     const { id } = req.params as { id: string };

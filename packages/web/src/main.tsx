@@ -8,6 +8,7 @@ import { routeTree } from "./routeTree.gen";
 import { ErrorBoundary } from "./components/error-boundary";
 import "./styles/globals.css";
 import "./lib/debug-auth";
+import "./i18n";
 
 const queryClient = new QueryClient({
   defaultOptions: {

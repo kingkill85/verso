@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 type ReaderTopBarProps = {
   title: string;
   visible: boolean;
@@ -55,6 +57,7 @@ export function ReaderTopBar({
   onToggleBookmark,
   isBookmarked,
 }: ReaderTopBarProps) {
+  const { t } = useTranslation();
   return (
     <div
       className="fixed top-0 left-0 right-0 h-12 flex items-center justify-between px-3 z-30 transition-opacity duration-300"
@@ -71,7 +74,7 @@ export function ReaderTopBar({
           onClick={onToggleSidebar}
           className={ICON_BUTTON}
           style={{ color: "var(--text-dim)" }}
-          title="Table of Contents"
+          title={t("reader.toc")}
         >
           <MenuIcon />
         </button>
@@ -79,7 +82,7 @@ export function ReaderTopBar({
           onClick={onToggleBookmark}
           className={ICON_BUTTON}
           style={{ color: isBookmarked ? "var(--warm)" : "var(--text-dim)" }}
-          title={isBookmarked ? "Remove bookmark" : "Bookmark this page"}
+          title={isBookmarked ? t("reader.removeBookmark") : t("reader.addBookmark")}
         >
           <BookmarkIcon filled={isBookmarked} />
         </button>
@@ -95,7 +98,7 @@ export function ReaderTopBar({
           onClick={onToggleSettings}
           className={ICON_BUTTON}
           style={{ color: "var(--text-dim)" }}
-          title="Settings"
+          title={t("reader.settings")}
         >
           <SettingsIcon />
         </button>
@@ -103,7 +106,7 @@ export function ReaderTopBar({
           onClick={onClose}
           className={ICON_BUTTON}
           style={{ color: "var(--text-dim)" }}
-          title="Close"
+          title={t("reader.close")}
         >
           <CloseIcon />
         </button>

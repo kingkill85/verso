@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { ReaderSettings } from "@/hooks/use-epub-reader";
 
 type SettingsPanelProps = {
@@ -47,6 +48,7 @@ function ToggleGroup<T extends string>({
 }
 
 export function SettingsPanel({ settings, open, onClose, onUpdate }: SettingsPanelProps) {
+  const { t } = useTranslation();
   return (
     <>
       {open && (
@@ -67,13 +69,13 @@ export function SettingsPanel({ settings, open, onClose, onUpdate }: SettingsPan
             className="text-[10px] font-medium uppercase tracking-[1.5px] mb-5"
             style={{ color: "var(--text-faint)" }}
           >
-            Reader Settings
+            {t("reader.readerSettings")}
           </p>
 
           {/* Font Size */}
           <div className="mb-5">
             <p className="text-xs mb-2" style={{ color: "var(--text-dim)" }}>
-              Font Size
+              {t("reader.fontSize")}
             </p>
             <div className="flex items-center gap-3">
               <span className="text-[11px]" style={{ color: "var(--text-faint)" }}>A</span>
@@ -90,33 +92,33 @@ export function SettingsPanel({ settings, open, onClose, onUpdate }: SettingsPan
           </div>
 
           <ToggleGroup
-            label="Font"
+            label={t("reader.font")}
             options={[
-              { value: "serif" as const, label: "Serif" },
-              { value: "sans-serif" as const, label: "Sans" },
-              { value: "dyslexic" as const, label: "Dyslexic" },
+              { value: "serif" as const, label: t("reader.serif") },
+              { value: "sans-serif" as const, label: t("reader.sans") },
+              { value: "dyslexic" as const, label: t("reader.dyslexic") },
             ]}
             value={settings.fontFamily}
             onChange={(v) => onUpdate({ fontFamily: v })}
           />
 
           <ToggleGroup
-            label="Line Spacing"
+            label={t("reader.lineSpacing")}
             options={[
-              { value: "compact" as const, label: "Compact" },
-              { value: "normal" as const, label: "Normal" },
-              { value: "relaxed" as const, label: "Relaxed" },
+              { value: "compact" as const, label: t("reader.compact") },
+              { value: "normal" as const, label: t("reader.normal") },
+              { value: "relaxed" as const, label: t("reader.relaxed") },
             ]}
             value={settings.lineSpacing}
             onChange={(v) => onUpdate({ lineSpacing: v })}
           />
 
           <ToggleGroup
-            label="Margins"
+            label={t("reader.margins")}
             options={[
-              { value: "narrow" as const, label: "Narrow" },
-              { value: "normal" as const, label: "Normal" },
-              { value: "wide" as const, label: "Wide" },
+              { value: "narrow" as const, label: t("reader.narrow") },
+              { value: "normal" as const, label: t("reader.normal") },
+              { value: "wide" as const, label: t("reader.wide") },
             ]}
             value={settings.margins}
             onChange={(v) => onUpdate({ margins: v })}
@@ -125,13 +127,13 @@ export function SettingsPanel({ settings, open, onClose, onUpdate }: SettingsPan
           {/* Theme */}
           <div className="mb-5">
             <p className="text-xs mb-2" style={{ color: "var(--text-dim)" }}>
-              Theme
+              {t("reader.theme")}
             </p>
             <div className="flex gap-1.5">
               {([
-                { value: "light" as const, label: "Light", bg: "#f6f1ea", fg: "#2a2520" },
-                { value: "dark" as const, label: "Dark", bg: "#12110f", fg: "#e8e2d8" },
-                { value: "sepia" as const, label: "Sepia", bg: "#f4ecd8", fg: "#5b4636" },
+                { value: "light" as const, label: t("reader.light"), bg: "#f6f1ea", fg: "#2a2520" },
+                { value: "dark" as const, label: t("reader.dark"), bg: "#12110f", fg: "#e8e2d8" },
+                { value: "sepia" as const, label: t("reader.sepia"), bg: "#f4ecd8", fg: "#5b4636" },
               ]).map((t) => {
                 const active = t.value === settings.theme;
                 return (
@@ -153,10 +155,10 @@ export function SettingsPanel({ settings, open, onClose, onUpdate }: SettingsPan
           </div>
 
           <ToggleGroup
-            label="View Mode"
+            label={t("reader.viewMode")}
             options={[
-              { value: "paginated" as const, label: "Paginated" },
-              { value: "scrolled" as const, label: "Scrolling" },
+              { value: "paginated" as const, label: t("reader.paginated") },
+              { value: "scrolled" as const, label: t("reader.scrolling") },
             ]}
             value={settings.flow}
             onChange={(v) => onUpdate({ flow: v })}

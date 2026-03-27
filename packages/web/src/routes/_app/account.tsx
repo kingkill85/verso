@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
 
 export const Route = createFileRoute("/_app/account")({
@@ -7,6 +8,7 @@ export const Route = createFileRoute("/_app/account")({
 });
 
 function AccountPage() {
+  const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -33,12 +35,12 @@ function AccountPage() {
     setSuccess(false);
 
     if (newPassword !== confirmPassword) {
-      setError("New passwords don't match");
+      setError(t("account.mismatch"));
       return;
     }
 
     if (newPassword.length < 8) {
-      setError("New password must be at least 8 characters");
+      setError(t("account.tooShort"));
       return;
     }
 
@@ -51,14 +53,14 @@ function AccountPage() {
         className="font-display text-2xl font-bold mb-8"
         style={{ color: "var(--text)" }}
       >
-        Account
+        {t("account.title")}
       </h1>
 
       <h2
         className="text-sm font-medium uppercase tracking-wider mb-4"
         style={{ color: "var(--text-dim)" }}
       >
-        Change Password
+        {t("account.changePassword")}
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -82,7 +84,7 @@ function AccountPage() {
               color: "var(--green)",
             }}
           >
-            Password changed successfully
+            {t("account.changed")}
           </div>
         )}
 
@@ -91,7 +93,7 @@ function AccountPage() {
             className="block text-xs font-medium uppercase tracking-wider mb-1.5"
             style={{ color: "var(--text-dim)" }}
           >
-            Current Password
+            {t("account.currentPassword")}
           </label>
           <input
             type="password"
@@ -112,7 +114,7 @@ function AccountPage() {
             className="block text-xs font-medium uppercase tracking-wider mb-1.5"
             style={{ color: "var(--text-dim)" }}
           >
-            New Password
+            {t("account.newPassword")}
           </label>
           <input
             type="password"
@@ -134,7 +136,7 @@ function AccountPage() {
             className="block text-xs font-medium uppercase tracking-wider mb-1.5"
             style={{ color: "var(--text-dim)" }}
           >
-            Confirm New Password
+            {t("account.confirmPassword")}
           </label>
           <input
             type="password"
@@ -153,7 +155,7 @@ function AccountPage() {
             className="text-xs mt-1"
             style={{ color: "var(--text-faint)" }}
           >
-            At least 8 characters
+            {t("account.minChars")}
           </p>
         </div>
 
@@ -163,7 +165,7 @@ function AccountPage() {
           className="w-full py-2.5 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
           style={{ backgroundColor: "var(--warm)" }}
         >
-          {changePassword.isPending ? "Changing..." : "Change Password"}
+          {changePassword.isPending ? t("account.changing") : t("account.changeBtn")}
         </button>
       </form>
     </div>

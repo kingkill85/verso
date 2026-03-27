@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { trpc } from "@/trpc";
 import { FilterBuilder } from "./filter-builder";
+import { IconChooser } from "./icon-chooser";
 import type { SmartFilter } from "@verso/shared";
 
 type Props = {
@@ -32,7 +33,7 @@ export function ShelfForm({ editShelf }: Props) {
   const isEdit = !!editShelf;
 
   const [name, setName] = useState(editShelf?.name ?? "");
-  const [emoji, setEmoji] = useState(editShelf?.emoji ?? "📁");
+  const [emoji, setEmoji] = useState(editShelf?.emoji ?? "icon:bookmark");
   const [description, setDescription] = useState(editShelf?.description ?? "");
   const [isSmart, setIsSmart] = useState(editShelf?.isSmart ?? false);
   const [smartFilter, setSmartFilter] = useState<SmartFilter>(() => {
@@ -94,19 +95,16 @@ export function ShelfForm({ editShelf }: Props) {
         </div>
       )}
 
-      <div className="flex gap-3">
-        <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-dim)" }}>Emoji</label>
-          <input type="text" value={emoji} onChange={(e) => setEmoji(e.target.value)}
-            className="w-14 rounded-lg border px-2 py-2 text-center text-lg outline-none"
-            style={{ backgroundColor: "var(--bg)", borderColor: "var(--border)" }} maxLength={4} />
-        </div>
-        <div className="flex-1">
-          <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-dim)" }}>Name</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="My Shelf"
-            className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-            style={{ backgroundColor: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }} required />
-        </div>
+      <div>
+        <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-dim)" }}>Name</label>
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="My Shelf"
+          className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+          style={{ backgroundColor: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }} required />
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-dim)" }}>Icon</label>
+        <IconChooser value={emoji} onChange={setEmoji} />
       </div>
 
       <div>

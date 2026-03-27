@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { NavItem } from "epubjs";
 import type { Annotation } from "@verso/shared";
 import { BookCover } from "@/components/books/book-cover";
@@ -53,12 +54,13 @@ export function ReaderSidebar({
   onDeleteAnnotation,
   onAnnotationNavigate,
 }: ReaderSidebarProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>("contents");
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: "contents", label: "Contents" },
-    { key: "bookmarks", label: "Bookmarks" },
-    { key: "annotations", label: "Annotations" },
+    { key: "contents", label: t("reader.contents") },
+    { key: "bookmarks", label: t("reader.bookmarks") },
+    { key: "annotations", label: t("reader.annotations") },
   ];
 
   return (
@@ -198,12 +200,13 @@ function BookmarksTab({
   onNavigate: (cfi: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   if (bookmarks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4">
-        <p className="text-sm font-medium" style={{ color: "var(--text-dim)" }}>No bookmarks yet</p>
+        <p className="text-sm font-medium" style={{ color: "var(--text-dim)" }}>{t("reader.noBookmarks")}</p>
         <p className="text-xs mt-1" style={{ color: "var(--text-faint)" }}>
-          Use the bookmark button in the top bar
+          {t("reader.bookmarkHint")}
         </p>
       </div>
     );
@@ -220,7 +223,7 @@ function BookmarksTab({
         >
           <div className="min-w-0 flex-1">
             <p className="text-[13px] truncate" style={{ color: "var(--text)" }}>
-              {bm.chapter ?? "Unknown Chapter"}
+              {bm.chapter ?? t("reader.unknownChapter")}
             </p>
             <p className="text-[11px] mt-0.5" style={{ color: "var(--text-faint)" }}>
               {bm.content ? `${bm.content}%` : ""}{bm.content && " · "}{formatDate(bm.createdAt)}
@@ -250,12 +253,13 @@ function AnnotationsTab({
   onNavigate: (cfi: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   if (annotations.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4">
-        <p className="text-sm font-medium" style={{ color: "var(--text-dim)" }}>No annotations yet</p>
+        <p className="text-sm font-medium" style={{ color: "var(--text-dim)" }}>{t("reader.noAnnotations")}</p>
         <p className="text-xs mt-1" style={{ color: "var(--text-faint)" }}>
-          Select text in the reader to create a highlight
+          {t("reader.annotationHint")}
         </p>
       </div>
     );
@@ -264,7 +268,7 @@ function AnnotationsTab({
   // Group by chapter
   const grouped = new Map<string, Annotation[]>();
   for (const ann of annotations) {
-    const chapter = ann.chapter ?? "Unknown Chapter";
+    const chapter = ann.chapter ?? t("reader.unknownChapter");
     if (!grouped.has(chapter)) grouped.set(chapter, []);
     grouped.get(chapter)!.push(ann);
   }

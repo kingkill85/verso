@@ -29,7 +29,7 @@ const OPENSEARCH_DESCRIPTOR = `<?xml version="1.0" encoding="UTF-8"?>
 </OpenSearchDescription>`;
 
 export function registerOpdsRoutes(app: FastifyInstance, db: AppDatabase, _config: Config) {
-  const authHook = createBasicAuthHook(db, "opds");
+  const authHook = createBasicAuthHook(db);
 
   // GET /opds/search-descriptor — OpenSearch descriptor (no auth)
   app.get("/opds/search-descriptor", async (_req, reply) => {

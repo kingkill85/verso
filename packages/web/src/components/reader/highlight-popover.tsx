@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { Annotation } from "@verso/shared";
 
 const COLORS = [
@@ -25,6 +26,7 @@ export function HighlightPopover({
   onDelete,
   onDismiss,
 }: HighlightPopoverProps) {
+  const { t } = useTranslation();
   const [editingNote, setEditingNote] = useState(false);
   const [noteText, setNoteText] = useState("");
 
@@ -79,20 +81,20 @@ export function HighlightPopover({
               <textarea
                 className="w-full rounded-lg px-2 py-1.5 text-sm resize-none focus:outline-none bg-stone-800 text-stone-200 border border-stone-600"
                 rows={3}
-                placeholder="Add a note..."
+                placeholder={t("reader.addNote")}
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
                 autoFocus
               />
               <div className="flex justify-end gap-2 mt-1">
                 <button className="px-2 py-1 rounded text-xs text-stone-400" onClick={() => setEditingNote(false)}>
-                  Cancel
+                  {t("reader.cancel")}
                 </button>
                 <button
                   className="px-3 py-1 rounded text-xs font-medium bg-amber-700 text-white"
                   onClick={() => { onUpdateNote(annotation.id, noteText.trim()); setEditingNote(false); }}
                 >
-                  Save
+                  {t("reader.save")}
                 </button>
               </div>
             </div>
@@ -102,13 +104,13 @@ export function HighlightPopover({
                 className="flex-1 px-2 py-1.5 rounded-lg text-xs text-stone-300 bg-stone-800 hover:bg-stone-700"
                 onClick={() => { setNoteText(annotation.note || ""); setEditingNote(true); }}
               >
-                {annotation.note ? "Edit note" : "Add note"}
+                {annotation.note ? t("reader.editNote") : t("reader.addNote")}
               </button>
               <button
                 className="px-2 py-1.5 rounded-lg text-xs text-red-400 bg-stone-800 hover:bg-stone-700"
                 onClick={() => onDelete(annotation.id)}
               >
-                Delete
+                {t("reader.delete")}
               </button>
             </div>
           )}

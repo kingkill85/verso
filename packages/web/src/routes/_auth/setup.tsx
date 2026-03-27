@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/trpc";
 import { AuthForm } from "@/components/auth-form";
@@ -9,6 +10,7 @@ export const Route = createFileRoute("/_auth/setup")({
 });
 
 function SetupPage() {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState("");
@@ -25,10 +27,10 @@ function SetupPage() {
 
   return (
     <AuthForm
-      title="Welcome to Verso"
-      subtitle="Create your admin account to get started"
-      buttonLabel="Get Started"
-      pendingLabel="Setting up..."
+      title={t("auth.setup.title")}
+      subtitle={t("auth.setup.subtitle")}
+      buttonLabel={t("auth.setup.button")}
+      pendingLabel={t("auth.setup.pending")}
       onSubmit={(data) => {
         setError("");
         registerMutation.mutate(data);

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
 import { BookCover } from "@/components/books/book-cover";
 import { AddToShelfMenu } from "@/components/shelves/add-to-shelf-menu";
@@ -29,6 +30,7 @@ function formatDate(dateStr: string): string {
 }
 
 function BookDetailPage() {
+  const { t } = useTranslation();
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const utils = trpc.useUtils();
@@ -62,7 +64,7 @@ function BookDetailPage() {
         className="flex items-center justify-center py-20"
         style={{ color: "var(--text-dim)" }}
       >
-        <p className="text-sm">Loading book...</p>
+        <p className="text-sm">{t("book.loading")}</p>
       </div>
     );
   }
@@ -74,15 +76,15 @@ function BookDetailPage() {
           className="font-display text-lg"
           style={{ color: "var(--text)" }}
         >
-          Book not found
+          {t("book.notFound")}
         </p>
-        <Link
-          to="/home"
+        <button
+          onClick={() => window.history.back()}
           className="text-sm mt-2"
           style={{ color: "var(--warm)" }}
         >
-          Back
-        </Link>
+          {t("book.back")}
+        </button>
       </div>
     );
   }
@@ -91,25 +93,25 @@ function BookDetailPage() {
   const tags: string[] = [];
   if (book.genre) tags.push(book.genre);
   if (book.year) tags.push(String(book.year));
-  if (book.pageCount) tags.push(`${book.pageCount} pages`);
+  if (book.pageCount) tags.push(t("book.pages", { count: book.pageCount }));
   tags.push(book.fileFormat.toUpperCase());
 
   const details = [
-    { label: "Publisher", value: book.publisher },
-    { label: "Year", value: book.year ? String(book.year) : null },
-    { label: "Language", value: book.language?.toUpperCase() },
-    { label: "ISBN", value: book.isbn },
-    { label: "Format", value: book.fileFormat.toUpperCase() },
-    { label: "File Size", value: formatFileSize(book.fileSize) },
-    { label: "Added", value: formatDate(book.createdAt) },
+    { label: t("detail.publisher"), value: book.publisher },
+    { label: t("detail.year"), value: book.year ? String(book.year) : null },
+    { label: t("detail.language"), value: book.language?.toUpperCase() },
+    { label: t("detail.isbn"), value: book.isbn },
+    { label: t("detail.format"), value: book.fileFormat.toUpperCase() },
+    { label: t("detail.fileSize"), value: formatFileSize(book.fileSize) },
+    { label: t("detail.added"), value: formatDate(book.createdAt) },
   ].filter((d) => d.value);
 
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in">
       {/* Back link */}
-      <Link
-        to="/home"
-        className="inline-flex items-center text-sm mb-6 transition-colors hover:opacity-80"
+      <button
+        onClick={() => window.history.back()}
+        className="inline-flex items-center text-sm mb-4 transition-colors hover:opacity-80"
         style={{ color: "var(--text-dim)" }}
       >
         <svg
@@ -125,17 +127,27 @@ function BookDetailPage() {
             d="M15 19l-7-7 7-7"
           />
         </svg>
-        Back to library
-      </Link>
+        {t("book.back")}
+      </button>
 
-      {/* Hero section */}
+      {/* Hero section — always side by side */}
       <div
-        className="rounded-2xl p-6 md:p-8 mb-8"
+        className="rounded-xl p-4 md:p-6 mb-5"
         style={{ backgroundColor: "var(--card)" }}
       >
-        <div className="flex flex-col md:flex-row gap-6 md:gap-8">
-          {/* Cover */}
-          <div className="shrink-0 self-center md:self-start">
+        <div className="flex gap-4 md:gap-6">
+          {/* Cover — lg on mobile, xl on desktop */}
+          <div className="shrink-0 block md:hidden">
+            <BookCover
+              bookId={book.id}
+              title={book.title}
+              author={book.author}
+              coverPath={book.coverPath}
+              updatedAt={book.updatedAt}
+              size="lg"
+            />
+          </div>
+          <div className="shrink-0 hidden md:block">
             <BookCover
               bookId={book.id}
               title={book.title}
@@ -149,20 +161,20 @@ function BookDetailPage() {
           {/* Info */}
           <div className="flex-1 min-w-0">
             <h1
-              className="font-display text-[28px] font-bold leading-tight"
+              className="font-display text-lg md:text-2xl font-bold leading-tight"
               style={{ color: "var(--text)" }}
             >
               {book.title}
             </h1>
             <p
-              className="font-display italic text-lg mt-1"
+              className="font-display italic text-sm md:text-base mt-0.5"
               style={{ color: "var(--text-dim)" }}
             >
               {book.author}
             </p>
             {book.series && (
               <p
-                className="text-sm mt-1"
+                className="text-xs mt-0.5"
                 style={{ color: "var(--text-faint)" }}
               >
                 Book {book.seriesIndex || "?"} of {book.series}
@@ -171,11 +183,11 @@ function BookDetailPage() {
 
             {/* Tags */}
             {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-4">
+              <div className="flex flex-wrap gap-1.5 mt-2">
                 {tags.map((tag) => (
                   <span
                     key={tag}
-                    className="px-3 py-1 rounded-full text-xs font-medium"
+                    className="px-2 py-0.5 rounded-full text-[11px] font-medium"
                     style={{
                       backgroundColor: "var(--bg)",
                       color: "var(--text-dim)",
@@ -187,21 +199,21 @@ function BookDetailPage() {
               </div>
             )}
 
-            {/* Actions */}
-            <div className="flex flex-wrap items-center gap-3 mt-6">
+            {/* Actions — hidden on mobile, shown on md+ */}
+            <div className="hidden md:flex flex-wrap items-center gap-2 mt-4">
               {book.fileFormat === "epub" && (
                 <Link
                   to="/books/$id/read"
                   params={{ id }}
                   search={{ cfi: undefined }}
-                  className="inline-flex items-center px-6 py-2.5 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
+                  className="inline-flex items-center px-5 py-2 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
                   style={{ backgroundColor: "var(--warm)" }}
                 >
                   {progressQuery.data?.finishedAt
-                    ? "Read Again"
+                    ? t("book.readAgain")
                     : progressQuery.data?.percentage
-                      ? `Continue Reading (${Math.round(progressQuery.data.percentage)}%)`
-                      : "Start Reading"}
+                      ? t("book.continueReading", { percent: Math.round(progressQuery.data.percentage) })
+                      : t("book.startReading")}
                 </Link>
               )}
               <AddToShelfMenu bookId={id} />
@@ -220,15 +232,45 @@ function BookDetailPage() {
         </div>
       </div>
 
+      {/* Mobile actions — below hero card */}
+      <div className="flex md:hidden flex-wrap items-center gap-2 mb-4">
+        {book.fileFormat === "epub" && (
+          <Link
+            to="/books/$id/read"
+            params={{ id }}
+            search={{ cfi: undefined }}
+            className="inline-flex items-center px-5 py-2 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
+            style={{ backgroundColor: "var(--warm)" }}
+          >
+            {progressQuery.data?.finishedAt
+              ? t("book.readAgain")
+              : progressQuery.data?.percentage
+                ? t("book.continueReading", { percent: Math.round(progressQuery.data.percentage) })
+                : t("book.startReading")}
+          </Link>
+        )}
+        <AddToShelfMenu bookId={id} />
+        <OverflowMenu
+          bookId={id}
+          bookTitle={book.title}
+          fileFormat={book.fileFormat}
+          hasProgress={!!progressQuery.data && progressQuery.data.percentage > 0}
+          isFinished={!!progressQuery.data?.finishedAt}
+          onDelete={handleDelete}
+          isDeleting={deleteMutation.isPending}
+          isAdmin={user?.role === "admin"}
+        />
+      </div>
+
       {/* Progress section */}
       {progressQuery.data && !progressQuery.data.finishedAt && progressQuery.data.percentage > 0 && (
         <div
-          className="rounded-xl p-4 mb-8 flex items-center gap-4"
+          className="rounded-xl p-4 mb-5 flex items-center gap-4"
           style={{ backgroundColor: "var(--card)" }}
         >
           <div className="flex-1">
             <p className="text-xs font-medium uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>
-              Reading Progress
+              {t("book.progress")}
             </p>
             <div
               className="h-1.5 rounded-full overflow-hidden mb-1.5"
@@ -240,9 +282,9 @@ function BookDetailPage() {
               />
             </div>
             <p className="text-xs" style={{ color: "var(--text-dim)" }}>
-              {Math.round(progressQuery.data.percentage)}% complete
+              {t("book.complete", { percent: Math.round(progressQuery.data.percentage) })}
               {book.pageCount
-                ? ` · ${Math.round(book.pageCount * (1 - progressQuery.data.percentage / 100))} pages remaining`
+                ? ` · ${t("book.pagesRemaining", { count: Math.round(book.pageCount * (1 - progressQuery.data.percentage / 100)) })}`
                 : ""}
             </p>
           </div>
@@ -251,12 +293,12 @@ function BookDetailPage() {
 
       {/* Description */}
       {book.description && (
-        <div className="mb-8">
+        <div className="mb-5">
           <h2
-            className="font-display text-lg font-semibold mb-3"
+            className="font-display text-sm font-semibold mb-2"
             style={{ color: "var(--text)" }}
           >
-            Description
+            {t("book.description")}
           </h2>
           <p
             className="font-display italic leading-relaxed text-sm whitespace-pre-line"
@@ -281,7 +323,7 @@ function BookDetailPage() {
             marginBottom: "-1px",
           }}
         >
-          Details
+          {t("book.details")}
         </button>
         <button
           onClick={() => setActiveTab("annotations")}
@@ -292,7 +334,7 @@ function BookDetailPage() {
             marginBottom: "-1px",
           }}
         >
-          Annotations ({annotationsQuery.data?.length ?? 0})
+          {t("book.annotations", { count: annotationsQuery.data?.length ?? 0 })}
         </button>
         <button
           onClick={() => setActiveTab("bookmarks")}
@@ -303,7 +345,7 @@ function BookDetailPage() {
             marginBottom: "-1px",
           }}
         >
-          Bookmarks ({bookmarksQuery.data?.length ?? 0})
+          {t("book.bookmarks", { count: bookmarksQuery.data?.length ?? 0 })}
         </button>
       </div>
 
@@ -341,9 +383,9 @@ function BookDetailPage() {
 
       <ConfirmDialog
         open={confirmDelete}
-        title="Delete book"
-        message="Are you sure you want to delete this book? This cannot be undone."
-        confirmLabel="Delete"
+        title={t("confirm.deleteBook")}
+        message={t("confirm.deleteBookMsg")}
+        confirmLabel={t("confirm.delete")}
         destructive
         onConfirm={() => {
           setConfirmDelete(false);
@@ -374,6 +416,7 @@ function OverflowMenu({
   isDeleting: boolean;
   isAdmin?: boolean;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -438,7 +481,7 @@ function OverflowMenu({
             className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
             style={{ color: "var(--text)" }}
           >
-            Download
+            {t("book.download")}
           </button>
           {isAdmin && (
             <Link
@@ -448,7 +491,7 @@ function OverflowMenu({
               style={{ color: "var(--text)" }}
               onClick={() => setOpen(false)}
             >
-              Edit
+              {t("book.edit")}
             </Link>
           )}
           {!isFinished && (
@@ -457,7 +500,7 @@ function OverflowMenu({
               className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
               style={{ color: "var(--green)" }}
             >
-              Mark as Finished
+              {t("book.markFinished")}
             </button>
           )}
           {hasProgress && (
@@ -469,7 +512,7 @@ function OverflowMenu({
               className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
               style={{ color: "var(--text-dim)" }}
             >
-              Reset Progress
+              {t("book.resetProgress")}
             </button>
           )}
           {isAdmin && (
@@ -479,16 +522,16 @@ function OverflowMenu({
               className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
               style={{ color: "#ef4444" }}
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? t("book.deleting") : t("book.delete")}
             </button>
           )}
         </div>
       )}
       <ConfirmDialog
         open={confirmReset}
-        title="Reset progress"
-        message="Reset all reading progress for this book? This cannot be undone."
-        confirmLabel="Reset"
+        title={t("confirm.resetProgress")}
+        message={t("confirm.resetProgressMsg")}
+        confirmLabel={t("confirm.reset")}
         destructive
         onConfirm={() => {
           setConfirmReset(false);

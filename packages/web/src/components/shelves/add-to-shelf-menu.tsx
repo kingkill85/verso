@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
-import { CheckIcon, BookmarkIcon } from "@/components/icons";
+import { CheckIcon, renderShelfIcon, translateShelfName } from "@/components/icons";
 
 type AddToShelfMenuProps = {
   bookId: string;
 };
 
 export function AddToShelfMenu({ bookId }: AddToShelfMenuProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const shelvesQuery = trpc.shelves.list.useQuery();
@@ -51,7 +53,7 @@ export function AddToShelfMenu({ bookId }: AddToShelfMenuProps) {
         className="px-5 py-2.5 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
         style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
       >
-        Add to shelf
+        {t("book.addToShelf")}
       </button>
 
       {open && (
@@ -79,8 +81,8 @@ export function AddToShelfMenu({ bookId }: AddToShelfMenuProps) {
                   <span className="w-5 text-center" style={{ color: "var(--warm)" }}>
                     {isIn ? <CheckIcon size={14} /> : ""}
                   </span>
-                  <span>{shelf.emoji ?? <BookmarkIcon size={16} />}</span>
-                  <span className="flex-1 truncate">{shelf.name}</span>
+                  <span>{renderShelfIcon(shelf.emoji, shelf.name, 16)}</span>
+                  <span className="flex-1 truncate">{translateShelfName(shelf.name, t)}</span>
                 </button>
               );
             })

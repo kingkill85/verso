@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
 import { BookGrid } from "@/components/books/book-grid";
 
@@ -7,6 +8,7 @@ export const Route = createFileRoute("/_app/library")({
 });
 
 function LibraryPage() {
+  const { t } = useTranslation();
   const booksQuery = trpc.books.list.useQuery({
     sort: "recent",
     limit: 50,
@@ -21,14 +23,14 @@ function LibraryPage() {
           className="font-display text-[26px] font-bold"
           style={{ color: "var(--text)" }}
         >
-          Library
+          {t("library.title")}
         </h1>
         {bookCount > 0 && (
           <p
             className="text-sm mt-0.5"
             style={{ color: "var(--text-dim)" }}
           >
-            {bookCount} {bookCount === 1 ? "book" : "books"}
+            {t("library.book", { count: bookCount })}
           </p>
         )}
       </div>
@@ -38,7 +40,7 @@ function LibraryPage() {
           className="flex items-center justify-center py-20"
           style={{ color: "var(--text-dim)" }}
         >
-          <p className="text-sm">Loading your library...</p>
+          <p className="text-sm">{t("library.loading")}</p>
         </div>
       ) : (
         <BookGrid books={booksQuery.data?.books ?? []} />

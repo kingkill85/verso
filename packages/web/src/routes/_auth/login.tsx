@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/trpc";
 
@@ -8,6 +9,7 @@ export const Route = createFileRoute("/_auth/login")({
 });
 
 function LoginPage() {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -38,7 +40,7 @@ function LoginPage() {
           Verso
         </h1>
         <p className="text-sm" style={{ color: "var(--text-dim)" }}>
-          Welcome back to your library
+          {t("auth.welcome")}
         </p>
       </div>
 
@@ -60,7 +62,7 @@ function LoginPage() {
             className="block text-xs font-medium uppercase tracking-wider mb-1.5"
             style={{ color: "var(--text-dim)" }}
           >
-            Email
+            {t("auth.email")}
           </label>
           <input
             type="email"
@@ -81,7 +83,7 @@ function LoginPage() {
             className="block text-xs font-medium uppercase tracking-wider mb-1.5"
             style={{ color: "var(--text-dim)" }}
           >
-            Password
+            {t("auth.password")}
           </label>
           <input
             type="password"
@@ -103,7 +105,7 @@ function LoginPage() {
           className="w-full py-2.5 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
           style={{ backgroundColor: "var(--warm)" }}
         >
-          {loginMutation.isPending ? "Signing in..." : "Sign In"}
+          {loginMutation.isPending ? t("auth.signingIn") : t("auth.login")}
         </button>
       </form>
 

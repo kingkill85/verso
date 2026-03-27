@@ -13,17 +13,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       />
 
       <div className="flex flex-1 min-h-0 relative">
-        {/* Desktop: inline push */}
+        {/* Desktop: inline push — no onClose so links don't collapse sidebar */}
         <div
-          className="hidden lg:block shrink-0 overflow-y-auto border-r transition-[width] duration-200"
+          className="hidden lg:block shrink-0 overflow-hidden border-r transition-[width] duration-200"
           style={{
             width: sidebarOpen ? "16rem" : "0",
             borderColor: sidebarOpen ? "var(--border)" : "transparent",
             backgroundColor: "var(--sidebar-bg)",
           }}
         >
-          <div className="w-64">
-            <Sidebar onClose={() => setSidebarOpen(false)} />
+          <div className="w-64 h-full">
+            <Sidebar />
           </div>
         </div>
 
@@ -35,7 +35,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onClick={() => setSidebarOpen(false)}
             />
             <div
-              className="fixed top-14 left-0 bottom-0 w-64 z-50 overflow-y-auto lg:hidden"
+              className="fixed top-14 left-0 bottom-0 w-64 z-50 lg:hidden"
               style={{ backgroundColor: "var(--sidebar-bg)" }}
             >
               <Sidebar onClose={() => setSidebarOpen(false)} />

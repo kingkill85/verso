@@ -178,6 +178,23 @@ async function extractCover(
     }
   }
 
+  // Strategy 4: If there's exactly one image in the manifest, assume it's the cover
+  const imageItems = Object.entries(epub.manifest).filter(([, item]) => {
+    const manifestItem = item as Record<string, string>;
+    const mediaType = manifestItem["media-type"] || manifestItem.mediaType || "";
+    return mediaType.startsWith("image/");
+  });
+
+  if (imageItems.length === 1) {
+    const [id] = imageItems[0];
+    try {
+      const [data, mimeType] = await epub.getImageAsync(id);
+      return { coverData: Buffer.from(data), coverMimeType: mimeType };
+    } catch {
+      // Give up
+    }
+  }
+
   return {};
 }
 

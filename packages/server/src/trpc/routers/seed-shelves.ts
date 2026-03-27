@@ -5,7 +5,7 @@ import type { AppDatabase } from "../../db/client.js";
 const DEFAULT_SHELVES = [
   {
     name: "Currently Reading",
-    emoji: "📖",
+    emoji: "icon:book-open",
     isSmart: true,
     isDefault: true,
     position: 0,
@@ -14,16 +14,14 @@ const DEFAULT_SHELVES = [
       conditions: [{ field: "_currentlyReading", op: "eq", value: "true" }],
     }),
   },
-  { name: "Want to Read", emoji: "🔖", isSmart: false, isDefault: true, position: 1 },
-  { name: "Favorites", emoji: "⭐", isSmart: false, isDefault: true, position: 2 },
+  { name: "Want to Read", emoji: "icon:bookmark-plus", isSmart: false, isDefault: true, position: 1 },
+  { name: "Favorites", emoji: "icon:star", isSmart: false, isDefault: true, position: 2 },
   {
     name: "Recently Added",
-    emoji: "📅",
+    emoji: "icon:clock",
     isSmart: true,
     isDefault: true,
     position: 3,
-    // Special sentinel: evaluated as "books added in last 30 days" in the router,
-    // not through the generic filter builder.
     smartFilter: JSON.stringify({
       operator: "AND",
       conditions: [{ field: "_recentlyAdded", op: "lte", value: "30" }],
@@ -31,7 +29,7 @@ const DEFAULT_SHELVES = [
   },
   {
     name: "Finished",
-    emoji: "✅",
+    emoji: "icon:check-circle",
     isSmart: true,
     isDefault: true,
     position: 4,
@@ -65,4 +63,5 @@ export async function backfillDefaultShelves(db: AppDatabase, userId: string) {
       await db.insert(shelves).values({ ...shelf, userId });
     }
   }
+
 }

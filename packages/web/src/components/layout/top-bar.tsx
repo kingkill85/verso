@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/hooks/use-theme";
 import { MenuIcon, XIcon, SunIcon, MoonIcon } from "@/components/icons";
 
 export function TopBar({ sidebarOpen, onMenuClick }: { sidebarOpen: boolean; onMenuClick: () => void }) {
+  const { t } = useTranslation();
   const { resolvedTheme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [searchValue, setSearchValue] = useState("");
@@ -27,22 +29,22 @@ export function TopBar({ sidebarOpen, onMenuClick }: { sidebarOpen: boolean; onM
         Verso
       </Link>
 
-      <form onSubmit={handleSubmit} className="flex-1 max-w-md">
+      <form onSubmit={handleSubmit} className="flex-1 lg:max-w-2xl">
         <input
           type="text"
-          placeholder="Search books..."
+          placeholder={t("search.placeholder")}
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          className="w-full rounded-[10px] border px-4 py-2.5 pl-10 text-sm outline-none transition-colors"
+          className="w-full rounded-[10px] border px-3 py-1.5 text-sm outline-none transition-colors"
           style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", color: "var(--text)" }}
         />
       </form>
 
-      <div className="flex-1" />
+      <div className="hidden lg:block flex-1" />
 
       <button onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
         className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
-        style={{ color: "var(--text-dim)" }} title="Toggle theme">
+        style={{ color: "var(--text-dim)" }} title={t("theme.toggle")}>
         {resolvedTheme === "dark" ? <SunIcon size={20} /> : <MoonIcon size={20} />}
       </button>
     </header>

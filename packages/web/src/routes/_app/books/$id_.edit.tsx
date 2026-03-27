@@ -125,7 +125,7 @@ function BookEditPage() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <p className="font-display text-lg" style={{ color: "var(--text)" }}>Book not found</p>
-        <Link to="/home" className="text-sm mt-2" style={{ color: "var(--warm)" }}>Back</Link>
+        <button onClick={() => window.history.back()} className="text-sm mt-2" style={{ color: "var(--warm)" }}>Back</button>
       </div>
     );
   }

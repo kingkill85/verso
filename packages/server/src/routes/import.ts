@@ -171,7 +171,7 @@ export function registerImportRoutes(
             metadataSource: "extracted",
           });
 
-          sendEvent({ type: "progress", id, title, status: "complete" });
+          sendEvent({ type: "progress", id, title, status: "done" });
           completed++;
         } catch (err: any) {
           sendEvent({

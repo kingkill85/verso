@@ -1,8 +1,10 @@
 import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { BookCover } from "./book-cover";
 import { trpc } from "@/trpc";
 
 export function ContinueReadingRow() {
+  const { t } = useTranslation();
   const query = trpc.books.currentlyReading.useQuery();
   const shelvesQuery = trpc.shelves.list.useQuery();
 
@@ -19,7 +21,7 @@ export function ContinueReadingRow() {
           className="font-display text-base font-bold"
           style={{ color: "var(--text)" }}
         >
-          Continue Reading
+          {t("home.continueReading")}
         </h2>
         {currentlyReadingShelf && (
           <Link
@@ -28,7 +30,7 @@ export function ContinueReadingRow() {
             className="text-xs font-medium transition-colors hover:opacity-80"
             style={{ color: "var(--warm)" }}
           >
-            See all
+            {t("home.seeAll")}
           </Link>
         )}
       </div>

@@ -1,16 +1,18 @@
 import { useState, useMemo } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
 import { BookGrid } from "@/components/books/book-grid";
 import { BookCard } from "@/components/books/book-card";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { MoreHorizontalIcon, XIcon, BookmarkIcon } from "@/components/icons";
+import { MoreHorizontalIcon, XIcon, renderShelfIcon, translateShelfName } from "@/components/icons";
 
 export const Route = createFileRoute("/_app/shelves/$id")({
   component: ShelfDetailPage,
 });
 
 function ShelfDetailPage() {
+  const { t } = useTranslation();
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const utils = trpc.useUtils();
@@ -48,7 +50,7 @@ function ShelfDetailPage() {
   if (shelfQuery.isLoading) {
     return (
       <div className="flex items-center justify-center py-20" style={{ color: "var(--text-dim)" }}>
-        <p className="text-sm">Loading shelf...</p>
+        <p className="text-sm">{t("shelf.loading")}</p>
       </div>
     );
   }
@@ -56,8 +58,8 @@ function ShelfDetailPage() {
   if (shelfQuery.error || !shelfQuery.data) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <p className="font-display text-lg" style={{ color: "var(--text)" }}>Shelf not found</p>
-        <Link to="/home" className="text-sm mt-2" style={{ color: "var(--warm)" }}>Back</Link>
+        <p className="font-display text-lg" style={{ color: "var(--text)" }}>{t("shelf.notFound")}</p>
+        <button onClick={() => window.history.back()} className="text-sm mt-2" style={{ color: "var(--warm)" }}>{t("common.back")}</button>
       </div>
     );
   }
@@ -75,29 +77,29 @@ function ShelfDetailPage() {
 
   return (
     <div className="animate-in fade-in">
-      <Link
-        to="/home"
+      <button
+        onClick={() => window.history.back()}
         className="inline-flex items-center text-sm mb-6 transition-colors hover:opacity-80"
         style={{ color: "var(--text-dim)" }}
       >
         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
-        Back
-      </Link>
+        {t("common.back")}
+      </button>
 
       <div className="mb-6">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{shelf.emoji ? shelf.emoji : <BookmarkIcon size={24} />}</span>
+          <span className="text-2xl" style={{ color: "var(--text-dim)" }}>{renderShelfIcon(shelf.emoji, shelf.name, 24)}</span>
           <h1 className="font-display text-[26px] font-bold flex-1" style={{ color: "var(--text)" }}>
-            {shelf.name}
+            {translateShelfName(shelf.name, t)}
           </h1>
           {shelf.isSmart && (
             <span
               className="px-2 py-0.5 rounded-full text-[11px] italic font-medium"
               style={{ backgroundColor: "var(--card)", color: "var(--text-dim)" }}
             >
-              Smart shelf
+              {t("shelf.smartShelf")}
             </span>
           )}
           {(canEdit || canEditSmart) && (
@@ -122,7 +124,7 @@ function ShelfDetailPage() {
                       style={{ color: "var(--text)" }}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--card)")}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
-                      Edit
+                      {t("book.edit")}
                     </Link>
                     <button
                       onClick={() => { setMenuOpen(false); handleDelete(); }}
@@ -131,7 +133,7 @@ function ShelfDetailPage() {
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--card)")}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                     >
-                      Delete
+                      {t("book.delete")}
                     </button>
                   </div>
                 </>
@@ -140,7 +142,7 @@ function ShelfDetailPage() {
           )}
         </div>
         <p className="text-sm mt-1" style={{ color: "var(--text-dim)" }}>
-          {books.length} {books.length === 1 ? "book" : "books"}
+          {t("shelf.book", { count: books.length })}
         </p>
         {shelf.description && (
           <p className="text-sm mt-1 italic" style={{ color: "var(--text-faint)" }}>
@@ -153,7 +155,7 @@ function ShelfDetailPage() {
         <div className="mb-6 max-w-md">
           <input
             type="text"
-            placeholder="Filter books..."
+            placeholder={t("shelf.filterBooks")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-[10px] border px-4 py-2.5 text-sm outline-none transition-colors"
@@ -174,9 +176,9 @@ function ShelfDetailPage() {
 
       <ConfirmDialog
         open={confirmDelete}
-        title="Delete shelf"
-        message={`Delete "${shelf.name}"? Books won't be deleted.`}
-        confirmLabel="Delete"
+        title={t("confirm.deleteShelf")}
+        message={t("confirm.deleteShelfMsg", { name: shelf.name })}
+        confirmLabel={t("confirm.delete")}
         destructive
         onConfirm={() => {
           setConfirmDelete(false);
@@ -193,11 +195,12 @@ function RemovableBookGrid({ books, onRemove, isRemoving }: {
   onRemove: (bookId: string) => void;
   isRemoving: boolean;
 }) {
+  const { t } = useTranslation();
   if (books.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center" style={{ color: "var(--text-dim)" }}>
-        <p className="font-display text-lg">No books in this shelf</p>
-        <p className="text-sm mt-1">Add books from the book detail page</p>
+        <p className="font-display text-lg">{t("shelf.noBooks")}</p>
+        <p className="text-sm mt-1">{t("shelf.addFromDetail")}</p>
       </div>
     );
   }
@@ -224,7 +227,7 @@ function RemovableBookGrid({ books, onRemove, isRemoving }: {
             disabled={isRemoving}
             className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
             style={{ backgroundColor: "rgba(0,0,0,0.6)", color: "white" }}
-            title="Remove from shelf"
+            title={t("shelf.removeFromShelf")}
           >
             <XIcon size={14} />
           </button>

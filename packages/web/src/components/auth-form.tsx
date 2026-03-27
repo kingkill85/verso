@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 type AuthFormProps = {
   title: string;
@@ -21,6 +22,7 @@ export function AuthForm({
   error,
   footer,
 }: AuthFormProps) {
+  const { t } = useTranslation();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -62,7 +64,7 @@ export function AuthForm({
             className="block text-xs font-medium uppercase tracking-wider mb-1.5"
             style={{ color: "var(--text-dim)" }}
           >
-            Display Name
+            {t("auth.displayName")}
           </label>
           <input
             type="text"
@@ -83,7 +85,7 @@ export function AuthForm({
             className="block text-xs font-medium uppercase tracking-wider mb-1.5"
             style={{ color: "var(--text-dim)" }}
           >
-            Email
+            {t("auth.email")}
           </label>
           <input
             type="email"
@@ -104,7 +106,7 @@ export function AuthForm({
             className="block text-xs font-medium uppercase tracking-wider mb-1.5"
             style={{ color: "var(--text-dim)" }}
           >
-            Password
+            {t("auth.password")}
           </label>
           <input
             type="password"
@@ -123,7 +125,7 @@ export function AuthForm({
             className="text-xs mt-1"
             style={{ color: "var(--text-faint)" }}
           >
-            At least 8 characters
+            {t("account.minChars")}
           </p>
         </div>
 
