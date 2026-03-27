@@ -158,7 +158,6 @@ export async function buildAllBooks(
   page: number
 ): Promise<OpdsFeed> {
   const allBooks = await db.query.books.findMany({
-    where: eq(books.addedBy, userId),
     orderBy: (b, { desc }) => [desc(b.createdAt)],
   });
 
@@ -184,7 +183,6 @@ export async function buildRecentBooks(
   page: number
 ): Promise<OpdsFeed> {
   const allBooks = await db.query.books.findMany({
-    where: eq(books.addedBy, userId),
     orderBy: (b, { desc }) => [desc(b.createdAt)],
   });
 
@@ -211,7 +209,6 @@ export async function buildAuthorsList(db: AppDatabase, userId: string): Promise
       count: sql<number>`count(*)`.as("count"),
     })
     .from(books)
-    .where(eq(books.addedBy, userId))
     .groupBy(books.author)
     .orderBy(books.author);
 
@@ -250,7 +247,7 @@ export async function buildAuthorBooks(
   page: number
 ): Promise<OpdsFeed> {
   const allBooks = await db.query.books.findMany({
-    where: and(eq(books.addedBy, userId), eq(books.author, author)),
+    where: eq(books.author, author),
     orderBy: (b, { asc }) => [asc(b.title)],
   });
 
@@ -278,7 +275,7 @@ export async function buildGenresList(db: AppDatabase, userId: string): Promise<
       count: sql<number>`count(*)`.as("count"),
     })
     .from(books)
-    .where(and(eq(books.addedBy, userId), isNotNull(books.genre)))
+    .where(isNotNull(books.genre))
     .groupBy(books.genre)
     .orderBy(books.genre);
 
@@ -320,7 +317,7 @@ export async function buildGenreBooks(
   page: number
 ): Promise<OpdsFeed> {
   const allBooks = await db.query.books.findMany({
-    where: and(eq(books.addedBy, userId), eq(books.genre, genre)),
+    where: eq(books.genre, genre),
     orderBy: (b, { asc }) => [asc(b.title)],
   });
 
@@ -384,7 +381,7 @@ export async function buildShelfBooks(
     .select({ book: books })
     .from(shelfBooks)
     .innerJoin(books, eq(shelfBooks.bookId, books.id))
-    .where(and(eq(shelfBooks.shelfId, shelfId), eq(books.addedBy, userId)))
+    .where(eq(shelfBooks.shelfId, shelfId))
     .orderBy(shelfBooks.position);
 
   const allBooks = rows.map((r) => r.book);
@@ -412,10 +409,7 @@ export async function buildSearchResults(
 ): Promise<OpdsFeed> {
   const pattern = `%${query}%`;
   const allBooks = await db.query.books.findMany({
-    where: and(
-      eq(books.addedBy, userId),
-      or(like(books.title, pattern), like(books.author, pattern))
-    ),
+    where: or(like(books.title, pattern), like(books.author, pattern)),
     orderBy: (b, { asc }) => [asc(b.title)],
   });
 

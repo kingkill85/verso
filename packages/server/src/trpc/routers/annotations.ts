@@ -29,7 +29,7 @@ export const annotationsRouter = router({
 
   create: protectedProcedure.input(annotationCreateInput).mutation(async ({ ctx, input }) => {
     const book = await ctx.db.query.books.findFirst({
-      where: and(eq(books.id, input.bookId), eq(books.addedBy, ctx.user.sub)),
+      where: eq(books.id, input.bookId),
     });
     if (!book) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
 
@@ -84,7 +84,7 @@ export const annotationsRouter = router({
 
   createBookmark: protectedProcedure.input(bookmarkCreateInput).mutation(async ({ ctx, input }) => {
     const book = await ctx.db.query.books.findFirst({
-      where: and(eq(books.id, input.bookId), eq(books.addedBy, ctx.user.sub)),
+      where: eq(books.id, input.bookId),
     });
     if (!book) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
 

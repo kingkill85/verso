@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { books } from "@verso/shared";
 import type { StorageService } from "../services/storage.js";
 import type { AppDatabase } from "../db/client.js";
@@ -19,7 +19,7 @@ export function registerStreamRoute(app: FastifyInstance, db: AppDatabase, stora
     const { id } = req.params as { id: string };
 
     const book = await db.query.books.findFirst({
-      where: and(eq(books.id, id), eq(books.addedBy, user.sub)),
+      where: eq(books.id, id),
     });
     if (!book) return reply.status(404).send({ error: "Book not found" });
 

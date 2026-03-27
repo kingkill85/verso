@@ -13,7 +13,7 @@ export const metadataRouter = router({
   search: protectedProcedure.input(metadataSearchInput).query(async ({ ctx, input }) => {
     // Verify book exists and belongs to user
     const book = await ctx.db.query.books.findFirst({
-      where: and(eq(books.id, input.bookId), eq(books.addedBy, ctx.user.sub)),
+      where: eq(books.id, input.bookId),
     });
     if (!book) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
 
@@ -77,7 +77,7 @@ export const metadataRouter = router({
   applyFields: protectedProcedure.input(metadataApplyInput).mutation(async ({ ctx, input }) => {
     // Verify book exists and belongs to user
     const book = await ctx.db.query.books.findFirst({
-      where: and(eq(books.id, input.bookId), eq(books.addedBy, ctx.user.sub)),
+      where: eq(books.id, input.bookId),
     });
     if (!book) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
 

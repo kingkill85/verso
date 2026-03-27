@@ -20,8 +20,6 @@ import crypto from "node:crypto";
 describe("opds-server service", () => {
   let ctx: Awaited<ReturnType<typeof createTestContext>>;
   let userId: string;
-  let userId2: string;
-
   beforeEach(async () => {
     ctx = await createTestContext();
     const reg = await ctx.caller.auth.register({
@@ -30,13 +28,6 @@ describe("opds-server service", () => {
       displayName: "Test User",
     });
     userId = reg.user.id;
-
-    const reg2 = await ctx.caller.auth.register({
-      email: "other@example.com",
-      password: "password123",
-      displayName: "Other User",
-    });
-    userId2 = reg2.user.id;
   });
 
   async function insertBook(overrides: Partial<typeof books.$inferInsert> = {}) {
@@ -104,10 +95,11 @@ describe("opds-server service", () => {
       expect(feed.entries[0].title).toBe("My Book");
     });
 
-    it("excludes other users' books", async () => {
-      await insertBook({ addedBy: userId2, title: "Other User Book" });
+    it("includes all books in shared library", async () => {
+      await insertBook({ title: "Book A" });
+      await insertBook({ title: "Book B" });
       const feed = await buildAllBooks(ctx.db, userId, 1);
-      expect(feed.entries).toHaveLength(0);
+      expect(feed.entries).toHaveLength(2);
     });
 
     it("paginates at 50", async () => {
@@ -144,12 +136,11 @@ describe("opds-server service", () => {
       expect(feed.entries).toHaveLength(0);
     });
 
-    it("returns only this user's recently added books", async () => {
+    it("returns all recently added books from shared library", async () => {
       await insertBook({ title: "Recent Book" });
-      await insertBook({ title: "Other Book", addedBy: userId2 });
+      await insertBook({ title: "Another Book" });
       const feed = await buildRecentBooks(ctx.db, userId, 1);
-      expect(feed.entries).toHaveLength(1);
-      expect(feed.entries[0].title).toBe("Recent Book");
+      expect(feed.entries).toHaveLength(2);
     });
   });
 
@@ -171,13 +162,13 @@ describe("opds-server service", () => {
       expect(titles).toContain("Isaac Asimov (1)");
     });
 
-    it("excludes other users' authors", async () => {
-      await insertBook({ author: "My Author" });
-      await insertBook({ author: "Other Author", addedBy: userId2 });
+    it("includes all authors in shared library", async () => {
+      await insertBook({ author: "Author A" });
+      await insertBook({ author: "Author B" });
       const feed = await buildAuthorsList(ctx.db, userId);
       const titles = feed.entries.map((e) => e.title);
-      expect(titles.some((t) => t.startsWith("My Author"))).toBe(true);
-      expect(titles.some((t) => t.startsWith("Other Author"))).toBe(false);
+      expect(titles.some((t) => t.startsWith("Author A"))).toBe(true);
+      expect(titles.some((t) => t.startsWith("Author B"))).toBe(true);
     });
 
     it("round-trips through opds-client as navigation feed", async () => {
@@ -200,10 +191,11 @@ describe("opds-server service", () => {
       expect(feed.entries[0].title).toBe("Dune");
     });
 
-    it("excludes other users' books for that author", async () => {
-      await insertBook({ author: "Shared Author", addedBy: userId2 });
+    it("includes all books for that author in shared library", async () => {
+      await insertBook({ author: "Shared Author", title: "Book One" });
+      await insertBook({ author: "Shared Author", title: "Book Two" });
       const feed = await buildAuthorBooks(ctx.db, userId, "Shared Author", 1);
-      expect(feed.entries).toHaveLength(0);
+      expect(feed.entries).toHaveLength(2);
     });
   });
 
@@ -235,13 +227,13 @@ describe("opds-server service", () => {
       expect(feed.entries).toHaveLength(1);
     });
 
-    it("excludes other users' genres", async () => {
-      await insertBook({ genre: "My Genre" });
-      await insertBook({ genre: "Other Genre", addedBy: userId2 });
+    it("includes all genres in shared library", async () => {
+      await insertBook({ genre: "Genre A" });
+      await insertBook({ genre: "Genre B" });
       const feed = await buildGenresList(ctx.db, userId);
       const titles = feed.entries.map((e) => e.title);
-      expect(titles.some((t) => t.startsWith("My Genre"))).toBe(true);
-      expect(titles.some((t) => t.startsWith("Other Genre"))).toBe(false);
+      expect(titles.some((t) => t.startsWith("Genre A"))).toBe(true);
+      expect(titles.some((t) => t.startsWith("Genre B"))).toBe(true);
     });
   });
 
@@ -256,10 +248,11 @@ describe("opds-server service", () => {
       expect(feed.entries[0].title).toBe("Dune");
     });
 
-    it("excludes other users' books in that genre", async () => {
-      await insertBook({ genre: "Sci-Fi", addedBy: userId2 });
+    it("includes all books in that genre in shared library", async () => {
+      await insertBook({ genre: "Sci-Fi", title: "Sci-Fi Book A" });
+      await insertBook({ genre: "Sci-Fi", title: "Sci-Fi Book B" });
       const feed = await buildGenreBooks(ctx.db, userId, "Sci-Fi", 1);
-      expect(feed.entries).toHaveLength(0);
+      expect(feed.entries).toHaveLength(2);
     });
   });
 
@@ -357,10 +350,10 @@ describe("opds-server service", () => {
       expect(feed.entries[0].title).toBe("Dune");
     });
 
-    it("excludes other users' books from search", async () => {
-      await insertBook({ title: "Other User Book", addedBy: userId2 });
-      const feed = await buildSearchResults(ctx.db, userId, "Other User Book", 1);
-      expect(feed.entries).toHaveLength(0);
+    it("includes all books in search results from shared library", async () => {
+      await insertBook({ title: "Searchable Book" });
+      const feed = await buildSearchResults(ctx.db, userId, "Searchable", 1);
+      expect(feed.entries).toHaveLength(1);
     });
 
     it("is case insensitive", async () => {

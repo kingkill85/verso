@@ -58,28 +58,22 @@ describe("buildExportData", () => {
     expect(result.metadata.books[0].title).toBe("Export Test Book");
   });
 
-  it("does not include books from other users", async () => {
-    const otherReg = await ctx.caller.auth.register({
-      email: "other@example.com",
-      password: "password123",
-      displayName: "Other User",
-    });
+  it("includes all books in the shared library", async () => {
     const otherId = crypto.randomUUID();
     await ctx.db.insert(books).values({
       id: otherId,
-      title: "Other User's Book",
-      author: "Other Author",
+      title: "Another Book",
+      author: "Another Author",
       filePath: `books/${otherId}/book.epub`,
       fileFormat: "epub",
       fileSize: 512,
-      addedBy: otherReg.user.id,
+      addedBy: userId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
 
     const result = await buildExportData(ctx.db, userId);
-    expect(result.metadata.books).toHaveLength(1);
-    expect(result.metadata.books[0].id).toBe(bookId);
+    expect(result.metadata.books).toHaveLength(2);
   });
 
   it("includes user's shelves", async () => {
@@ -153,15 +147,10 @@ describe("buildExportData", () => {
     expect(result.progress.readingSessions[0].durationMinutes).toBe(30);
   });
 
-  it("returns empty collections for user with no data", async () => {
-    const emptyReg = await ctx.caller.auth.register({
-      email: "empty@example.com",
-      password: "password123",
-      displayName: "Empty User",
-    });
-
-    const result = await buildExportData(ctx.db, emptyReg.user.id);
-    expect(result.metadata.books).toHaveLength(0);
+  it("returns empty annotations/progress for user with no activity", async () => {
+    const result = await buildExportData(ctx.db, "nonexistent-user-id");
+    // Books are shared, so the seeded book still appears
+    expect(result.metadata.books).toHaveLength(1);
     expect(result.annotations.items).toHaveLength(0);
     expect(result.progress.readingProgress).toHaveLength(0);
     expect(result.progress.readingSessions).toHaveLength(0);

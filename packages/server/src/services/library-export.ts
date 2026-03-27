@@ -12,8 +12,7 @@ import type { AppDatabase } from "../db/client.js";
 export async function buildExportData(db: AppDatabase, userId: string) {
   const userBooks = await db
     .select()
-    .from(books)
-    .where(eq(books.addedBy, userId));
+    .from(books);
 
   const userShelves = await db
     .select()

@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { eq, and, desc, asc, sql, isNull, isNotNull } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 import { books, readingProgress, bookListInput, bookByIdInput, bookUpdateInput, bookDeleteInput, searchInput } from "@verso/shared";
 import { router, protectedProcedure } from "../index.js";
 import { updateEpubMetadata, getEpubFileHash } from "../../services/epub-writer.js";
@@ -25,7 +26,7 @@ export const booksRouter = router({
     const { sort, page, limit, search, genre, author, format } = input;
     const offset = (page - 1) * limit;
 
-    const conditions = [eq(books.addedBy, ctx.user.sub)];
+    const conditions: SQL[] = [];
     if (search) {
       const term = "%" + escapeLike(search) + "%";
       conditions.push(sql`(${books.title} LIKE ${term} ESCAPE '\\' OR ${books.author} LIKE ${term} ESCAPE '\\')`);
@@ -52,7 +53,7 @@ export const booksRouter = router({
 
   byId: protectedProcedure.input(bookByIdInput).query(async ({ ctx, input }) => {
     const book = await ctx.db.query.books.findFirst({
-      where: and(eq(books.id, input.id), eq(books.addedBy, ctx.user.sub)),
+      where: eq(books.id, input.id),
     });
     if (!book) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
     return book;
@@ -61,7 +62,7 @@ export const booksRouter = router({
   update: protectedProcedure.input(bookUpdateInput).mutation(async ({ ctx, input }) => {
     const { id, tags, coverUrl, ...fields } = input;
     const existing = await ctx.db.query.books.findFirst({
-      where: and(eq(books.id, id), eq(books.addedBy, ctx.user.sub)),
+      where: eq(books.id, id),
     });
     if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
 
@@ -113,7 +114,7 @@ export const booksRouter = router({
 
   delete: protectedProcedure.input(bookDeleteInput).mutation(async ({ ctx, input }) => {
     const existing = await ctx.db.query.books.findFirst({
-      where: and(eq(books.id, input.id), eq(books.addedBy, ctx.user.sub)),
+      where: eq(books.id, input.id),
     });
     if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
 
@@ -128,7 +129,7 @@ export const booksRouter = router({
   recentlyAdded: protectedProcedure
     .input(bookListInput.pick({ limit: true }))
     .query(async ({ ctx, input }) => {
-      return ctx.db.select().from(books).where(eq(books.addedBy, ctx.user.sub))
+      return ctx.db.select().from(books)
         .orderBy(desc(books.createdAt)).limit(input.limit || 20);
     }),
 
@@ -167,7 +168,6 @@ export const booksRouter = router({
     // Build dynamic WHERE conditions using Drizzle sql template chunks
     const conditions = [
       sql`books_fts MATCH ${escapeFts5(query)}`,
-      sql`b.added_by = ${ctx.user.sub}`,
     ];
 
     if (genre) {

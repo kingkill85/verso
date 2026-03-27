@@ -24,18 +24,19 @@ describe("auth router", () => {
       expect(result.refreshToken).toBeTruthy();
     });
 
-    it("second user gets user role", async () => {
+    it("rejects registration after first user (registration closed)", async () => {
       await ctx.caller.auth.register({
         email: "admin@example.com",
         password: "password123",
         displayName: "Admin",
       });
-      const result = await ctx.caller.auth.register({
-        email: "user@example.com",
-        password: "password123",
-        displayName: "User",
-      });
-      expect(result.user.role).toBe("user");
+      await expect(
+        ctx.caller.auth.register({
+          email: "user@example.com",
+          password: "password123",
+          displayName: "User",
+        })
+      ).rejects.toThrow("Registration is closed");
     });
 
     it("rejects duplicate email", async () => {

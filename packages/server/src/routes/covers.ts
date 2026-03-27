@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { books } from "@verso/shared";
 import { verifyAccessToken } from "../services/jwt.js";
 import { updateEpubMetadata, getEpubFileHash } from "../services/epub-writer.js";
@@ -40,7 +40,7 @@ export function registerCoversRoute(app: FastifyInstance, db: AppDatabase, stora
     }
 
     const book = await db.query.books.findFirst({
-      where: and(eq(books.id, bookId), eq(books.addedBy, user.sub)),
+      where: eq(books.id, bookId),
     });
     if (!book) return reply.status(404).send({ error: "Book not found" });
 
@@ -93,7 +93,7 @@ export function registerCoversRoute(app: FastifyInstance, db: AppDatabase, stora
     }
 
     const book = await db.query.books.findFirst({
-      where: and(eq(books.id, bookId), eq(books.addedBy, user.sub)),
+      where: eq(books.id, bookId),
     });
     if (!book) return reply.status(404).send({ error: "Book not found" });
 

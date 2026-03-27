@@ -62,34 +62,39 @@ export const shelvesRouter = router({
       const hasRecentlyAdded = filter.conditions.some(
         (c: any) => c.field === "_recentlyAdded"
       );
+      const hasFinished = filter.conditions.some(
+        (c: any) => c.field === "_finished"
+      );
+
+      const bookColumns = {
+        id: books.id,
+        title: books.title,
+        author: books.author,
+        isbn: books.isbn,
+        publisher: books.publisher,
+        year: books.year,
+        language: books.language,
+        description: books.description,
+        genre: books.genre,
+        tags: books.tags,
+        coverPath: books.coverPath,
+        filePath: books.filePath,
+        fileFormat: books.fileFormat,
+        fileSize: books.fileSize,
+        fileHash: books.fileHash,
+        pageCount: books.pageCount,
+        addedBy: books.addedBy,
+        metadataSource: books.metadataSource,
+        metadataLocked: books.metadataLocked,
+        createdAt: books.createdAt,
+        updatedAt: books.updatedAt,
+      };
 
       let shelfBooks;
       if (hasCurrentlyReading) {
         // Books with active reading progress (started but not finished)
         shelfBooks = await ctx.db
-          .select({
-            id: books.id,
-            title: books.title,
-            author: books.author,
-            isbn: books.isbn,
-            publisher: books.publisher,
-            year: books.year,
-            language: books.language,
-            description: books.description,
-            genre: books.genre,
-            tags: books.tags,
-            coverPath: books.coverPath,
-            filePath: books.filePath,
-            fileFormat: books.fileFormat,
-            fileSize: books.fileSize,
-            fileHash: books.fileHash,
-            pageCount: books.pageCount,
-            addedBy: books.addedBy,
-            metadataSource: books.metadataSource,
-            metadataLocked: books.metadataLocked,
-            createdAt: books.createdAt,
-            updatedAt: books.updatedAt,
-          })
+          .select(bookColumns)
           .from(readingProgress)
           .innerJoin(books, eq(books.id, readingProgress.bookId))
           .where(
@@ -100,6 +105,19 @@ export const shelvesRouter = router({
             )
           )
           .orderBy(desc(readingProgress.lastReadAt));
+      } else if (hasFinished) {
+        // Books that have been finished
+        shelfBooks = await ctx.db
+          .select(bookColumns)
+          .from(readingProgress)
+          .innerJoin(books, eq(books.id, readingProgress.bookId))
+          .where(
+            and(
+              eq(readingProgress.userId, ctx.user.sub),
+              isNotNull(readingProgress.finishedAt),
+            )
+          )
+          .orderBy(desc(readingProgress.finishedAt));
       } else if (hasRecentlyAdded) {
         const days = filter.conditions.find(
           (c: any) => c.field === "_recentlyAdded"
@@ -108,10 +126,7 @@ export const shelvesRouter = router({
           .select()
           .from(books)
           .where(
-            and(
-              eq(books.addedBy, ctx.user.sub),
-              sql`${books.createdAt} >= datetime('now', ${`-${days} days`})`
-            )
+            sql`${books.createdAt} >= datetime('now', ${`-${days} days`})`
           )
           .orderBy(desc(books.createdAt));
       } else {
@@ -119,7 +134,7 @@ export const shelvesRouter = router({
         shelfBooks = await ctx.db
           .select()
           .from(books)
-          .where(and(eq(books.addedBy, ctx.user.sub), filterCondition))
+          .where(filterCondition)
           .orderBy(desc(books.createdAt));
       }
 
