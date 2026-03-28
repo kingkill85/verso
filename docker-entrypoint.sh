@@ -6,4 +6,4 @@ mkdir -p /data/files
 chown -R verso:verso /data
 
 # Drop to verso user and exec the CMD
-exec su-exec verso "$@"
+exec gosu verso "$@"

@@ -19,10 +19,18 @@ COPY --from=deps /app/packages/web/node_modules ./packages/web/node_modules
 COPY . .
 RUN pnpm run build
 
-# Stage 3: Runtime
-FROM node:20-alpine AS runtime
+# Stage 3: Runtime (Debian-slim for Calibre compatibility)
+FROM node:20-slim AS runtime
 RUN corepack enable && corepack prepare pnpm@9 --activate
 WORKDIR /app
+
+# Install Calibre CLI tools + runtime dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      calibre \
+      gosu \
+      python3 \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 COPY --from=build /app/packages/shared/package.json ./packages/shared/
@@ -37,8 +45,7 @@ COPY --from=build /app/pnpm-workspace.yaml ./
 
 RUN pnpm install --frozen-lockfile --prod
 
-RUN apk add --no-cache su-exec
-RUN addgroup -g 1001 verso && adduser -u 1001 -G verso -s /bin/sh -D verso
+RUN groupadd -g 1001 verso && useradd -u 1001 -g verso -s /bin/sh -m verso
 
 ENV NODE_ENV=production
 ENV STORAGE_PATH=/data/files
