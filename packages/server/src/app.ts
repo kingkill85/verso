@@ -20,6 +20,7 @@ import { registerCoversRoute } from "./routes/covers.js";
 import { registerImportRoutes } from "./routes/import.js";
 import { registerExportRoute } from "./routes/export.js";
 import { registerOpdsRoutes } from "./routes/opds.js";
+import { verifyCalibreInstalled } from "./services/calibre.js";
 import type { Config } from "./config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -35,6 +36,14 @@ export async function buildApp(config: Config) {
   const allUsers = db.select({ id: users.id }).from(users).all();
   for (const u of allUsers) {
     await backfillDefaultShelves(db, u.id);
+  }
+
+  try {
+    await verifyCalibreInstalled(config.CALIBRE_PATH);
+    console.log("Calibre CLI tools verified");
+  } catch (err: any) {
+    console.error(err.message);
+    process.exit(1);
   }
 
   const storage = new StorageService(config);

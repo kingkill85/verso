@@ -14,6 +14,7 @@ const envSchema = z.object({
   MAX_UPLOAD_SIZE: z.coerce.number().default(104857600),
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  CALIBRE_PATH: z.string().optional(),
 });
 
 export type Config = z.infer<typeof envSchema>;
