@@ -351,7 +351,7 @@ function ReaderPage() {
           syncNow();
           break;
         case "Escape":
-          navigate({ to: "/books/$id", params: { id } });
+          window.history.back();
           break;
       }
     }
@@ -359,7 +359,7 @@ function ReaderPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [nextPage, prevPage, navigate, id, syncNow, clearSelection]);
 
-  const handleClose = useCallback(() => navigate({ to: "/books/$id", params: { id } }), [navigate, id]);
+  const handleClose = useCallback(() => window.history.back(), []);
 
   if (!dataReady) {
     return (

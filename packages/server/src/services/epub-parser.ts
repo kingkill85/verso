@@ -1,4 +1,5 @@
 import { EPub } from "epub2";
+import * as yauzl from "yauzl-promise";
 
 export type ParsedMetadata = {
   title: string;
@@ -191,10 +192,42 @@ async function extractCover(
       const [data, mimeType] = await epub.getImageAsync(id);
       return { coverData: Buffer.from(data), coverMimeType: mimeType };
     } catch {
-      // Give up
+      // Fall through to zip scan
     }
   }
 
+  return {};
+}
+
+/**
+ * Last-resort cover extraction: scan the zip directly for files with "cover" in the name.
+ * Handles EPUBs with malformed manifest hrefs (e.g. doubled directory prefixes).
+ */
+async function extractCoverFromZip(
+  filePath: string,
+): Promise<{ coverData?: Buffer; coverMimeType?: string }> {
+  try {
+    const zipFile = await yauzl.open(filePath);
+    try {
+      for await (const entry of zipFile) {
+        const name = entry.filename.toLowerCase();
+        if (name.includes("cover") && /\.(jpe?g|png|gif)$/.test(name)) {
+          const stream = await entry.openReadStream();
+          const chunks: Buffer[] = [];
+          for await (const chunk of stream) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          }
+          const data = Buffer.concat(chunks);
+          const mimeType = name.endsWith(".png") ? "image/png" : "image/jpeg";
+          return { coverData: data, coverMimeType: mimeType };
+        }
+      }
+    } finally {
+      await zipFile.close();
+    }
+  } catch {
+    // Zip scan failed
+  }
   return {};
 }
 
@@ -202,7 +235,12 @@ export async function parseEpub(filePath: string): Promise<ParsedMetadata> {
   const epub = await EPub.createAsync(filePath);
   const meta = epub.metadata as Record<string, unknown>;
 
-  const { coverData, coverMimeType } = await extractCover(epub);
+  let { coverData, coverMimeType } = await extractCover(epub);
+
+  // Fallback: scan zip directly for cover files (handles malformed manifest hrefs)
+  if (!coverData) {
+    ({ coverData, coverMimeType } = await extractCoverFromZip(filePath));
+  }
 
   const year = extractYear(String(meta.date || ""));
   const isbn = extractIsbn(meta);

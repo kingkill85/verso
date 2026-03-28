@@ -25,6 +25,10 @@
 }
 
 @layer base {
+  button, [role="button"] {
+    cursor: pointer;
+  }
+
   /* Thin, subtle scrollbars */
   * {
     scrollbar-width: thin;
