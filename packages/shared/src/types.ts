@@ -27,7 +27,7 @@ export type NewAnnotation = InferInsertModel<typeof annotations>;
 export type MetadataCache = InferSelectModel<typeof metadataCache>;
 
 export type ExternalBook = {
-  source: "google" | "openlibrary" | "goodreads";
+  source: "google" | "openlibrary" | "goodreads" | "calibre";
   sourceId: string;
   title: string;
   author: string;

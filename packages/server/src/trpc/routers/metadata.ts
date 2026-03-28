@@ -3,7 +3,8 @@ import { eq, and } from "drizzle-orm";
 import { books, metadataCache, metadataSearchInput, metadataApplyInput } from "@verso/shared";
 import type { ExternalBook } from "@verso/shared";
 import { router, protectedProcedure, adminProcedure } from "../index.js";
-import { searchExternalMetadata } from "../../services/metadata-enrichment.js";
+import { searchExternalMetadata, scoreMatch } from "../../services/metadata-enrichment.js";
+import { searchMetadata as calibreSearchMetadata } from "../../services/calibre.js";
 import { updateEpubMetadata, getEpubFileHash } from "../../services/epub-writer.js";
 import sharp from "sharp";
 
@@ -21,9 +22,6 @@ export const metadataRouter = router({
     const searchTitle = input.title ?? book.title;
     const searchAuthor = input.author ?? book.author;
     const searchIsbn = input.isbn ?? book.isbn ?? undefined;
-
-    // Build query string (for Google/OpenLibrary which take a single query)
-    const query = input.query ?? `${searchTitle} ${searchAuthor}`.trim();
 
     // Build cache key
     const cacheKey = searchIsbn || `${searchTitle}::${searchAuthor}`;
@@ -46,11 +44,64 @@ export const metadataRouter = router({
       }
     }
 
-    // Search external APIs
-    const results = await searchExternalMetadata(
-      { title: searchTitle, author: searchAuthor, isbn: searchIsbn },
-      book.year ?? undefined,
-    );
+    // Run Calibre metadata search and external cover search in parallel
+    const bookQuery = { title: searchTitle, author: searchAuthor, isbn: searchIsbn };
+    const [calibreResults, coverResults] = await Promise.all([
+      calibreSearchMetadata(bookQuery).catch(() => []),
+      searchExternalMetadata(bookQuery, book.year ?? undefined).catch(() => []),
+    ]);
+
+    // Convert Calibre results to ExternalBook[], merging in high-res covers
+    const results: ExternalBook[] = calibreResults.map((meta, idx) => {
+      const ext: ExternalBook = {
+        source: "calibre",
+        sourceId: `calibre-${idx}`,
+        title: meta.title,
+        author: meta.author,
+        isbn: meta.isbn,
+        publisher: meta.publisher,
+        year: meta.year,
+        description: meta.description,
+        genre: meta.genre,
+        language: meta.language,
+        pageCount: meta.pageCount,
+        series: meta.series,
+        seriesIndex: meta.seriesIndex,
+        confidence: 0,
+      };
+
+      // Try to find a matching cover from external sources
+      // First try ISBN match, then title+author similarity
+      let bestCover: string | undefined;
+      let bestScore = 0;
+
+      for (const cover of coverResults) {
+        if (!cover.coverUrl) continue;
+        const score = scoreMatch(
+          { title: meta.title, author: meta.author, isbn: meta.isbn },
+          cover,
+          meta.year,
+        );
+        if (score > bestScore) {
+          bestScore = score;
+          bestCover = cover.coverUrl;
+        }
+      }
+
+      if (bestCover && bestScore >= 0.3) {
+        ext.coverUrl = bestCover;
+      }
+
+      return ext;
+    });
+
+    // Score each result against the local book data
+    for (const result of results) {
+      result.confidence = scoreMatch(bookQuery, result, book.year ?? undefined);
+    }
+
+    // Sort by confidence descending
+    results.sort((a, b) => b.confidence - a.confidence);
 
     // Cache results (only for auto-search)
     if (!input.query) {
