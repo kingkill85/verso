@@ -2,6 +2,9 @@ import { execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
 import path from "node:path";
 import fs from "node:fs";
+import fsPromises from "node:fs/promises";
+import os from "node:os";
+import crypto from "node:crypto";
 
 const execFile = promisify(execFileCb);
 
@@ -18,6 +21,7 @@ export type ParsedMetadata = {
   tags?: string[];
   series?: string;
   seriesIndex?: number;
+  coverDataUrl?: string;
 };
 
 let calibrePath: string | undefined;
@@ -83,9 +87,13 @@ export async function extractMetadata(filePath: string): Promise<ParsedMetadata>
 
   const kv = parseKeyValue(stdout);
 
+  // Strip "[Sort Name]" from author — ebook-meta outputs "Stephen King [King, Stephen]"
+  const rawAuthor = kv["Author(s)"] || kv["Author"] || "Unknown";
+  const cleanAuthor = rawAuthor.replace(/\s*\[.*?\]\s*/g, "").trim();
+
   const meta: ParsedMetadata = {
     title: kv["Title"] || "Unknown",
-    author: kv["Author(s)"] || kv["Author"] || "Unknown",
+    author: cleanAuthor,
   };
 
   if (kv["Publisher"]) meta.publisher = kv["Publisher"];
@@ -130,19 +138,25 @@ export async function extractCover(filePath: string, outputPath: string): Promis
   }
 }
 
-function parseFetchBlocks(stdout: string): ParsedMetadata[] {
+function parseFetchBlocks(output: string): ParsedMetadata[] {
   const results: ParsedMetadata[] = [];
-  // fetch-ebook-metadata outputs multiple result blocks separated by blank lines
-  const blocks = stdout.split(/\n\s*\n/);
+  // Verbose output uses "---" separators, normal output uses blank lines
+  // Also filter out log lines (e.g. "Running identify query", "Using plugins", "Found N results", etc.)
+  const blocks = output.split(/\n-{3,}\n|\n\s*\n/);
 
   for (const block of blocks) {
     if (!block.trim()) continue;
+    // Skip log/diagnostic lines (verbose output has "Running identify", "Using plugins", "Found N results", etc.)
+    if (/^(Running|Using|Found|The |Downloading|Merging|We have|It took)/m.test(block.trim())) continue;
     const kv = parseKeyValue(block);
     if (!kv["Title"]) continue;
+    // Skip if title looks like a log line
+    if (kv["Title"].startsWith("Running") || kv["Title"].startsWith("Using")) continue;
 
+    const rawAuthor2 = kv["Author(s)"] || kv["Author"] || "Unknown";
     const meta: ParsedMetadata = {
       title: kv["Title"],
-      author: kv["Author(s)"] || kv["Author"] || "Unknown",
+      author: rawAuthor2.replace(/\s*\[.*?\]\s*/g, "").trim(),
     };
 
     if (kv["Publisher"]) meta.publisher = kv["Publisher"];
@@ -191,13 +205,42 @@ export async function searchMetadata(query: {
 
   if (args.length === 0) return [];
 
+  // Download cover to temp file
+  const coverId = crypto.randomUUID();
+  const coverTmp = path.join(os.tmpdir(), `verso-meta-cover-${coverId}.jpg`);
+
   try {
-    const { stdout } = await execFile(toolPath("fetch-ebook-metadata"), args, {
-      timeout: 30_000,
-    });
-    return parseFetchBlocks(stdout);
+    // Request cover download alongside search
+    const { stdout } = await execFile(
+      toolPath("fetch-ebook-metadata"),
+      [...args, "--cover", coverTmp],
+      { timeout: 60_000 },
+    );
+
+    // Read cover as data URL if it was downloaded
+    let coverDataUrl: string | undefined;
+    try {
+      if (fs.existsSync(coverTmp)) {
+        const coverBuf = await fsPromises.readFile(coverTmp);
+        coverDataUrl = `data:image/jpeg;base64,${coverBuf.toString("base64")}`;
+      }
+    } catch {
+      // No cover
+    }
+
+    // Parse the single merged result from stdout
+    const results = parseFetchBlocks(stdout);
+
+    // Attach cover to the result
+    if (coverDataUrl && results.length > 0) {
+      results[0].coverDataUrl = coverDataUrl;
+    }
+
+    return results;
   } catch {
     return [];
+  } finally {
+    fsPromises.unlink(coverTmp).catch(() => {});
   }
 }
 

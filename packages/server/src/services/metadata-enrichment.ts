@@ -646,13 +646,21 @@ export async function searchExternalMetadata(
   if (amazonCovers.length > 0 && deduplicated.length > 0) {
     const bestCover = amazonCovers[0].coverUrl;
     if (bestCover) {
-      // Apply Amazon's high-res cover to the top Goodreads/Google result if it has a low-res one
       for (const result of deduplicated) {
         if (result.coverUrl && result.coverUrl.includes("compressed.photo.goodreads")) {
           result.coverUrl = bestCover;
           break;
         }
       }
+    }
+  }
+
+  // Include all Amazon Kindle covers as separate results (for cover picker)
+  for (const ac of amazonCovers) {
+    if (ac.coverUrl && !deduplicated.some((r) => r.coverUrl === ac.coverUrl)) {
+      ac.source = "goodreads"; // labeled as goodreads since they're Amazon-hosted
+      ac.confidence = 0;
+      deduplicated.push(ac);
     }
   }
 

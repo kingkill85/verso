@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useDropzone } from "react-dropzone";
 import { getAccessToken } from "@/lib/auth";
 import { CheckIcon } from "@/components/icons";
@@ -10,6 +11,7 @@ type RestoreState =
   | { phase: "error"; message: string };
 
 export function RestoreBackup() {
+  const { t } = useTranslation();
   const [state, setState] = useState<RestoreState>({ phase: "idle" });
 
   const onDrop = useCallback(async (files: File[]) => {
@@ -69,10 +71,10 @@ export function RestoreBackup() {
           className="font-display text-lg font-semibold mb-2"
           style={{ color: "var(--warm)" }}
         >
-          Restoring...
+          {t("restore.restoring")}
         </p>
         <p className="text-sm" style={{ color: "var(--text-dim)" }}>
-          Please wait while your backup is being restored
+          {t("restore.pleaseWait")}
         </p>
       </div>
     );
@@ -88,7 +90,7 @@ export function RestoreBackup() {
           className="font-display text-xl font-bold mb-2"
           style={{ color: "var(--green)" }}
         >
-          <CheckIcon size={22} className="inline -mt-0.5" /> Restore Complete
+          <CheckIcon size={22} className="inline -mt-0.5" /> {t("restore.complete")}
         </p>
         <div
           className="flex justify-center gap-6 mt-4 text-sm"
@@ -101,7 +103,7 @@ export function RestoreBackup() {
             >
               {state.books}
             </span>{" "}
-            books
+            {t("restore.books")}
           </span>
           <span>
             <span
@@ -110,7 +112,7 @@ export function RestoreBackup() {
             >
               {state.shelves}
             </span>{" "}
-            shelves
+            {t("restore.shelves")}
           </span>
           <span>
             <span
@@ -119,7 +121,7 @@ export function RestoreBackup() {
             >
               {state.annotations}
             </span>{" "}
-            annotations
+            {t("restore.annotations")}
           </span>
         </div>
         <button
@@ -127,7 +129,7 @@ export function RestoreBackup() {
           className="mt-6 text-sm px-4 py-2 rounded-full border transition-colors"
           style={{ color: "var(--text-dim)", borderColor: "var(--border)" }}
         >
-          Restore another backup
+          {t("restore.restoreAnother")}
         </button>
       </div>
     );
@@ -144,7 +146,7 @@ export function RestoreBackup() {
           }}
         >
           <p className="font-display text-lg font-semibold mb-2 text-red-500">
-            Restore Failed
+            {t("restore.failed")}
           </p>
           <p className="text-sm text-red-400 mb-4">{state.message}</p>
           <button
@@ -152,7 +154,7 @@ export function RestoreBackup() {
             className="text-sm px-4 py-2 rounded-full border transition-colors"
             style={{ color: "var(--text-dim)", borderColor: "var(--border)" }}
           >
-            Try again
+            {t("restore.tryAgain")}
           </button>
         </div>
       </div>
@@ -175,13 +177,13 @@ export function RestoreBackup() {
           className="font-display text-lg font-semibold mb-2"
           style={{ color: isDragActive ? "var(--warm)" : "var(--text)" }}
         >
-          {isDragActive ? "Drop backup here" : "Drop your backup here"}
+          {isDragActive ? t("restore.dropHere") : t("restore.dropBackup")}
         </p>
         <p className="text-sm mb-4" style={{ color: "var(--text-dim)" }}>
-          or click to browse
+          {t("restore.orBrowse")}
         </p>
         <p className="text-xs" style={{ color: "var(--text-faint)" }}>
-          Accepts .zip backup files
+          {t("restore.acceptsZip")}
         </p>
       </div>
     </div>

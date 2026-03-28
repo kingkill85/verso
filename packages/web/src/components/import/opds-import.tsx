@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getAccessToken } from "@/lib/auth";
 import { CheckIcon, FolderIcon } from "@/components/icons";
 
@@ -36,6 +37,7 @@ type ImportStatus = {
 };
 
 export function OpdsImport() {
+  const { t } = useTranslation();
   const [phase, setPhase] = useState<Phase>("connect");
   const [url, setUrl] = useState("");
   const [username, setUsername] = useState("");
@@ -237,14 +239,14 @@ export function OpdsImport() {
               className="block text-sm font-medium mb-1.5"
               style={{ color: "var(--text)" }}
             >
-              OPDS Server URL
+              {t("opds.serverUrl")}
             </label>
             <input
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && connect()}
-              placeholder="OPDS server URL (e.g. http://booklore:6060/api/v1/opds)"
+              placeholder={t("opds.serverUrlPlaceholder")}
               className="w-full rounded-lg px-3 py-2 text-sm outline-none"
               style={{
                 backgroundColor: "var(--bg)",
@@ -260,14 +262,14 @@ export function OpdsImport() {
                 className="block text-sm font-medium mb-1.5"
                 style={{ color: "var(--text)" }}
               >
-                Username{" "}
-                <span style={{ color: "var(--text-faint)" }}>(optional)</span>
+                {t("opds.username")}{" "}
+                <span style={{ color: "var(--text-faint)" }}>({t("opds.optional")})</span>
               </label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Username"
+                placeholder={t("opds.username")}
                 className="w-full rounded-lg px-3 py-2 text-sm outline-none"
                 style={{
                   backgroundColor: "var(--bg)",
@@ -281,15 +283,15 @@ export function OpdsImport() {
                 className="block text-sm font-medium mb-1.5"
                 style={{ color: "var(--text)" }}
               >
-                Password{" "}
-                <span style={{ color: "var(--text-faint)" }}>(optional)</span>
+                {t("opds.password")}{" "}
+                <span style={{ color: "var(--text-faint)" }}>({t("opds.optional")})</span>
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && connect()}
-                placeholder="Password"
+                placeholder={t("opds.password")}
                 className="w-full rounded-lg px-3 py-2 text-sm outline-none"
                 style={{
                   backgroundColor: "var(--bg)",
@@ -310,7 +312,7 @@ export function OpdsImport() {
             className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
             style={{ backgroundColor: "var(--warm)" }}
           >
-            {connecting ? "Connecting..." : "Connect"}
+            {connecting ? t("opds.connecting") : t("opds.connect")}
           </button>
         </div>
       </div>
@@ -328,10 +330,10 @@ export function OpdsImport() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold" style={{ color: "var(--text)" }}>
-            Importing {total} {total === 1 ? "book" : "books"}
+            {t("opds.importingBooks", { count: total })}
           </h2>
           <p className="text-sm" style={{ color: "var(--text-dim)" }}>
-            {finished} / {total} done
+            {t("opds.importProgress", { finished, total })}
           </p>
         </div>
 
@@ -363,11 +365,11 @@ export function OpdsImport() {
                           : "var(--warm)",
                 }}
               >
-                {s.status === "pending" && "Waiting..."}
-                {s.status === "downloading" && "Downloading..."}
-                {s.status === "processing" && "Processing..."}
-                {s.status === "done" && <><CheckIcon size={14} className="inline -mt-0.5" /> Done</>}
-                {s.status === "failed" && (s.error || "Failed")}
+                {s.status === "pending" && t("opds.waiting")}
+                {s.status === "downloading" && t("opds.downloading")}
+                {s.status === "processing" && t("opds.processing")}
+                {s.status === "done" && <><CheckIcon size={14} className="inline -mt-0.5" /> {t("opds.done")}</>}
+                {s.status === "failed" && (s.error || t("opds.failed"))}
               </span>
             </div>
           ))}
@@ -382,7 +384,7 @@ export function OpdsImport() {
             className="mt-4 text-sm px-4 py-2 rounded-full border"
             style={{ color: "var(--text-dim)", borderColor: "var(--border)" }}
           >
-            ← Back to catalog
+            {t("opds.backToCatalog")}
           </button>
         )}
       </div>
@@ -398,7 +400,7 @@ export function OpdsImport() {
           className="text-sm px-3 py-1.5 rounded-full border transition-colors"
           style={{ color: "var(--text-dim)", borderColor: "var(--border)" }}
         >
-          ← Back
+          {t("common.back")}
         </button>
         <h2
           className="text-base font-semibold truncate"
@@ -443,8 +445,8 @@ export function OpdsImport() {
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-medium" style={{ color: "var(--text)" }}>
               {selected.size > 0
-                ? `${selected.size} selected`
-                : `${acquisitionEntries.length} books`}
+                ? t("opds.selected", { count: selected.size })
+                : t("opds.booksCount", { count: acquisitionEntries.length })}
             </p>
             <div className="flex gap-2">
               <button
@@ -455,7 +457,7 @@ export function OpdsImport() {
                   borderColor: "var(--border)",
                 }}
               >
-                Select all
+                {t("opds.selectAll")}
               </button>
               {selected.size > 0 && (
                 <button
@@ -463,7 +465,7 @@ export function OpdsImport() {
                   className="text-sm px-5 py-1.5 rounded-full font-semibold text-white transition-transform hover:scale-[1.02]"
                   style={{ backgroundColor: "var(--warm)" }}
                 >
-                  Import {selected.size} {selected.size === 1 ? "book" : "books"}
+                  {t("opds.importBooks", { count: selected.size })}
                 </button>
               )}
             </div>
@@ -510,7 +512,7 @@ export function OpdsImport() {
           className="text-sm text-center py-8"
           style={{ color: "var(--text-faint)" }}
         >
-          No entries found in this feed.
+          {t("opds.noEntries")}
         </p>
       )}
     </div>

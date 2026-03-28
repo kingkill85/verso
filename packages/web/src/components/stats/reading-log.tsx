@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { BookOpenIcon } from "@/components/icons";
 
 interface ReadingLogItem {
@@ -38,6 +39,7 @@ function formatDuration(minutes: number): string {
 }
 
 export function ReadingLog({ items, hasMore, onLoadMore }: ReadingLogProps) {
+  const { t } = useTranslation();
   return (
     <div
       className="rounded-xl overflow-hidden"
@@ -45,7 +47,7 @@ export function ReadingLog({ items, hasMore, onLoadMore }: ReadingLogProps) {
     >
       <div className="px-4 py-3 border-b" style={{ borderColor: "var(--border)" }}>
         <p className="text-sm font-medium" style={{ color: "var(--text)" }}>
-          Reading Log
+          {t("stats.readingLog")}
         </p>
       </div>
 
@@ -54,7 +56,7 @@ export function ReadingLog({ items, hasMore, onLoadMore }: ReadingLogProps) {
           className="flex items-center justify-center py-8"
           style={{ color: "var(--text-faint)", fontSize: 13 }}
         >
-          No reading sessions yet
+          {t("stats.noSessions")}
         </div>
       ) : (
         <>
@@ -126,7 +128,7 @@ export function ReadingLog({ items, hasMore, onLoadMore }: ReadingLogProps) {
                 className="w-full text-sm py-1.5 rounded-lg transition-colors hover:opacity-80"
                 style={{ color: "var(--text-dim)" }}
               >
-                Load more
+                {t("stats.loadMore")}
               </button>
             </div>
           )}

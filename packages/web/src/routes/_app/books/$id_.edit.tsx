@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { createFileRoute, Link, useNavigate, useBlocker } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
 import { BookCover } from "@/components/books/book-cover";
 import { getAccessToken } from "@/lib/auth";
@@ -8,18 +9,18 @@ export const Route = createFileRoute("/_app/books/$id_/edit")({
   component: BookEditPage,
 });
 
-const FIELDS: { key: string; label: string; type: "text" | "number" | "textarea"; half?: boolean; group: string }[] = [
-  { key: "title", label: "Title", type: "text", group: "basic" },
-  { key: "author", label: "Author", type: "text", group: "basic" },
-  { key: "description", label: "Description", type: "textarea", group: "basic" },
-  { key: "genre", label: "Genre", type: "text", group: "classification" },
-  { key: "language", label: "Language", type: "text", group: "classification" },
-  { key: "series", label: "Series", type: "text", half: true, group: "classification" },
-  { key: "seriesIndex", label: "Series #", type: "number", half: true, group: "classification" },
-  { key: "publisher", label: "Publisher", type: "text", group: "publication" },
-  { key: "year", label: "Year", type: "number", half: true, group: "publication" },
-  { key: "isbn", label: "ISBN", type: "text", half: true, group: "publication" },
-  { key: "pageCount", label: "Pages", type: "number", group: "publication" },
+const FIELDS: { key: string; labelKey: string; type: "text" | "number" | "textarea"; half?: boolean; group: string }[] = [
+  { key: "title", labelKey: "edit.field.title", type: "text", group: "basic" },
+  { key: "author", labelKey: "edit.field.author", type: "text", group: "basic" },
+  { key: "description", labelKey: "edit.field.description", type: "textarea", group: "basic" },
+  { key: "genre", labelKey: "edit.field.genre", type: "text", group: "classification" },
+  { key: "language", labelKey: "edit.field.language", type: "text", group: "classification" },
+  { key: "series", labelKey: "edit.field.series", type: "text", half: true, group: "classification" },
+  { key: "seriesIndex", labelKey: "edit.field.seriesIndex", type: "number", half: true, group: "classification" },
+  { key: "publisher", labelKey: "edit.field.publisher", type: "text", group: "publication" },
+  { key: "year", labelKey: "edit.field.year", type: "number", half: true, group: "publication" },
+  { key: "isbn", labelKey: "edit.field.isbn", type: "text", half: true, group: "publication" },
+  { key: "pageCount", labelKey: "edit.field.pages", type: "number", group: "publication" },
 ];
 
 const NUM_FIELDS = new Set(["year", "pageCount", "seriesIndex"]);
@@ -44,6 +45,7 @@ function consumeMetadataApply(bookId: string): { fields: Record<string, string>;
 }
 
 function BookEditPage() {
+  const { t } = useTranslation();
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const utils = trpc.useUtils();
@@ -119,22 +121,22 @@ function BookEditPage() {
   const set = (key: string, val: string) => setValues((p) => ({ ...p, [key]: val }));
 
   if (bookQuery.isLoading) {
-    return <div className="flex items-center justify-center py-20" style={{ color: "var(--text-dim)" }}><p className="text-sm">Loading...</p></div>;
+    return <div className="flex items-center justify-center py-20" style={{ color: "var(--text-dim)" }}><p className="text-sm">{t("common.loading")}</p></div>;
   }
   if (bookQuery.error || !bookQuery.data) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <p className="font-display text-lg" style={{ color: "var(--text)" }}>Book not found</p>
-        <button onClick={() => window.history.back()} className="text-sm mt-2" style={{ color: "var(--warm)" }}>Back</button>
+        <p className="font-display text-lg" style={{ color: "var(--text)" }}>{t("book.notFound")}</p>
+        <button onClick={() => window.history.back()} className="text-sm mt-2" style={{ color: "var(--warm)" }}>{t("common.back")}</button>
       </div>
     );
   }
 
   const book = bookQuery.data;
   const groups = [
-    { id: "basic", label: "Basic Info" },
-    { id: "classification", label: "Classification" },
-    { id: "publication", label: "Publication" },
+    { id: "basic", label: t("edit.group.basic") },
+    { id: "classification", label: t("edit.group.classification") },
+    { id: "publication", label: t("edit.group.publication") },
   ];
 
   return (
@@ -144,13 +146,13 @@ function BookEditPage() {
           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Back to {book.title}
+          {t("edit.backTo", { name: book.title })}
         </Link>
         <div className="flex gap-3">
           <Link to="/books/$id/metadata" params={{ id }}
             className="px-5 py-2 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
             style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}>
-            Find Metadata
+            {t("metadata.findMetadata")}
           </Link>
           <button
             onClick={handleSave}
@@ -158,18 +160,18 @@ function BookEditPage() {
             className="px-5 py-2 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-50"
             style={{ backgroundColor: "var(--warm)" }}
           >
-            {updateMutation.isPending ? "Saving..." : "Save"}
+            {updateMutation.isPending ? t("edit.saving") : t("edit.save")}
           </button>
         </div>
       </div>
 
       {updateMutation.isError && (
         <div className="rounded-lg px-4 py-3 mb-4 text-sm" style={{ backgroundColor: "rgba(200,50,50,0.1)", color: "#c44" }}>
-          Failed to save. Please try again.
+          {t("edit.saveFailed")}
         </div>
       )}
 
-      <h1 className="font-display text-xl font-bold mb-6" style={{ color: "var(--text)" }}>Edit Book</h1>
+      <h1 className="font-display text-xl font-bold mb-6" style={{ color: "var(--text)" }}>{t("edit.editBook")}</h1>
 
       <div className="flex flex-col md:flex-row gap-8">
         <CoverSection
@@ -178,6 +180,7 @@ function BookEditPage() {
           coverUrl={coverUrl}
           onCoverUrlChange={setCoverUrl}
           onCoverUploaded={() => { bookQuery.refetch(); }}
+          t={t}
         />
 
         <div className="flex-1 min-w-0 flex flex-col gap-6">
@@ -187,7 +190,7 @@ function BookEditPage() {
               <div key={group.id} className="rounded-xl p-5" style={{ backgroundColor: "var(--card)" }}>
                 <p className="text-xs font-medium uppercase tracking-wider mb-4" style={{ color: "var(--text-faint)" }}>{group.label}</p>
                 <div className="flex flex-col gap-3">
-                  {renderFieldRows(groupFields, values, set)}
+                  {renderFieldRows(groupFields, values, set, t)}
                 </div>
               </div>
             );
@@ -199,12 +202,13 @@ function BookEditPage() {
   );
 }
 
-function CoverSection({ bookId, book, coverUrl, onCoverUrlChange, onCoverUploaded }: {
+function CoverSection({ bookId, book, coverUrl, onCoverUrlChange, onCoverUploaded, t }: {
   bookId: string;
   book: { id: string; title: string; author: string; coverPath: string | null; updatedAt: string | null };
   coverUrl: string | null;
   onCoverUrlChange: (url: string | null) => void;
   onCoverUploaded: () => void;
+  t: (key: string) => string;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -259,7 +263,7 @@ function CoverSection({ bookId, book, coverUrl, onCoverUrlChange, onCoverUploade
       )}
 
       {coverUrl && (
-        <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>New cover from metadata</p>
+        <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>{t("edit.newCoverFromMetadata")}</p>
       )}
 
       <input ref={fileInputRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
@@ -271,7 +275,7 @@ function CoverSection({ bookId, book, coverUrl, onCoverUrlChange, onCoverUploade
           className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:opacity-80"
           style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
         >
-          {uploading ? "Uploading..." : "Upload Cover"}
+          {uploading ? t("edit.uploading") : t("edit.uploadCover")}
         </button>
         {(book.coverPath || coverUrl) && (
           <button
@@ -280,7 +284,7 @@ function CoverSection({ bookId, book, coverUrl, onCoverUrlChange, onCoverUploade
             className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:opacity-80"
             style={{ borderColor: "var(--border)", color: "#c44" }}
           >
-            {deleting ? "Removing..." : "Remove Cover"}
+            {deleting ? t("edit.removing") : t("edit.removeCover")}
           </button>
         )}
       </div>
@@ -288,7 +292,7 @@ function CoverSection({ bookId, book, coverUrl, onCoverUrlChange, onCoverUploade
   );
 }
 
-function renderFieldRows(fields: typeof FIELDS, values: Record<string, string>, set: (key: string, val: string) => void) {
+function renderFieldRows(fields: typeof FIELDS, values: Record<string, string>, set: (key: string, val: string) => void, t: (key: string) => string) {
   const rows: React.ReactNode[] = [];
   let i = 0;
   while (i < fields.length) {
@@ -297,23 +301,23 @@ function renderFieldRows(fields: typeof FIELDS, values: Record<string, string>, 
     if (field.half && next?.half) {
       rows.push(
         <div key={field.key} className="grid grid-cols-2 gap-3">
-          {renderField(field, values, set)}
-          {renderField(next, values, set)}
+          {renderField(field, values, set, t)}
+          {renderField(next, values, set, t)}
         </div>
       );
       i += 2;
     } else {
-      rows.push(<div key={field.key}>{renderField(field, values, set)}</div>);
+      rows.push(<div key={field.key}>{renderField(field, values, set, t)}</div>);
       i += 1;
     }
   }
   return rows;
 }
 
-function renderField(field: typeof FIELDS[number], values: Record<string, string>, set: (key: string, val: string) => void) {
+function renderField(field: typeof FIELDS[number], values: Record<string, string>, set: (key: string, val: string) => void, t: (key: string) => string) {
   return (
     <div>
-      <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-dim)" }}>{field.label}</label>
+      <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-dim)" }}>{t(field.labelKey)}</label>
       {field.type === "textarea" ? (
         <textarea
           value={values[field.key] ?? ""}

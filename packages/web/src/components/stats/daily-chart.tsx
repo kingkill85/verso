@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 interface DailyChartProps {
   data: { date: string; minutes: number }[];
   range: "week" | "month" | "year" | "all";
@@ -12,6 +14,7 @@ function getDayLabel(dateStr: string, range: DailyChartProps["range"]): string {
 }
 
 export function DailyChart({ data, range }: DailyChartProps) {
+  const { t } = useTranslation();
   const WIDTH = 560;
   const HEIGHT = 140;
   const BAR_RADIUS = 3;
@@ -33,7 +36,7 @@ export function DailyChart({ data, range }: DailyChartProps) {
       style={{ backgroundColor: "var(--card)" }}
     >
       <p className="text-sm font-medium mb-3" style={{ color: "var(--text)" }}>
-        Daily Reading
+        {t("stats.dailyReading")}
       </p>
 
       {isEmpty ? (
@@ -41,7 +44,7 @@ export function DailyChart({ data, range }: DailyChartProps) {
           className="flex items-center justify-center"
           style={{ height: HEIGHT, color: "var(--text-faint)", fontSize: 13 }}
         >
-          No reading data
+          {t("stats.noReadingData")}
         </div>
       ) : (
         <svg

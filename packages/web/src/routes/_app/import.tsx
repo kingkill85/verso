@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { OpdsImport } from "@/components/import/opds-import";
 import { RestoreBackup } from "@/components/import/restore-backup";
 
@@ -9,12 +10,13 @@ export const Route = createFileRoute("/_app/import")({
 
 type Tab = "opds" | "restore";
 
-const TABS: { value: Tab; label: string }[] = [
-  { value: "opds", label: "OPDS Import" },
-  { value: "restore", label: "Restore Backup" },
+const TAB_KEYS: { value: Tab; labelKey: string }[] = [
+  { value: "opds", labelKey: "import.opdsImport" },
+  { value: "restore", labelKey: "import.restoreBackup" },
 ];
 
 function ImportPage() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("opds");
 
   return (
@@ -23,7 +25,7 @@ function ImportPage() {
         className="font-display text-[26px] font-bold mb-6"
         style={{ color: "var(--text)" }}
       >
-        Import
+        {t("import.title")}
       </h1>
 
       {/* Tab selector */}
@@ -31,7 +33,7 @@ function ImportPage() {
         className="inline-flex gap-1 p-1 rounded-xl mb-6"
         style={{ backgroundColor: "var(--card)" }}
       >
-        {TABS.map(({ value, label }) => (
+        {TAB_KEYS.map(({ value, labelKey }) => (
           <button
             key={value}
             onClick={() => setTab(value)}
@@ -42,7 +44,7 @@ function ImportPage() {
                 : { color: "var(--text-dim)" }
             }
           >
-            {label}
+            {t(labelKey)}
           </button>
         ))}
       </div>

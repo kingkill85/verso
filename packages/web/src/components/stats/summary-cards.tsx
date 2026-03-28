@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 function formatMinutes(minutes: number): string {
   if (minutes < 60) return `${minutes}m`;
   const h = Math.floor(minutes / 60);
@@ -20,12 +22,13 @@ export function SummaryCards({
   currentStreak,
   avgMinutesPerDay,
 }: SummaryCardsProps) {
+  const { t } = useTranslation();
   const cards = [
-    { value: formatMinutes(timeReadMinutes), label: "Time Read" },
-    { value: String(booksFinished), label: "Books Finished" },
-    { value: String(booksInProgress), label: "In Progress" },
-    { value: `${currentStreak}d`, label: "Current Streak" },
-    { value: formatMinutes(avgMinutesPerDay), label: "Daily Average" },
+    { value: formatMinutes(timeReadMinutes), label: t("stats.timeRead") },
+    { value: String(booksFinished), label: t("stats.booksFinished") },
+    { value: String(booksInProgress), label: t("stats.inProgress") },
+    { value: `${currentStreak}d`, label: t("stats.currentStreak") },
+    { value: formatMinutes(avgMinutesPerDay), label: t("stats.dailyAverage") },
   ];
 
   return (

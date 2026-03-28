@@ -17,10 +17,10 @@ export const metadataRouter = router({
     });
     if (!book) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
 
-    // Use explicit fields if provided, fall back to book data
-    const searchTitle = input.title ?? book.title;
-    const searchAuthor = input.author ?? book.author;
-    const searchIsbn = input.isbn ?? book.isbn ?? undefined;
+    // Use exactly what the user typed — no DB fallbacks
+    const searchTitle = input.title || "";
+    const searchAuthor = input.author || "";
+    const searchIsbn = input.isbn || undefined;
 
     // Build cache key
     const cacheKey = searchIsbn || `${searchTitle}::${searchAuthor}`;
@@ -51,10 +51,14 @@ export const metadataRouter = router({
     ]);
 
     // Convert Calibre results to ExternalBook[], merging in high-res covers
-    const results: ExternalBook[] = calibreResults.map((meta, idx) => {
-      const ext: ExternalBook = {
+    // Build results: Calibre first, then external
+    const results: ExternalBook[] = [];
+
+    // Add Calibre result (just 1 merged result)
+    for (const meta of calibreResults) {
+      results.push({
         source: "calibre",
-        sourceId: `calibre-${idx}`,
+        sourceId: `calibre-${results.length}`,
         title: meta.title,
         author: meta.author,
         isbn: meta.isbn,
@@ -66,33 +70,31 @@ export const metadataRouter = router({
         pageCount: meta.pageCount,
         series: meta.series,
         seriesIndex: meta.seriesIndex,
+        coverUrl: meta.coverDataUrl,
         confidence: 0,
-      };
+      });
+    }
 
-      // Try to find a matching cover from external sources
-      // First try ISBN match, then title+author similarity
-      let bestCover: string | undefined;
-      let bestScore = 0;
+    // Add external results (Google, OpenLibrary, Goodreads/Amazon)
+    for (const ext of coverResults) {
+      results.push(ext);
+    }
 
-      for (const cover of coverResults) {
-        if (!cover.coverUrl) continue;
-        const score = scoreMatch(
-          { title: meta.title, author: meta.author, isbn: meta.isbn },
-          cover,
-          meta.year,
-        );
-        if (score > bestScore) {
-          bestScore = score;
-          bestCover = cover.coverUrl;
+    // Collect HD covers (Amazon/Goodreads) as altCovers on ALL results
+    const hdCovers = coverResults
+      .filter((r) => r.source === "goodreads" && r.coverUrl)
+      .map((r) => ({ url: r.coverUrl!, source: r.source }))
+      .filter((c, i, arr) => arr.findIndex((a) => a.url === c.url) === i);
+
+    if (hdCovers.length > 0) {
+      for (const result of results) {
+        // Only attach HD covers that differ from the result's own cover
+        const alts = hdCovers.filter((c) => c.url !== result.coverUrl);
+        if (alts.length > 0) {
+          result.altCovers = alts;
         }
       }
-
-      if (bestCover && bestScore >= 0.3) {
-        ext.coverUrl = bestCover;
-      }
-
-      return ext;
-    });
+    }
 
     // Score each result against the local book data
     for (const result of results) {

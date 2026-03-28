@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
 import { ShelfForm } from "@/components/shelves/shelf-form";
 
@@ -7,17 +8,18 @@ export const Route = createFileRoute("/_app/shelves/$id_/edit")({
 });
 
 function ShelfEditPage() {
+  const { t } = useTranslation();
   const { id } = Route.useParams();
   const shelfQuery = trpc.shelves.byId.useQuery({ id });
 
   if (shelfQuery.isLoading) {
-    return <div className="flex items-center justify-center py-20" style={{ color: "var(--text-dim)" }}><p className="text-sm">Loading...</p></div>;
+    return <div className="flex items-center justify-center py-20" style={{ color: "var(--text-dim)" }}><p className="text-sm">{t("common.loading")}</p></div>;
   }
   if (shelfQuery.error || !shelfQuery.data) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <p className="font-display text-lg" style={{ color: "var(--text)" }}>Shelf not found</p>
-        <button onClick={() => window.history.back()} className="text-sm mt-2" style={{ color: "var(--warm)" }}>Back</button>
+        <p className="font-display text-lg" style={{ color: "var(--text)" }}>{t("shelf.notFound")}</p>
+        <button onClick={() => window.history.back()} className="text-sm mt-2" style={{ color: "var(--warm)" }}>{t("common.back")}</button>
       </div>
     );
   }
@@ -30,9 +32,9 @@ function ShelfEditPage() {
         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
-        Back to {shelf.name}
+        {t("edit.backTo", { name: shelf.name })}
       </Link>
-      <h1 className="font-display text-xl font-bold mb-6" style={{ color: "var(--text)" }}>Edit Shelf</h1>
+      <h1 className="font-display text-xl font-bold mb-6" style={{ color: "var(--text)" }}>{t("shelf.editShelf")}</h1>
       <div className="rounded-xl p-5" style={{ backgroundColor: "var(--card)" }}>
         <ShelfForm editShelf={{
           id: shelf.id,

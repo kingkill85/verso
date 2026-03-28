@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
 import { SummaryCards } from "@/components/stats/summary-cards";
 import { DailyChart } from "@/components/stats/daily-chart";
@@ -12,14 +13,15 @@ export const Route = createFileRoute("/_app/stats")({
 
 type Range = "week" | "month" | "year" | "all";
 
-const RANGES: { value: Range; label: string }[] = [
-  { value: "week", label: "Week" },
-  { value: "month", label: "Month" },
-  { value: "year", label: "Year" },
-  { value: "all", label: "All Time" },
+const RANGE_KEYS: { value: Range; labelKey: string }[] = [
+  { value: "week", labelKey: "stats.week" },
+  { value: "month", labelKey: "stats.month" },
+  { value: "year", labelKey: "stats.year" },
+  { value: "all", labelKey: "stats.allTime" },
 ];
 
 function StatsPage() {
+  const { t } = useTranslation();
   const [range, setRange] = useState<Range>("month");
 
   const overviewQuery = trpc.stats.overview.useQuery({ range });
@@ -45,7 +47,7 @@ function StatsPage() {
           className="font-display text-[26px] font-bold"
           style={{ color: "var(--text)" }}
         >
-          Reading Stats
+          {t("stats.readingStats")}
         </h1>
       </div>
 
@@ -54,7 +56,7 @@ function StatsPage() {
         className="inline-flex gap-1 p-1 rounded-xl mb-6"
         style={{ backgroundColor: "var(--card)" }}
       >
-        {RANGES.map(({ value, label }) => (
+        {RANGE_KEYS.map(({ value, labelKey }) => (
           <button
             key={value}
             onClick={() => setRange(value)}
@@ -65,7 +67,7 @@ function StatsPage() {
                 : { color: "var(--text-dim)" }
             }
           >
-            {label}
+            {t(labelKey)}
           </button>
         ))}
       </div>

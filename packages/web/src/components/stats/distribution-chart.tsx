@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 const COLORS = [
   "var(--warm)",
   "#6b8f71",
@@ -12,6 +14,7 @@ interface DistributionChartProps {
 }
 
 export function DistributionChart({ data }: DistributionChartProps) {
+  const { t } = useTranslation();
   const isEmpty = data.length === 0;
 
   return (
@@ -20,7 +23,7 @@ export function DistributionChart({ data }: DistributionChartProps) {
       style={{ backgroundColor: "var(--card)" }}
     >
       <p className="text-sm font-medium mb-3" style={{ color: "var(--text)" }}>
-        By Author
+        {t("stats.byAuthor")}
       </p>
 
       {isEmpty ? (
@@ -28,7 +31,7 @@ export function DistributionChart({ data }: DistributionChartProps) {
           className="flex items-center justify-center py-8"
           style={{ color: "var(--text-faint)", fontSize: 13 }}
         >
-          No reading data
+          {t("stats.noReadingData")}
         </div>
       ) : (
         <div className="space-y-3">

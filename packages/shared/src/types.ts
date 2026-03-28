@@ -39,6 +39,7 @@ export type ExternalBook = {
   language?: string;
   pageCount?: number;
   coverUrl?: string;
+  altCovers?: { url: string; source: string }[];
   series?: string;
   seriesIndex?: number;
   confidence: number;

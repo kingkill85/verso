@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
 import { BookGrid } from "@/components/books/book-grid";
 import { FilterChips } from "@/components/shelves/filter-chips";
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/_app/search")({
 });
 
 function SearchPage() {
+  const { t } = useTranslation();
   const { q } = Route.useSearch();
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<string | null>(null);
@@ -47,8 +49,8 @@ function SearchPage() {
   if (!q) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center" style={{ color: "var(--text-dim)" }}>
-        <p className="font-display text-lg">Search your library</p>
-        <p className="text-sm mt-1">Type a query in the search bar above</p>
+        <p className="font-display text-lg">{t("search.searchLibrary")}</p>
+        <p className="text-sm mt-1">{t("search.typeQuery")}</p>
       </div>
     );
   }
@@ -57,25 +59,25 @@ function SearchPage() {
     <div className="animate-in fade-in">
       <div className="mb-6">
         <h1 className="font-display text-[26px] font-bold" style={{ color: "var(--text)" }}>
-          Search results
+          {t("search.results")}
         </h1>
         <p className="text-sm mt-0.5" style={{ color: "var(--text-dim)" }}>
           {searchQuery.isLoading
-            ? "Searching..."
-            : `${searchQuery.data?.total ?? 0} results for "${q}"`}
+            ? t("search.searching")
+            : t("search.resultsFor", { count: searchQuery.data?.total ?? 0, query: q })}
         </p>
       </div>
 
       {(genres.length > 0 || formats.length > 0) && (
         <div className="flex flex-col gap-3 mb-6">
-          <FilterChips options={genres} selected={selectedGenre} onSelect={setSelectedGenre} label="Genre" />
-          <FilterChips options={formats} selected={selectedFormat} onSelect={setSelectedFormat} label="Format" />
+          <FilterChips options={genres} selected={selectedGenre} onSelect={setSelectedGenre} label={t("search.genre")} />
+          <FilterChips options={formats} selected={selectedFormat} onSelect={setSelectedFormat} label={t("search.format")} />
         </div>
       )}
 
       {searchQuery.isLoading ? (
         <div className="flex items-center justify-center py-20" style={{ color: "var(--text-dim)" }}>
-          <p className="text-sm">Searching...</p>
+          <p className="text-sm">{t("search.searching")}</p>
         </div>
       ) : (
         <BookGrid books={books} />

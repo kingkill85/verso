@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useDropzone } from "react-dropzone";
 import { trpc } from "@/trpc";
 import { getAccessToken } from "@/lib/auth";
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/_app/upload")({
 });
 
 function UploadPage() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<UploadItem[]>([]);
   const [uploading, setUploading] = useState(false);
   const utils = trpc.useUtils();
@@ -110,7 +112,7 @@ function UploadPage() {
         className="font-display text-[26px] font-bold mb-6"
         style={{ color: "var(--text)" }}
       >
-        Upload Books
+        {t("upload.uploadBooks")}
       </h1>
 
       {/* Drop zone */}
@@ -127,13 +129,13 @@ function UploadPage() {
           className="font-display text-lg font-semibold mb-2"
           style={{ color: isDragActive ? "var(--warm)" : "var(--text)" }}
         >
-          {isDragActive ? "Drop files here" : "Drag & drop books here"}
+          {isDragActive ? t("upload.dropHere") : t("upload.dragDrop")}
         </p>
         <p className="text-sm mb-4" style={{ color: "var(--text-dim)" }}>
-          or click to browse
+          {t("upload.orBrowse")}
         </p>
         <p className="text-xs" style={{ color: "var(--text-faint)" }}>
-          Supports EPUB, MOBI, AZW, FB2, CBZ, CBR, DOCX, RTF, and PDF
+          {t("upload.supportedFormats")}
         </p>
       </div>
 
@@ -142,8 +144,8 @@ function UploadPage() {
         <div className="mt-6">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-medium" style={{ color: "var(--text)" }}>
-              {items.length} {items.length === 1 ? "file" : "files"} selected
-              {doneCount > 0 && ` · ${doneCount} uploaded`}
+              {t("upload.filesSelected", { count: items.length })}
+              {doneCount > 0 && ` · ${t("upload.filesUploaded", { count: doneCount })}`}
             </p>
             <div className="flex gap-2">
               {doneCount > 0 && (
@@ -155,7 +157,7 @@ function UploadPage() {
                     borderColor: "var(--border)",
                   }}
                 >
-                  Clear done
+                  {t("upload.clearDone")}
                 </button>
               )}
               {pendingCount > 0 && (
@@ -165,7 +167,7 @@ function UploadPage() {
                   className="text-sm px-5 py-1.5 rounded-full font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-50"
                   style={{ backgroundColor: "var(--warm)" }}
                 >
-                  {uploading ? "Uploading..." : `Upload ${pendingCount}`}
+                  {uploading ? t("upload.uploading") : t("upload.uploadCount", { count: pendingCount })}
                 </button>
               )}
             </div>
@@ -204,7 +206,7 @@ function UploadPage() {
                     className="text-xs font-medium"
                     style={{ color: "var(--warm)" }}
                   >
-                    Uploading...
+                    {t("upload.uploading")}
                   </span>
                 )}
                 {item.status === "done" && (
@@ -212,12 +214,12 @@ function UploadPage() {
                     className="text-xs font-medium"
                     style={{ color: "var(--green)" }}
                   >
-                    <CheckIcon size={14} className="inline -mt-0.5" /> Done
+                    <CheckIcon size={14} className="inline -mt-0.5" /> {t("upload.done")}
                   </span>
                 )}
                 {item.status === "error" && (
                   <span className="text-xs font-medium text-red-500">
-                    {item.error || "Failed"}
+                    {item.error || t("upload.failed")}
                   </span>
                 )}
               </div>
