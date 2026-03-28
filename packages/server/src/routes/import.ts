@@ -2,8 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { createHash } from "node:crypto";
 import { createAdminAuthHook } from "../middleware/auth.js";
 import { fetchOpdsCatalog, downloadBook } from "../services/opds-client.js";
-import { parseEpub } from "../services/epub-parser.js";
-import { parsePdf } from "../services/pdf-parser.js";
+import { convertToEpub, extractMetadata, extractCover } from "../services/calibre.js";
 import { restoreLibrary } from "../services/library-import.js";
 import type { MetadataExport, AnnotationsExport, ProgressExport } from "../services/library-import.js";
 import { books } from "@verso/shared";
@@ -13,6 +12,8 @@ import type { Config } from "../config.js";
 import sharp from "sharp";
 import yauzl from "yauzl-promise";
 import path from "node:path";
+import os from "node:os";
+import { writeFile, unlink as unlinkFile, readFile } from "node:fs/promises";
 
 interface OpdsBrowseBody {
   url: string;
@@ -102,77 +103,108 @@ export function registerImportRoutes(
 
           sendEvent({ type: "progress", id, title, status: "processing" });
 
-          // Determine extension
-          let ext: string;
+          // Determine source extension from format or content type
+          let srcExt: string;
           if (format) {
-            ext = format.toLowerCase();
+            srcExt = format.toLowerCase();
           } else if (contentType.includes("epub")) {
-            ext = "epub";
+            srcExt = "epub";
           } else if (contentType.includes("pdf")) {
-            ext = "pdf";
+            srcExt = "pdf";
+          } else if (contentType.includes("mobi") || contentType.includes("x-mobipocket")) {
+            srcExt = "mobi";
           } else {
-            ext = "epub"; // default
+            srcExt = "epub"; // default
           }
 
           const bookId = crypto.randomUUID();
-          const fileHash = createHash("sha256").update(buffer).digest("hex");
-          const filePath = `books/${bookId}/book.${ext}`;
-          await storage.put(filePath, buffer);
+          const tmpDir = os.tmpdir();
+          const tmpInput = path.join(tmpDir, `verso-import-${bookId}.${srcExt}`);
+          const tmpEpub = path.join(tmpDir, `verso-import-${bookId}-out.epub`);
+          const tmpCover = path.join(tmpDir, `verso-cover-${bookId}.jpg`);
 
-          const fullFilePath = storage.fullPath(filePath);
-          let metadata: any;
           try {
-            if (ext === "epub") {
-              metadata = await parseEpub(fullFilePath);
-            } else {
-              metadata = await parsePdf(fullFilePath);
-            }
-          } catch {
-            metadata = {
-              title: title || "Unknown Title",
-              author: entry.author || "Unknown Author",
-            };
-          }
+            // Write downloaded buffer to temp file
+            await writeFile(tmpInput, buffer);
 
-          let coverPath: string | undefined;
-          if (metadata.coverData) {
+            // Determine output format: PDFs stay as PDF, everything else converts to EPUB
+            const isPdf = srcExt === "pdf";
+            let outputExt: string;
+            let finalBuffer: Buffer;
+
+            if (isPdf) {
+              outputExt = "pdf";
+              finalBuffer = buffer;
+            } else {
+              // Convert to EPUB (handles epub->epub cleanup and other formats)
+              await convertToEpub(tmpInput, tmpEpub);
+              finalBuffer = await readFile(tmpEpub);
+              outputExt = "epub";
+            }
+
+            const fileHash = createHash("sha256").update(finalBuffer).digest("hex");
+            const filePath = `books/${bookId}/book.${outputExt}`;
+            await storage.put(filePath, finalBuffer);
+
+            // Extract metadata using Calibre
+            const metadataSource = isPdf ? tmpInput : tmpEpub;
+            let metadata: any;
             try {
-              const coverBuffer = await sharp(metadata.coverData)
-                .resize(600, undefined, { withoutEnlargement: true })
-                .jpeg({ quality: 85 })
-                .toBuffer();
-              coverPath = `covers/${bookId}.jpg`;
-              await storage.put(coverPath, coverBuffer);
+              metadata = await extractMetadata(metadataSource);
+            } catch {
+              metadata = {
+                title: title || "Unknown Title",
+                author: entry.author || "Unknown Author",
+              };
+            }
+
+            // Extract and process cover using Calibre
+            let coverPath: string | undefined;
+            try {
+              const hasCover = await extractCover(metadataSource, tmpCover);
+              if (hasCover) {
+                const coverBuffer = await sharp(tmpCover)
+                  .resize(600, undefined, { withoutEnlargement: true })
+                  .jpeg({ quality: 85 })
+                  .toBuffer();
+                coverPath = `covers/${bookId}.jpg`;
+                await storage.put(coverPath, coverBuffer);
+              }
             } catch {
               // Cover processing failed
             }
+
+            await db.insert(books).values({
+              id: bookId,
+              title: metadata.title || title,
+              author: metadata.author || entry.author || "Unknown Author",
+              isbn: metadata.isbn,
+              publisher: metadata.publisher,
+              year: metadata.year,
+              language: metadata.language,
+              description: metadata.description,
+              genre: metadata.genre,
+              tags: metadata.tags ? JSON.stringify(metadata.tags) : null,
+              coverPath: coverPath || null,
+              filePath,
+              fileFormat: outputExt,
+              fileSize: finalBuffer.length,
+              fileHash,
+              pageCount: metadata.pageCount,
+              series: metadata.series,
+              seriesIndex: metadata.seriesIndex,
+              addedBy: user.sub,
+              metadataSource: "extracted",
+            });
+
+            sendEvent({ type: "progress", id, title, status: "done" });
+            completed++;
+          } finally {
+            // Clean up temp files
+            await unlinkFile(tmpInput).catch(() => {});
+            await unlinkFile(tmpEpub).catch(() => {});
+            await unlinkFile(tmpCover).catch(() => {});
           }
-
-          await db.insert(books).values({
-            id: bookId,
-            title: metadata.title || title,
-            author: metadata.author || entry.author || "Unknown Author",
-            isbn: metadata.isbn,
-            publisher: metadata.publisher,
-            year: metadata.year,
-            language: metadata.language,
-            description: metadata.description,
-            genre: metadata.genre,
-            tags: metadata.tags ? JSON.stringify(metadata.tags) : null,
-            coverPath: coverPath || null,
-            filePath,
-            fileFormat: ext,
-            fileSize: buffer.length,
-            fileHash,
-            pageCount: metadata.pageCount,
-            series: metadata.series,
-            seriesIndex: metadata.seriesIndex,
-            addedBy: user.sub,
-            metadataSource: "extracted",
-          });
-
-          sendEvent({ type: "progress", id, title, status: "done" });
-          completed++;
         } catch (err: any) {
           sendEvent({
             type: "progress",
@@ -216,8 +248,7 @@ export function registerImportRoutes(
       const bookIdMap: Record<string, string> = {};
 
       // Write buffer to temp file for yauzl
-      const tmpPath = `/tmp/verso-restore-${crypto.randomUUID()}.zip`;
-      const { writeFile, unlink } = await import("node:fs/promises");
+      const tmpPath = path.join(os.tmpdir(), `verso-restore-${crypto.randomUUID()}.zip`);
       await writeFile(tmpPath, buffer);
 
       try {
@@ -304,7 +335,7 @@ export function registerImportRoutes(
 
         await zip.close();
       } finally {
-        await unlink(tmpPath).catch(() => {});
+        await unlinkFile(tmpPath).catch(() => {});
       }
 
       if (!metadata || !annotationsData || !progressData) {
