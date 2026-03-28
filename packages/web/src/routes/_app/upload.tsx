@@ -33,6 +33,13 @@ function UploadPage() {
     accept: {
       "application/epub+zip": [".epub"],
       "application/pdf": [".pdf"],
+      "application/x-mobipocket-ebook": [".mobi", ".prc"],
+      "application/vnd.amazon.ebook": [".azw", ".azw3"],
+      "application/x-fictionbook+xml": [".fb2"],
+      "application/x-cbz": [".cbz"],
+      "application/x-cbr": [".cbr"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+      "application/rtf": [".rtf"],
     },
   });
 
@@ -126,7 +133,7 @@ function UploadPage() {
           or click to browse
         </p>
         <p className="text-xs" style={{ color: "var(--text-faint)" }}>
-          Supports EPUB and PDF
+          Supports EPUB, MOBI, AZW, FB2, CBZ, CBR, DOCX, RTF, and PDF
         </p>
       </div>
 
