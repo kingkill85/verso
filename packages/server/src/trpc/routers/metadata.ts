@@ -45,12 +45,13 @@ export const metadataRouter = router({
 
     // Run Calibre metadata search and external cover search in parallel
     const bookQuery = { title: searchTitle, author: searchAuthor, isbn: searchIsbn };
-    const [calibreResults, coverResults] = await Promise.all([
+    const [calibreResults, externalData] = await Promise.all([
       calibreSearchMetadata(bookQuery).catch(() => []),
-      searchExternalMetadata(bookQuery, book.year ?? undefined).catch(() => []),
+      searchExternalMetadata(bookQuery, book.year ?? undefined).catch(() => ({ results: [] as ExternalBook[], amazonCovers: [] as ExternalBook[] })),
     ]);
+    const externalResults = externalData.results;
+    const amazonCovers = externalData.amazonCovers;
 
-    // Convert Calibre results to ExternalBook[], merging in high-res covers
     // Build results: Calibre first, then external
     const results: ExternalBook[] = [];
 
@@ -76,19 +77,18 @@ export const metadataRouter = router({
     }
 
     // Add external results (Google, OpenLibrary, Goodreads/Amazon)
-    for (const ext of coverResults) {
+    for (const ext of externalResults) {
       results.push(ext);
     }
 
-    // Collect HD covers (Amazon/Goodreads) as altCovers on ALL results
-    const hdCovers = coverResults
-      .filter((r) => r.source === "goodreads" && r.coverUrl)
-      .map((r) => ({ url: r.coverUrl!, source: r.source }))
+    // Amazon HD covers — separate from search results
+    const hdCovers = amazonCovers
+      .filter((r) => r.coverUrl)
+      .map((r) => ({ url: r.coverUrl!, source: "amazon" }))
       .filter((c, i, arr) => arr.findIndex((a) => a.url === c.url) === i);
 
     if (hdCovers.length > 0) {
       for (const result of results) {
-        // Only attach HD covers that differ from the result's own cover
         const alts = hdCovers.filter((c) => c.url !== result.coverUrl);
         if (alts.length > 0) {
           result.altCovers = alts;

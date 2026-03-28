@@ -623,7 +623,7 @@ export function parseGoodreadsBookPage(html: string, url: string): ExternalBook 
 export async function searchExternalMetadata(
   bookQuery: { title: string; author: string; isbn?: string },
   localYear?: number
-): Promise<ExternalBook[]> {
+): Promise<{ results: ExternalBook[]; amazonCovers: ExternalBook[] }> {
   const query = `${bookQuery.title} ${bookQuery.author}`.trim();
 
   const [googleResults, openLibraryResults, goodreadsResults, amazonCovers] = await Promise.all([
@@ -655,14 +655,5 @@ export async function searchExternalMetadata(
     }
   }
 
-  // Include all Amazon Kindle covers as separate results (for cover picker)
-  for (const ac of amazonCovers) {
-    if (ac.coverUrl && !deduplicated.some((r) => r.coverUrl === ac.coverUrl)) {
-      ac.source = "goodreads"; // labeled as goodreads since they're Amazon-hosted
-      ac.confidence = 0;
-      deduplicated.push(ac);
-    }
-  }
-
-  return deduplicated;
+  return { results: deduplicated, amazonCovers };
 }

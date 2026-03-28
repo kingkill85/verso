@@ -1,11 +1,12 @@
-const SOURCES = {
+const SOURCES: Record<string, { label: string; bg: string; color: string }> = {
   google: { label: "Google", bg: "rgba(66,133,244,0.15)", color: "#4285F4" },
   openlibrary: { label: "Open Library", bg: "rgba(34,197,94,0.15)", color: "#22c55e" },
   goodreads: { label: "Goodreads", bg: "rgba(136,100,56,0.15)", color: "#a07040" },
   calibre: { label: "Calibre", bg: "rgba(160,104,48,0.15)", color: "#a06830" },
-} as const;
+  amazon: { label: "Amazon HD", bg: "rgba(255,153,0,0.15)", color: "#FF9900" },
+};
 
-export function SourceBadge({ source }: { source: "google" | "openlibrary" | "goodreads" | "calibre" }) {
+export function SourceBadge({ source }: { source: string }) {
   const s = SOURCES[source];
   return (
     <span

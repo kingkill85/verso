@@ -157,12 +157,12 @@ function BookMetadataPage() {
 
   return (
     <div className="max-w-3xl mx-auto animate-in fade-in">
-      <Link to="/books/$id" params={{ id }} className="inline-flex items-center text-sm mb-6 transition-colors hover:opacity-80" style={{ color: "var(--text-dim)" }}>
+      <button onClick={() => window.history.back()} className="inline-flex items-center text-sm mb-6 transition-colors hover:opacity-80" style={{ color: "var(--text-dim)" }}>
         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
         {t("common.back")}
-      </Link>
+      </button>
 
       <h1 className="font-display text-xl font-bold mb-6" style={{ color: "var(--text)" }}>{t("metadata.findMetadata")}</h1>
 
@@ -291,9 +291,8 @@ function BookMetadataPage() {
                     style={{ opacity: coverChecked && coverChoice === alt.url ? 1 : 0.4 }}
                   >
                     <img src={alt.url} alt="" className="w-[52px] h-[76px] object-cover rounded-[3px]" />
-                    <p className="text-[10px] mt-1 flex items-center gap-1 justify-center">
-                      <SourceBadge source={alt.source as any} />
-                      {(alt.source === "goodreads" || alt.source === "google") && <span style={{ color: "var(--warm)" }}>HD</span>}
+                    <p className="text-[10px] mt-1">
+                      <SourceBadge source={alt.source} />
                     </p>
                   </button>
                 ))}

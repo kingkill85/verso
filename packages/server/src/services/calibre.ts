@@ -205,42 +205,16 @@ export async function searchMetadata(query: {
 
   if (args.length === 0) return [];
 
-  // Download cover to temp file
-  const coverId = crypto.randomUUID();
-  const coverTmp = path.join(os.tmpdir(), `verso-meta-cover-${coverId}.jpg`);
-
   try {
-    // Request cover download alongside search
     const { stdout } = await execFile(
       toolPath("fetch-ebook-metadata"),
-      [...args, "--cover", coverTmp],
-      { timeout: 60_000 },
+      args,
+      { timeout: 30_000, maxBuffer: 10 * 1024 * 1024 },
     );
-
-    // Read cover as data URL if it was downloaded
-    let coverDataUrl: string | undefined;
-    try {
-      if (fs.existsSync(coverTmp)) {
-        const coverBuf = await fsPromises.readFile(coverTmp);
-        coverDataUrl = `data:image/jpeg;base64,${coverBuf.toString("base64")}`;
-      }
-    } catch {
-      // No cover
-    }
-
-    // Parse the single merged result from stdout
-    const results = parseFetchBlocks(stdout);
-
-    // Attach cover to the result
-    if (coverDataUrl && results.length > 0) {
-      results[0].coverDataUrl = coverDataUrl;
-    }
-
-    return results;
-  } catch {
+    return parseFetchBlocks(stdout);
+  } catch (err) {
+    console.error("Calibre searchMetadata failed:", err);
     return [];
-  } finally {
-    fsPromises.unlink(coverTmp).catch(() => {});
   }
 }
 

@@ -92,7 +92,7 @@ function BookEditPage() {
     onSuccess: () => {
       utils.books.byId.invalidate({ id });
       utils.books.list.invalidate();
-      navigate({ to: "/books/$id", params: { id } });
+      navigate({ to: "/books/$id", params: { id }, replace: true });
     },
   });
 
@@ -142,12 +142,12 @@ function BookEditPage() {
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in">
       <div className="flex items-center justify-between mb-6">
-        <Link to="/books/$id" params={{ id }} className="inline-flex items-center text-sm transition-colors hover:opacity-80" style={{ color: "var(--text-dim)" }}>
+        <button onClick={() => window.history.back()} className="inline-flex items-center text-sm transition-colors hover:opacity-80" style={{ color: "var(--text-dim)" }}>
           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           {t("edit.backTo", { name: book.title })}
-        </Link>
+        </button>
         <div className="flex gap-3">
           <Link to="/books/$id/metadata" params={{ id }}
             className="px-5 py-2 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
