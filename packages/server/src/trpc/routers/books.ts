@@ -3,7 +3,10 @@ import { eq, and, desc, asc, sql, isNull, isNotNull } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { books, readingProgress, bookListInput, bookByIdInput, bookUpdateInput, bookDeleteInput, searchInput } from "@verso/shared";
 import { router, protectedProcedure, adminProcedure } from "../index.js";
-import { updateEpubMetadata, getEpubFileHash } from "../../services/epub-writer.js";
+import { writeMetadata, writeCover, getFileHash } from "../../services/calibre.js";
+import { writeFile, unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import sharp from "sharp";
 
 const timestamp = () => ({ updatedAt: new Date().toISOString() });
@@ -96,13 +99,19 @@ export const booksRouter = router({
       try {
         const filePath = ctx.storage.fullPath(existing.filePath);
         const { coverUrl: _, tags: __, ...metaFields } = input;
-        const epubUpdates: Record<string, any> = { ...metaFields };
+        await writeMetadata(filePath, metaFields);
+
         if (coverImageBuffer) {
-          epubUpdates.coverImageBuffer = coverImageBuffer;
-          epubUpdates.coverMimeType = "image/jpeg";
+          const tempCoverPath = path.join(tmpdir(), `verso-cover-${id}-${Date.now()}.jpg`);
+          await writeFile(tempCoverPath, coverImageBuffer);
+          try {
+            await writeCover(filePath, tempCoverPath);
+          } finally {
+            await unlink(tempCoverPath).catch(() => {});
+          }
         }
-        await updateEpubMetadata(filePath, epubUpdates, existing.fileHash ?? undefined);
-        const newHash = await getEpubFileHash(filePath);
+
+        const newHash = await getFileHash(filePath);
         await ctx.db.update(books).set({ fileHash: newHash }).where(eq(books.id, id));
       } catch (err) {
         console.error("EPUB write-back failed:", err);

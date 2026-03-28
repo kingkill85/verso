@@ -2,7 +2,10 @@ import type { FastifyInstance } from "fastify";
 import { eq } from "drizzle-orm";
 import { books } from "@verso/shared";
 import { verifyAccessToken } from "../services/jwt.js";
-import { updateEpubMetadata, getEpubFileHash } from "../services/epub-writer.js";
+import { writeCover, getFileHash } from "../services/calibre.js";
+import { writeFile, unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import sharp from "sharp";
 import type { StorageService } from "../services/storage.js";
 import type { AppDatabase } from "../db/client.js";
@@ -65,12 +68,15 @@ export function registerCoversRoute(app: FastifyInstance, db: AppDatabase, stora
     if (book.fileFormat === "epub") {
       try {
         const filePath = storage.fullPath(book.filePath);
-        await updateEpubMetadata(filePath, {
-          coverImageBuffer: processed,
-          coverMimeType: "image/jpeg",
-        }, book.fileHash ?? undefined);
-        const newHash = await getEpubFileHash(filePath);
-        await db.update(books).set({ fileHash: newHash }).where(eq(books.id, bookId));
+        const tempCoverPath = path.join(tmpdir(), `verso-cover-${bookId}-${Date.now()}.jpg`);
+        await writeFile(tempCoverPath, processed);
+        try {
+          await writeCover(filePath, tempCoverPath);
+          const newHash = await getFileHash(filePath);
+          await db.update(books).set({ fileHash: newHash }).where(eq(books.id, bookId));
+        } finally {
+          await unlink(tempCoverPath).catch(() => {});
+        }
       } catch (err) {
         console.error("Failed to embed cover in EPUB:", err);
       }
@@ -105,17 +111,8 @@ export function registerCoversRoute(app: FastifyInstance, db: AppDatabase, stora
       }).where(eq(books.id, bookId));
     }
 
-    // Remove cover from EPUB file too
-    if (book.fileFormat === "epub") {
-      try {
-        const filePath = storage.fullPath(book.filePath);
-        await updateEpubMetadata(filePath, { removeCover: true }, book.fileHash ?? undefined);
-        const newHash = await getEpubFileHash(filePath);
-        await db.update(books).set({ fileHash: newHash }).where(eq(books.id, bookId));
-      } catch (err) {
-        console.error("Failed to remove cover from EPUB:", err);
-      }
-    }
+    // Note: ebook-meta cannot remove embedded covers from EPUBs.
+    // The cover is removed from the covers/ directory above; the EPUB keeps its embedded cover.
 
     return { success: true };
   });

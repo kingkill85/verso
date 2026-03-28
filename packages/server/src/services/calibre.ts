@@ -220,3 +220,69 @@ export async function searchCover(
     return false;
   }
 }
+
+/**
+ * Write metadata to an ebook file using ebook-meta.
+ */
+export async function writeMetadata(filePath: string, metadata: {
+  title?: string | null;
+  author?: string | null;
+  description?: string | null;
+  publisher?: string | null;
+  isbn?: string | null;
+  year?: number | null;
+  language?: string | null;
+  genre?: string | null;
+  series?: string | null;
+  seriesIndex?: number | null;
+  tags?: string[];
+}): Promise<void> {
+  const args: string[] = [filePath];
+
+  if (metadata.title) args.push("--title", metadata.title);
+  if (metadata.author) args.push("--authors", metadata.author);
+  if (metadata.publisher) args.push("--publisher", metadata.publisher);
+  if (metadata.isbn) args.push("--isbn", metadata.isbn);
+  if (metadata.description) args.push("--comment", metadata.description);
+  if (metadata.language) args.push("--language", metadata.language);
+  if (metadata.series) {
+    args.push("--series", metadata.series);
+    if (metadata.seriesIndex != null) args.push("--index", String(metadata.seriesIndex));
+  }
+  if (metadata.tags && metadata.tags.length > 0) {
+    args.push("--tags", metadata.tags.join(","));
+  }
+  if (metadata.genre) {
+    // Add genre as a tag if not already in tags
+    const existingTags = args.indexOf("--tags");
+    if (existingTags === -1) {
+      args.push("--tags", metadata.genre);
+    }
+  }
+
+  if (args.length > 1) {
+    await execFile(toolPath("ebook-meta"), args, { timeout: 30_000 });
+  }
+}
+
+/**
+ * Set the cover image on an ebook file.
+ */
+export async function writeCover(filePath: string, coverImagePath: string): Promise<void> {
+  await execFile(toolPath("ebook-meta"), [filePath, "--cover", coverImagePath], { timeout: 30_000 });
+}
+
+/**
+ * Compute SHA-256 hash of a file.
+ */
+export async function getFileHash(filePath: string): Promise<string> {
+  const { createHash } = await import("node:crypto");
+  const { createReadStream } = await import("node:fs");
+  return new Promise((resolve, reject) => {
+    const hash = createHash("sha256");
+    const stream = createReadStream(filePath);
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("end", () => resolve(hash.digest("hex")));
+    stream.on("error", reject);
+  });
+}
