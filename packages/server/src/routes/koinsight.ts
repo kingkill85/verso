@@ -34,6 +34,11 @@ export function registerKoInsightRoutes(
     return reply.send({ status: "ok", version: "0.3.0" });
   });
 
+  // GET /api/plugin/download — serve KoInsight plugin zip (no auth)
+  app.get("/api/plugin/download", async (_req, reply) => {
+    return reply.code(404).send({ message: "Plugin download not configured" });
+  });
+
   // POST /api/plugin/device — register device
   app.post("/api/plugin/device", { preHandler: authHook }, async (req, reply) => {
     const parsed = koinsightDeviceInput.safeParse(req.body);

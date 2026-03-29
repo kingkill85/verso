@@ -175,14 +175,14 @@ export const statsRouter = router({
       .select({
         id: readingSessions.id,
         bookId: readingSessions.bookId,
-        bookTitle: books.title,
-        bookAuthor: books.author,
+        bookTitle: sql<string>`coalesce(${books.title}, ${readingSessions.bookTitle}, 'Unknown')`.as("book_title"),
+        bookAuthor: sql<string>`coalesce(${books.author}, 'Unknown')`.as("book_author"),
         coverPath: books.coverPath,
         durationMinutes: readingSessions.durationMinutes,
         startedAt: readingSessions.startedAt,
       })
       .from(readingSessions)
-      .innerJoin(books, eq(readingSessions.bookId, books.id))
+      .leftJoin(books, eq(readingSessions.bookId, books.id))
       .where(and(...conditions))
       .orderBy(desc(readingSessions.startedAt))
       .limit(limit + 1);
