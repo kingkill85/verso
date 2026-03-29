@@ -8,6 +8,7 @@ import {
   readingSessions,
   readingProgress,
   annotations,
+  createApiKeyInput,
 } from "@verso/shared";
 
 describe("e-reader schema", () => {
@@ -183,5 +184,31 @@ describe("e-reader schema", () => {
     expect(ann!.cfiPosition).toBeNull();
     expect(ann!.pageNumber).toBe(42);
     expect(ann!.source).toBe("koinsight");
+  });
+});
+
+describe("api key scopes", () => {
+  it("accepts kosync scope", () => {
+    const result = createApiKeyInput.safeParse({
+      name: "KOReader",
+      scopes: ["kosync"],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts plugin scope", () => {
+    const result = createApiKeyInput.safeParse({
+      name: "KoInsight",
+      scopes: ["plugin"],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects invalid scope", () => {
+    const result = createApiKeyInput.safeParse({
+      name: "Bad",
+      scopes: ["invalid"],
+    });
+    expect(result.success).toBe(false);
   });
 });
