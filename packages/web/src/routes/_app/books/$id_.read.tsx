@@ -416,8 +416,8 @@ function ReaderPage() {
         onDeleteAnnotation={(annId) => {
           const ann = annotationsQuery.data?.find((a) => a.id === annId);
           if (ann) {
-            try { renditionRef.current?.annotations.remove(ann.cfiPosition, "highlight"); } catch {}
-            addedHighlightsRef.current.delete(ann.cfiPosition);
+            try { if (ann.cfiPosition) renditionRef.current?.annotations.remove(ann.cfiPosition, "highlight"); } catch {}
+            if (ann.cfiPosition) addedHighlightsRef.current.delete(ann.cfiPosition);
           }
           deleteAnnotation.mutate({ id: annId });
         }}
@@ -434,8 +434,8 @@ function ReaderPage() {
         onDelete={(aid) => {
           const ann = annotationsQuery.data?.find((a) => a.id === aid);
           if (ann) {
-            try { renditionRef.current?.annotations.remove(ann.cfiPosition, "highlight"); } catch {}
-            addedHighlightsRef.current.delete(ann.cfiPosition);
+            try { if (ann.cfiPosition) renditionRef.current?.annotations.remove(ann.cfiPosition, "highlight"); } catch {}
+            if (ann.cfiPosition) addedHighlightsRef.current.delete(ann.cfiPosition);
           }
           deleteAnnotation.mutate({ id: aid });
           setPopoverAnnotation(null);

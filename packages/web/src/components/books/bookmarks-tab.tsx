@@ -49,7 +49,7 @@ export function BookmarksTab({ bookId }: BookmarksTabProps) {
           <Link
             to="/books/$id/read"
             params={{ id: bookId }}
-            search={{ cfi: bm.cfiPosition }}
+            search={{ cfi: bm.cfiPosition ?? undefined }}
             className="flex-1 min-w-0 hover:opacity-80 transition-opacity"
           >
             <p className="text-sm" style={{ color: "var(--text)" }}>

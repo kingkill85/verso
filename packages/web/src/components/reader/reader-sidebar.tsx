@@ -219,7 +219,7 @@ function BookmarksTab({
           key={bm.id}
           className="flex items-center justify-between px-4 py-3 hover:opacity-80 transition-opacity cursor-pointer"
           style={{ borderBottom: "1px solid var(--border)" }}
-          onClick={() => { onNavigate(bm.cfiPosition); onClose(); }}
+          onClick={() => { if (bm.cfiPosition) { onNavigate(bm.cfiPosition); onClose(); } }}
         >
           <div className="min-w-0 flex-1">
             <p className="text-[13px] truncate" style={{ color: "var(--text)" }}>
@@ -293,7 +293,7 @@ function AnnotationsTab({
                 key={ann.id}
                 className="flex items-start gap-2 mx-3 my-1 px-3 py-2 rounded cursor-pointer hover:opacity-80 transition-opacity"
                 style={{ borderLeft: `3px solid ${borderColor}` }}
-                onClick={() => { onNavigate(ann.cfiPosition); onClose(); }}
+                onClick={() => { if (ann.cfiPosition) { onNavigate(ann.cfiPosition); onClose(); } }}
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-xs leading-relaxed" style={{ color: "var(--text)" }}>
