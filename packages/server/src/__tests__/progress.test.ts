@@ -146,4 +146,40 @@ describe("progress router", () => {
       expect(sessions).toHaveLength(0);
     });
   });
+
+  describe("finish", () => {
+    it("marks a book as finished", async () => {
+      // Create some initial progress
+      await authedCaller.progress.sync({ bookId, percentage: 50 });
+
+      const result = await authedCaller.progress.finish({ bookId });
+      expect(result.percentage).toBe(100);
+      expect(result.finishedAt).not.toBeNull();
+      expect(result.lastReadAt).not.toBeNull();
+    });
+
+    it("creates progress if none exists", async () => {
+      const result = await authedCaller.progress.finish({ bookId });
+      expect(result.percentage).toBe(100);
+      expect(result.finishedAt).not.toBeNull();
+      expect(result.startedAt).not.toBeNull();
+    });
+  });
+
+  describe("reset", () => {
+    it("deletes reading progress", async () => {
+      await authedCaller.progress.sync({ bookId, percentage: 50 });
+
+      const result = await authedCaller.progress.reset({ bookId });
+      expect(result.success).toBe(true);
+
+      const progress = await authedCaller.progress.get({ bookId });
+      expect(progress).toBeNull();
+    });
+
+    it("succeeds even if no progress exists", async () => {
+      const result = await authedCaller.progress.reset({ bookId });
+      expect(result.success).toBe(true);
+    });
+  });
 });
