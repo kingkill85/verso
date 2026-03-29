@@ -1,7 +1,8 @@
 local socketutil = require("socketutil")
+local socket = require("socket")
 local http = require("socket.http")
 local ltn12 = require("ltn12")
-local rapidjson = require("rapidjson")
+local JSON = require("json")
 local logger = require("logger")
 
 local function base64_encode(data)
@@ -26,7 +27,7 @@ local function callApi(method, url, headers, body, email, password)
         headers["Authorization"] = "Basic " .. base64_encode(email .. ":" .. password)
     end
 
-    local json_body = body and rapidjson.encode(body) or nil
+    local json_body = body and JSON.encode(body) or nil
     if json_body then
         headers["Content-Length"] = #json_body
     end
@@ -43,17 +44,25 @@ local function callApi(method, url, headers, body, email, password)
         request.source = ltn12.source.string(json_body)
     end
 
-    local code = socket.skip(1, http.request(request))
+    local code, resp_headers, status = socket.skip(1, http.request(request))
     socketutil:reset_timeout()
+
+    if resp_headers == nil then
+        logger.warn("Verso Sync: network error")
+        return false, "network_error"
+    end
 
     if code == 200 then
         local response = table.concat(sink)
-        if response ~= "" and response:sub(1, 1) == "{" then
-            return true, rapidjson.decode(response)
+        if response ~= "" then
+            local ok, result = pcall(JSON.decode, response)
+            if ok then
+                return true, result
+            end
         end
         return true, {}
     else
-        logger.warn("Verso Sync API error:", code)
+        logger.warn("Verso Sync API error:", code, status)
         return false, "HTTP " .. tostring(code)
     end
 end
