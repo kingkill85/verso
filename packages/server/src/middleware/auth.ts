@@ -2,8 +2,6 @@ import type { FastifyRequest, FastifyReply } from "fastify";
 import { verifyAccessToken } from "../services/jwt.js";
 import type { Config } from "../config.js";
 import type { TokenPayload } from "@verso/shared";
-import { createBasicAuthHook } from "./basic-auth.js";
-import type { AppDatabase } from "../db/client.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -34,18 +32,5 @@ export function createAdminAuthHook(config: Config) {
     if (req.user?.role !== "admin") {
       return reply.status(403).send({ error: "Admin access required" });
     }
-  };
-}
-
-export function createFlexAuthHook(config: Config, db: AppDatabase) {
-  const bearerHook = createAuthHook(config);
-  const basicHook = createBasicAuthHook(db);
-
-  return async (req: FastifyRequest, reply: FastifyReply) => {
-    const authHeader = req.headers.authorization;
-    if (authHeader?.startsWith("Basic ")) {
-      return basicHook(req, reply);
-    }
-    return bearerHook(req, reply);
   };
 }

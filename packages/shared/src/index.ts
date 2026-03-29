@@ -5,7 +5,7 @@ export * from "./shelf-validators.js";
 export * from "./metadata-validators.js";
 export * from "./annotation-validators.js";
 export * from "./stats-validators.js";
-export * from "./schemas/api-keys.js";
+export * from "./app-password-validators.js";
 export * from "./admin-validators.js";
 export * from "./kosync-validators.js";
 export * from "./koinsight-validators.js";

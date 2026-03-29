@@ -21,7 +21,7 @@ import { registerImportRoutes } from "./routes/import.js";
 import { registerExportRoute } from "./routes/export.js";
 import { registerOpdsRoutes } from "./routes/opds.js";
 import { registerKosyncRoutes } from "./routes/kosync.js";
-import { registerKoInsightRoutes } from "./routes/koinsight.js";
+import { registerSyncRoutes } from "./routes/sync.js";
 import { verifyCalibreInstalled } from "./services/calibre.js";
 import type { Config } from "./config.js";
 import type { AppDatabase } from "./db/client.js";
@@ -83,7 +83,7 @@ export async function buildApp(config: Config, externalDb?: AppDatabase) {
   registerExportRoute(app, db, storage, config);
   registerOpdsRoutes(app, db, config);
   registerKosyncRoutes(app, db, config);
-  registerKoInsightRoutes(app, db, storage, config);
+  registerSyncRoutes(app, db, storage, config);
 
   app.get("/health", async (_req, reply) => {
     try {

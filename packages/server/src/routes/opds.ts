@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { createBasicAuthHook } from "../middleware/basic-auth.js";
+import { createAppPasswordAuthHook } from "../middleware/app-password-auth.js";
 import {
   buildRootFeed,
   buildAllBooks,
@@ -29,7 +29,7 @@ const OPENSEARCH_DESCRIPTOR = `<?xml version="1.0" encoding="UTF-8"?>
 </OpenSearchDescription>`;
 
 export function registerOpdsRoutes(app: FastifyInstance, db: AppDatabase, _config: Config) {
-  const authHook = createBasicAuthHook(db);
+  const authHook = createAppPasswordAuthHook(db);
 
   // GET /opds/search-descriptor — OpenSearch descriptor (no auth)
   app.get("/opds/search-descriptor", async (_req, reply) => {

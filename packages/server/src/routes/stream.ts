@@ -4,7 +4,8 @@ import { books } from "@verso/shared";
 import type { StorageService } from "../services/storage.js";
 import type { AppDatabase } from "../db/client.js";
 import type { Config } from "../config.js";
-import { createFlexAuthHook } from "../middleware/auth.js";
+import { createAuthHook } from "../middleware/auth.js";
+import { createAppPasswordAuthHook } from "../middleware/app-password-auth.js";
 
 const MIME_TYPES: Record<string, string> = {
   epub: "application/epub+zip",
@@ -13,7 +14,16 @@ const MIME_TYPES: Record<string, string> = {
 };
 
 export function registerStreamRoute(app: FastifyInstance, db: AppDatabase, storage: StorageService, config: Config) {
-  const authHook = createFlexAuthHook(config, db);
+  const bearerHook = createAuthHook(config);
+  const basicHook = createAppPasswordAuthHook(db);
+
+  const authHook = async (req: any, reply: any) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Basic ")) {
+      return basicHook(req, reply);
+    }
+    return bearerHook(req, reply);
+  };
   app.get("/api/books/:id/file", { preHandler: authHook }, async (req, reply) => {
     const user = req.user!;
     const { id } = req.params as { id: string };

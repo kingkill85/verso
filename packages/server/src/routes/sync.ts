@@ -4,7 +4,7 @@ import {
   devices, books, pageStats, readingSessions, readingProgress, annotations,
   koinsightDeviceInput, koinsightImportInput,
 } from "@verso/shared";
-import { createPluginAuthHook } from "../middleware/kosync-auth.js";
+import { createAppPasswordAuthHook } from "../middleware/app-password-auth.js";
 import type { AppDatabase } from "../db/client.js";
 import type { Config } from "../config.js";
 import type { StorageService } from "../services/storage.js";
@@ -21,26 +21,21 @@ function isVersionValid(version: string): boolean {
   return true; // equal
 }
 
-export function registerKoInsightRoutes(
+export function registerSyncRoutes(
   app: FastifyInstance,
   db: AppDatabase,
   storage: StorageService,
   config: Config,
 ) {
-  const authHook = createPluginAuthHook(config, db);
+  const authHook = createAppPasswordAuthHook(db);
 
-  // GET /api/plugin/health — no auth
-  app.get("/api/plugin/health", async (_req, reply) => {
+  // GET /api/sync/health — no auth
+  app.get("/api/sync/health", async (_req, reply) => {
     return reply.send({ status: "ok", version: "0.3.0" });
   });
 
-  // GET /api/plugin/download — serve KoInsight plugin zip (no auth)
-  app.get("/api/plugin/download", async (_req, reply) => {
-    return reply.code(404).send({ message: "Plugin download not configured" });
-  });
-
-  // POST /api/plugin/device — register device
-  app.post("/api/plugin/device", { preHandler: authHook }, async (req, reply) => {
+  // POST /api/sync/device — register device
+  app.post("/api/sync/device", { preHandler: authHook }, async (req, reply) => {
     const parsed = koinsightDeviceInput.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ message: "Invalid request body" });
@@ -64,24 +59,31 @@ export function registerKoInsightRoutes(
     return reply.send({ message: "Device registered successfully" });
   });
 
-  // POST /api/plugin/import — import stats + annotations
-  app.post("/api/plugin/import", { preHandler: authHook }, async (req, reply) => {
+  // POST /api/sync/import — import stats + annotations
+  app.post("/api/sync/import", { preHandler: authHook }, async (req, reply) => {
     const parsed = koinsightImportInput.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ message: "Invalid request body" });
     }
 
-    const { version, device_id, books: importBooks, stats, annotations: importAnnotations } = parsed.data;
+    const { version, device_id: bodyDeviceId, books: importBooks, stats, annotations: importAnnotations } = parsed.data;
     if (!isVersionValid(version)) {
       return reply.code(400).send({ message: `Plugin version ${version} is below minimum 0.3.0` });
     }
 
     const userId = req.user!.sub;
 
-    // Verify device belongs to user
-    const device = await db.select().from(devices).where(and(eq(devices.id, device_id), eq(devices.userId, userId))).get();
-    if (!device) {
-      return reply.code(403).send({ message: "Device not registered to this user" });
+    // Resolve device_id: from body, from first stat entry, or null
+    const device_id = bodyDeviceId
+      || (stats.length > 0 ? stats[0].device_id : undefined)
+      || null;
+
+    // If we have a device_id, verify it belongs to this user
+    if (device_id) {
+      const device = await db.select().from(devices).where(and(eq(devices.id, device_id), eq(devices.userId, userId))).get();
+      if (!device) {
+        return reply.code(403).send({ message: "Device not registered to this user" });
+      }
     }
 
     // Build MD5 → bookId map
@@ -98,9 +100,9 @@ export function registerKoInsightRoutes(
       try {
         await db.insert(pageStats).values({
           userId,
-          bookId: md5ToBookId.get(stat.md5) || null,
-          bookMd5: stat.md5,
-          deviceId: device_id,
+          bookId: md5ToBookId.get(stat.book_md5) || null,
+          bookMd5: stat.book_md5,
+          deviceId: device_id || stat.device_id || "unknown",
           page: stat.page,
           startTime: stat.start_time,
           duration: stat.duration,
@@ -114,9 +116,9 @@ export function registerKoInsightRoutes(
     // Synthesize reading sessions from page stats
     const statsByBook = new Map<string, typeof stats>();
     for (const stat of stats) {
-      const existing = statsByBook.get(stat.md5) || [];
+      const existing = statsByBook.get(stat.book_md5) || [];
       existing.push(stat);
-      statsByBook.set(stat.md5, existing);
+      statsByBook.set(stat.book_md5, existing);
     }
 
     const SESSION_GAP_SECONDS = 5 * 60;
@@ -224,14 +226,16 @@ export function registerKoInsightRoutes(
       if (!bookId) continue;
 
       // Delete existing annotations from this device for this book
-      await db.delete(annotations).where(
-        and(
-          eq(annotations.userId, userId),
-          eq(annotations.bookId, bookId),
-          eq(annotations.deviceId, device_id),
-          eq(annotations.source, "koinsight"),
-        ),
-      );
+      if (device_id) {
+        await db.delete(annotations).where(
+          and(
+            eq(annotations.userId, userId),
+            eq(annotations.bookId, bookId),
+            eq(annotations.deviceId, device_id),
+            eq(annotations.source, "koinsight"),
+          ),
+        );
+      }
 
       // Insert new annotations
       for (const ann of anns) {
@@ -241,7 +245,7 @@ export function registerKoInsightRoutes(
           content: ann.text || null,
           note: ann.note || null,
           cfiPosition: null,
-          pageNumber: ann.page,
+          pageNumber: String(ann.page),
           chapter: ann.chapter || null,
           deviceId: device_id,
           source: "koinsight",

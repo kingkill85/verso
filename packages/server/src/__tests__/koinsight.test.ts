@@ -2,16 +2,20 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   koinsightDeviceInput,
   koinsightImportInput,
+  koinsightAnnotationInput,
   devices,
   books,
   readingSessions,
   readingProgress,
   pageStats,
   annotations,
+  users,
 } from "@verso/shared";
 import { createTestContext } from "../test-utils.js";
 import { buildApp } from "../app.js";
-import { createApiKey } from "../services/api-keys.js";
+import { createHash } from "node:crypto";
+import { hash } from "bcrypt";
+import { eq } from "drizzle-orm";
 
 describe("koinsight validators", () => {
   it("validates device registration", () => {
@@ -23,12 +27,22 @@ describe("koinsight validators", () => {
     expect(result.success).toBe(true);
   });
 
-  it("validates import input", () => {
+  it("validates import input with book_md5", () => {
     const result = koinsightImportInput.safeParse({
       version: "0.3.0",
       device_id: "kindle-001",
       books: [{ md5: "abc123", title: "Book", authors: "Author", pages: 200 }],
-      stats: [{ md5: "abc123", page: 1, start_time: 1700000000, duration: 60, total_pages: 200 }],
+      stats: [{ book_md5: "abc123", page: 1, start_time: 1700000000, duration: 60, total_pages: 200 }],
+      annotations: {},
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("validates import without device_id", () => {
+    const result = koinsightImportInput.safeParse({
+      version: "0.3.0",
+      books: [],
+      stats: [],
       annotations: {},
     });
     expect(result.success).toBe(true);
@@ -48,13 +62,22 @@ describe("koinsight validators", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("validates annotation with string page (EPUB xPointer)", () => {
+    const result = koinsightAnnotationInput.safeParse({
+      chapter: "Ch 1",
+      text: "highlighted",
+      page: "/body/DocFragment[17]/body/div/p/text().0",
+      type: "highlight",
+    });
+    expect(result.success).toBe(true);
+  });
 });
 
-describe("koinsight endpoints", () => {
+describe("sync endpoints", () => {
   let ctx: Awaited<ReturnType<typeof createTestContext>>;
   let userId: string;
   let userEmail: string;
-  let apiKey: string;
 
   beforeEach(async () => {
     ctx = await createTestContext();
@@ -65,14 +88,21 @@ describe("koinsight endpoints", () => {
     });
     userId = reg.user.id;
     userEmail = "reader@example.com";
-    const { plainKey } = await createApiKey(ctx.db, userId, "KoInsight", ["plugin"]);
-    apiKey = plainKey;
+
+    // Set app password
+    const appPassword = "mysyncpass";
+    const appPasswordHash = await hash(appPassword, 10);
+    const appPasswordMd5 = createHash("md5").update(appPassword).digest("hex");
+    await ctx.db.update(users).set({ appPasswordHash, appPasswordMd5 }).where(eq(users.id, userId));
   });
 
-  describe("GET /api/plugin/health", () => {
+  const authHeader = () =>
+    `Basic ${Buffer.from(`${userEmail}:mysyncpass`).toString("base64")}`;
+
+  describe("GET /api/sync/health", () => {
     it("returns ok without auth", async () => {
       const app = await buildApp(ctx.config, ctx.db);
-      const res = await app.inject({ method: "GET", url: "/api/plugin/health" });
+      const res = await app.inject({ method: "GET", url: "/api/sync/health" });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.status).toBe("ok");
@@ -80,13 +110,13 @@ describe("koinsight endpoints", () => {
     });
   });
 
-  describe("POST /api/plugin/device", () => {
+  describe("POST /api/sync/device", () => {
     it("registers a device", async () => {
       const app = await buildApp(ctx.config, ctx.db);
       const res = await app.inject({
         method: "POST",
-        url: "/api/plugin/device",
-        headers: { authorization: `Basic ${Buffer.from(`${userEmail}:${apiKey}`).toString("base64")}` },
+        url: "/api/sync/device",
+        headers: { authorization: authHeader() },
         payload: { version: "0.3.0", id: "kobo-001", model: "Kobo Libra" },
       });
       expect(res.statusCode).toBe(200);
@@ -101,8 +131,8 @@ describe("koinsight endpoints", () => {
       const app = await buildApp(ctx.config, ctx.db);
       const res = await app.inject({
         method: "POST",
-        url: "/api/plugin/device",
-        headers: { authorization: `Basic ${Buffer.from(`${userEmail}:${apiKey}`).toString("base64")}` },
+        url: "/api/sync/device",
+        headers: { authorization: authHeader() },
         payload: { version: "0.2.0", id: "kobo-001", model: "Kobo" },
       });
       expect(res.statusCode).toBe(400);
@@ -112,18 +142,15 @@ describe("koinsight endpoints", () => {
       const app = await buildApp(ctx.config, ctx.db);
       const res = await app.inject({
         method: "POST",
-        url: "/api/plugin/device",
-        headers: { authorization: `Basic ${Buffer.from(`${userEmail}:${apiKey}`).toString("base64")}` },
+        url: "/api/sync/device",
+        headers: { authorization: authHeader() },
         payload: { version: "0.4.1", id: "kobo-001", model: "Kobo" },
       });
       expect(res.statusCode).toBe(200);
     });
   });
 
-  describe("POST /api/plugin/import", () => {
-    const authHeader = () =>
-      `Basic ${Buffer.from(`${userEmail}:${apiKey}`).toString("base64")}`;
-
+  describe("POST /api/sync/import", () => {
     async function registerDevice() {
       await ctx.db.insert(devices).values({
         id: "kobo-001", userId,
@@ -150,15 +177,15 @@ describe("koinsight endpoints", () => {
 
       const app = await buildApp(ctx.config, ctx.db);
       const res = await app.inject({
-        method: "POST", url: "/api/plugin/import",
+        method: "POST", url: "/api/sync/import",
         headers: { authorization: authHeader() },
         payload: {
           version: "0.3.0", device_id: "kobo-001",
           books: [{ md5: bookMd5, title: "Import Test Book", authors: "Author", pages: 200 }],
           stats: [
-            { md5: bookMd5, page: 1, start_time: 1700000000, duration: 60, total_pages: 200 },
-            { md5: bookMd5, page: 2, start_time: 1700000070, duration: 60, total_pages: 200 },
-            { md5: bookMd5, page: 3, start_time: 1700000140, duration: 60, total_pages: 200 },
+            { book_md5: bookMd5, page: 1, start_time: 1700000000, duration: 60, total_pages: 200 },
+            { book_md5: bookMd5, page: 2, start_time: 1700000070, duration: 60, total_pages: 200 },
+            { book_md5: bookMd5, page: 3, start_time: 1700000140, duration: 60, total_pages: 200 },
           ],
           annotations: {},
         },
@@ -178,14 +205,14 @@ describe("koinsight endpoints", () => {
       expect(progress[0].bookId).toBe(bookId);
     });
 
-    it("imports annotations", async () => {
+    it("imports annotations with string pageNumber", async () => {
       await registerDevice();
       const bookMd5 = "annotate_test_md5_1234567890abc";
-      const bookId = await insertBook(bookMd5);
+      await insertBook(bookMd5);
 
       const app = await buildApp(ctx.config, ctx.db);
       const res = await app.inject({
-        method: "POST", url: "/api/plugin/import",
+        method: "POST", url: "/api/sync/import",
         headers: { authorization: authHeader() },
         payload: {
           version: "0.3.0", device_id: "kobo-001",
@@ -204,7 +231,7 @@ describe("koinsight endpoints", () => {
       const anns = await ctx.db.select().from(annotations).all();
       expect(anns).toHaveLength(2);
       expect(anns[0].source).toBe("koinsight");
-      expect(anns[0].pageNumber).toBe(15);
+      expect(anns[0].pageNumber).toBe("15"); // stored as text now
       expect(anns[0].cfiPosition).toBeNull();
     });
 
@@ -218,13 +245,13 @@ describe("koinsight endpoints", () => {
         version: "0.3.0", device_id: "kobo-001",
         books: [{ md5: bookMd5, title: "Test", authors: "Author", pages: 100 }],
         stats: [
-          { md5: bookMd5, page: 1, start_time: 1700000000, duration: 60, total_pages: 100 },
+          { book_md5: bookMd5, page: 1, start_time: 1700000000, duration: 60, total_pages: 100 },
         ],
         annotations: {},
       };
 
-      await app.inject({ method: "POST", url: "/api/plugin/import", headers: { authorization: authHeader() }, payload });
-      await app.inject({ method: "POST", url: "/api/plugin/import", headers: { authorization: authHeader() }, payload });
+      await app.inject({ method: "POST", url: "/api/sync/import", headers: { authorization: authHeader() }, payload });
+      await app.inject({ method: "POST", url: "/api/sync/import", headers: { authorization: authHeader() }, payload });
 
       const stats = await ctx.db.select().from(pageStats).all();
       expect(stats).toHaveLength(1);
@@ -233,7 +260,7 @@ describe("koinsight endpoints", () => {
     it("rejects version below 0.3.0", async () => {
       const app = await buildApp(ctx.config, ctx.db);
       const res = await app.inject({
-        method: "POST", url: "/api/plugin/import",
+        method: "POST", url: "/api/sync/import",
         headers: { authorization: authHeader() },
         payload: {
           version: "0.2.0", device_id: "kobo-001",

@@ -6,7 +6,7 @@ import { shelvesRouter } from "./routers/shelves.js";
 import { metadataRouter } from "./routers/metadata.js";
 import { annotationsRouter } from "./routers/annotations.js";
 import { statsRouter } from "./routers/stats.js";
-import { apiKeysRouter } from "./routers/api-keys.js";
+import { appPasswordRouter } from "./routers/app-password.js";
 import { adminRouter } from "./routers/admin.js";
 
 export const appRouter = router({
@@ -17,7 +17,7 @@ export const appRouter = router({
   metadata: metadataRouter,
   annotations: annotationsRouter,
   stats: statsRouter,
-  apiKeys: apiKeysRouter,
+  appPassword: appPasswordRouter,
   admin: adminRouter,
 });
 

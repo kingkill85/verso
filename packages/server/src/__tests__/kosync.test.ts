@@ -1,15 +1,17 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createTestContext } from "../test-utils.js";
 import { buildApp } from "../app.js";
-import { createApiKey } from "../services/api-keys.js";
-import { books, readingProgress, kosyncProgress, devices } from "@verso/shared";
+import { createHash } from "node:crypto";
+import { hash } from "bcrypt";
+import { books, readingProgress, kosyncProgress, devices, users } from "@verso/shared";
+import { eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 
 describe("kosync endpoints", () => {
   let ctx: Awaited<ReturnType<typeof createTestContext>>;
   let userId: string;
   let userEmail: string;
-  let apiKey: string;
+  let md5Key: string;
   let app: FastifyInstance;
 
   beforeEach(async () => {
@@ -21,8 +23,13 @@ describe("kosync endpoints", () => {
     });
     userId = reg.user.id;
     userEmail = "reader@example.com";
-    const { plainKey } = await createApiKey(ctx.db, userId, "KOReader", ["kosync"]);
-    apiKey = plainKey;
+
+    // Set app password
+    const appPassword = "mysyncpass";
+    const appPasswordHash = await hash(appPassword, 10);
+    const appPasswordMd5 = createHash("md5").update(appPassword).digest("hex");
+    await ctx.db.update(users).set({ appPasswordHash, appPasswordMd5 }).where(eq(users.id, userId));
+    md5Key = appPasswordMd5;
     app = await buildApp(ctx.config, ctx.db);
   });
 
@@ -33,7 +40,7 @@ describe("kosync endpoints", () => {
         url: "/users/auth",
         headers: {
           "x-auth-user": userEmail,
-          "x-auth-key": apiKey,
+          "x-auth-key": md5Key,
         },
       });
       expect(res.statusCode).toBe(200);
@@ -54,7 +61,7 @@ describe("kosync endpoints", () => {
         url: "/users/auth",
         headers: {
           "x-auth-user": userEmail,
-          "x-auth-key": "vso_wrongkey12345678901234567890",
+          "x-auth-key": "wrong_md5_hash_value",
         },
       });
       expect(res.statusCode).toBe(401);
@@ -68,7 +75,7 @@ describe("kosync endpoints", () => {
         url: "/users/create",
         headers: {
           "x-auth-user": userEmail,
-          "x-auth-key": apiKey,
+          "x-auth-key": md5Key,
         },
         payload: { username: userEmail, password: "anything" },
       });
@@ -82,7 +89,7 @@ describe("kosync endpoints", () => {
         url: "/users/create",
         headers: {
           "x-auth-user": userEmail,
-          "x-auth-key": "vso_bad",
+          "x-auth-key": "bad_md5",
         },
         payload: { username: userEmail, password: "anything" },
       });
@@ -103,7 +110,7 @@ describe("kosync endpoints", () => {
 
       const res = await app.inject({
         method: "PUT", url: "/syncs/progress",
-        headers: { "x-auth-user": userEmail, "x-auth-key": apiKey },
+        headers: { "x-auth-user": userEmail, "x-auth-key": md5Key },
         payload: {
           document: "abc123def456abc123def456abc12345",
           progress: "/body/chapter[3]/p[5]",
@@ -130,7 +137,7 @@ describe("kosync endpoints", () => {
     it("saves to kosyncProgress for unmatched book", async () => {
       const res = await app.inject({
         method: "PUT", url: "/syncs/progress",
-        headers: { "x-auth-user": userEmail, "x-auth-key": apiKey },
+        headers: { "x-auth-user": userEmail, "x-auth-key": md5Key },
         payload: {
           document: "unmatched_hash_1234567890abcdef",
           progress: "page-10",
@@ -158,7 +165,7 @@ describe("kosync endpoints", () => {
 
       await app.inject({
         method: "PUT", url: "/syncs/progress",
-        headers: { "x-auth-user": userEmail, "x-auth-key": apiKey },
+        headers: { "x-auth-user": userEmail, "x-auth-key": md5Key },
         payload: {
           document: "finished_hash_abcdef1234567890",
           progress: "end", percentage: 0.99,
@@ -195,7 +202,7 @@ describe("kosync endpoints", () => {
       const res = await app.inject({
         method: "GET",
         url: "/syncs/progress/pull_test_hash_abcdef123456789",
-        headers: { "x-auth-user": userEmail, "x-auth-key": apiKey },
+        headers: { "x-auth-user": userEmail, "x-auth-key": md5Key },
       });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
@@ -215,7 +222,7 @@ describe("kosync endpoints", () => {
       const res = await app.inject({
         method: "GET",
         url: "/syncs/progress/unmatched_pull_hash_abcdef12345",
-        headers: { "x-auth-user": userEmail, "x-auth-key": apiKey },
+        headers: { "x-auth-user": userEmail, "x-auth-key": md5Key },
       });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
@@ -228,7 +235,7 @@ describe("kosync endpoints", () => {
       const res = await app.inject({
         method: "GET",
         url: "/syncs/progress/nonexistent_hash_12345678901234",
-        headers: { "x-auth-user": userEmail, "x-auth-key": apiKey },
+        headers: { "x-auth-user": userEmail, "x-auth-key": md5Key },
       });
       expect(res.statusCode).toBe(404);
     });
