@@ -28,18 +28,18 @@ function VersoSyncDbReader.bookData()
 
     for row in stmt:rows() do
         local book = {
-            id = row[1],
-            title = row[2],
-            authors = row[3],
-            notes = row[4],
-            last_open = row[5],
-            highlights = row[6],
-            pages = row[7],
-            series = row[8],
-            language = row[9],
-            md5 = row[10],
-            total_read_time = row[11],
-            total_read_pages = row[12],
+            id = tonumber(row[1]),
+            title = tostring(row[2] or ""),
+            authors = tostring(row[3] or ""),
+            notes = tonumber(row[4]) or 0,
+            last_open = tostring(row[5] or ""),
+            highlights = tonumber(row[6]) or 0,
+            pages = tonumber(row[7]) or 0,
+            series = tostring(row[8] or ""),
+            language = tostring(row[9] or ""),
+            md5 = tostring(row[10] or ""),
+            total_read_time = tonumber(row[11]) or 0,
+            total_read_pages = tonumber(row[12]) or 0,
         }
         -- Use live page count for currently open book
         if current_pages and ReaderUI.instance
@@ -78,13 +78,13 @@ function VersoSyncDbReader.progressData()
     end
 
     for row in stmt:rows() do
-        local md5 = book_id_to_md5[row[5]]
+        local md5 = book_id_to_md5[tonumber(row[5])]
         if md5 then
             table.insert(stats, {
-                page = row[1],
-                start_time = row[2],
-                duration = row[3],
-                total_pages = row[4],
+                page = tonumber(row[1]),
+                start_time = tonumber(row[2]),
+                duration = tonumber(row[3]),
+                total_pages = tonumber(row[4]),
                 book_md5 = md5,
                 device_id = device_id,
             })
