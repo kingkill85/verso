@@ -3,6 +3,11 @@ import {
   koinsightDeviceInput,
   koinsightImportInput,
   devices,
+  books,
+  readingSessions,
+  readingProgress,
+  pageStats,
+  annotations,
 } from "@verso/shared";
 import { createTestContext } from "../test-utils.js";
 import { buildApp } from "../app.js";
@@ -112,6 +117,130 @@ describe("koinsight endpoints", () => {
         payload: { version: "0.4.1", id: "kobo-001", model: "Kobo" },
       });
       expect(res.statusCode).toBe(200);
+    });
+  });
+
+  describe("POST /api/plugin/import", () => {
+    const authHeader = () =>
+      `Basic ${Buffer.from(`${userEmail}:${apiKey}`).toString("base64")}`;
+
+    async function registerDevice() {
+      await ctx.db.insert(devices).values({
+        id: "kobo-001", userId,
+        model: "Kobo Libra",
+        lastSeen: new Date().toISOString(),
+      });
+    }
+
+    async function insertBook(md5: string) {
+      const bookId = crypto.randomUUID();
+      await ctx.db.insert(books).values({
+        id: bookId, title: "Import Test Book", author: "Author",
+        filePath: "books/test.epub", fileFormat: "epub",
+        fileSize: 1000, fileHash: "sha",
+        md5Hash: md5, addedBy: userId,
+      });
+      return bookId;
+    }
+
+    it("imports page stats and synthesizes sessions", async () => {
+      await registerDevice();
+      const bookMd5 = "import_test_md5_1234567890abcde";
+      const bookId = await insertBook(bookMd5);
+
+      const app = await buildApp(ctx.config, ctx.db);
+      const res = await app.inject({
+        method: "POST", url: "/api/plugin/import",
+        headers: { authorization: authHeader() },
+        payload: {
+          version: "0.3.0", device_id: "kobo-001",
+          books: [{ md5: bookMd5, title: "Import Test Book", authors: "Author", pages: 200 }],
+          stats: [
+            { md5: bookMd5, page: 1, start_time: 1700000000, duration: 60, total_pages: 200 },
+            { md5: bookMd5, page: 2, start_time: 1700000070, duration: 60, total_pages: 200 },
+            { md5: bookMd5, page: 3, start_time: 1700000140, duration: 60, total_pages: 200 },
+          ],
+          annotations: {},
+        },
+      });
+      expect(res.statusCode).toBe(200);
+
+      const stats = await ctx.db.select().from(pageStats).all();
+      expect(stats).toHaveLength(3);
+
+      const sessions = await ctx.db.select().from(readingSessions).all();
+      expect(sessions).toHaveLength(1);
+      expect(sessions[0].source).toBe("koinsight");
+      expect(sessions[0].durationMinutes).toBe(3);
+
+      const progress = await ctx.db.select().from(readingProgress).all();
+      expect(progress).toHaveLength(1);
+      expect(progress[0].bookId).toBe(bookId);
+    });
+
+    it("imports annotations", async () => {
+      await registerDevice();
+      const bookMd5 = "annotate_test_md5_1234567890abc";
+      const bookId = await insertBook(bookMd5);
+
+      const app = await buildApp(ctx.config, ctx.db);
+      const res = await app.inject({
+        method: "POST", url: "/api/plugin/import",
+        headers: { authorization: authHeader() },
+        payload: {
+          version: "0.3.0", device_id: "kobo-001",
+          books: [{ md5: bookMd5, title: "Test", authors: "Author", pages: 100 }],
+          stats: [],
+          annotations: {
+            [bookMd5]: [
+              { chapter: "Chapter 1", text: "Important passage", page: 15, type: "highlight" },
+              { chapter: "Chapter 2", text: "Another bit", note: "my note", page: 30, type: "highlight" },
+            ],
+          },
+        },
+      });
+      expect(res.statusCode).toBe(200);
+
+      const anns = await ctx.db.select().from(annotations).all();
+      expect(anns).toHaveLength(2);
+      expect(anns[0].source).toBe("koinsight");
+      expect(anns[0].pageNumber).toBe(15);
+      expect(anns[0].cfiPosition).toBeNull();
+    });
+
+    it("handles dedup on re-import", async () => {
+      await registerDevice();
+      const bookMd5 = "dedup_test_md5_1234567890abcdef";
+      await insertBook(bookMd5);
+
+      const app = await buildApp(ctx.config, ctx.db);
+      const payload = {
+        version: "0.3.0", device_id: "kobo-001",
+        books: [{ md5: bookMd5, title: "Test", authors: "Author", pages: 100 }],
+        stats: [
+          { md5: bookMd5, page: 1, start_time: 1700000000, duration: 60, total_pages: 100 },
+        ],
+        annotations: {},
+      };
+
+      await app.inject({ method: "POST", url: "/api/plugin/import", headers: { authorization: authHeader() }, payload });
+      await app.inject({ method: "POST", url: "/api/plugin/import", headers: { authorization: authHeader() }, payload });
+
+      const stats = await ctx.db.select().from(pageStats).all();
+      expect(stats).toHaveLength(1);
+    });
+
+    it("rejects version below 0.3.0", async () => {
+      const app = await buildApp(ctx.config, ctx.db);
+      const res = await app.inject({
+        method: "POST", url: "/api/plugin/import",
+        headers: { authorization: authHeader() },
+        payload: {
+          version: "0.2.0", device_id: "kobo-001",
+          books: [], stats: [], annotations: {},
+        },
+      });
+      expect(res.statusCode).toBe(400);
     });
   });
 });
