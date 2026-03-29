@@ -124,7 +124,9 @@ KoInsight routes use the same `createAppPasswordAuthHook`. The Verso Sync plugin
 - Store annotation `pageNumber` as text
 - Handle no `device_id`: skip device ownership check, set `deviceId: null` on created records
 
-**Remove `/api/plugin/download` endpoint** — no longer needed.
+**Remove download endpoint** — no longer needed.
+
+**Rename all routes** from `/api/plugin/...` to `/api/sync/...` in `koinsight.ts` (rename file to `sync.ts`).
 
 ### Route Changes for `annotations.pageNumber`
 
