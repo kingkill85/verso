@@ -9,7 +9,8 @@ import {
   extractMetadata,
   extractCover,
 } from "../services/calibre.js";
-import { books } from "@verso/shared";
+import { books, kosyncProgress, readingProgress } from "@verso/shared";
+import { eq } from "drizzle-orm";
 import type { StorageService } from "../services/storage.js";
 import type { AppDatabase } from "../db/client.js";
 import type { Config } from "../config.js";
@@ -102,6 +103,7 @@ export function registerUploadRoute(
         await storage.put(filePath, storedBuffer);
 
         const fileHash = createHash("sha256").update(storedBuffer).digest("hex");
+        const md5Hash = createHash("md5").update(storedBuffer).digest("hex");
         const fileSize = storedBuffer.length;
 
         // Extract metadata from the stored file
@@ -151,6 +153,7 @@ export function registerUploadRoute(
             fileFormat: outputFormat,
             fileSize,
             fileHash,
+            md5Hash,
             pageCount: metadata.pageCount,
             series: metadata.series,
             seriesIndex: metadata.seriesIndex,
@@ -158,6 +161,29 @@ export function registerUploadRoute(
             metadataSource: "extracted",
           })
           .returning();
+
+        // Auto-migrate kosyncProgress if a matching document hash exists
+        if (md5Hash) {
+          const matchedProgress = await db
+            .select()
+            .from(kosyncProgress)
+            .where(eq(kosyncProgress.documentHash, md5Hash))
+            .all();
+
+          for (const kp of matchedProgress) {
+            await db.insert(readingProgress).values({
+              userId: kp.userId,
+              bookId,
+              percentage: kp.percentage * 100, // kosync uses 0-1, readingProgress uses 0-100
+              lastReadAt: kp.updatedAt,
+              startedAt: kp.updatedAt,
+            }).onConflictDoNothing();
+
+            await db
+              .delete(kosyncProgress)
+              .where(eq(kosyncProgress.id, kp.id));
+          }
+        }
 
         return reply.status(201).send({ book });
       } finally {
