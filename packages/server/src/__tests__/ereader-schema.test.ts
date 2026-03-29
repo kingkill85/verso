@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createTestContext } from "../test-utils.js";
+import { eq } from "drizzle-orm";
 import {
   books,
   devices,
@@ -8,7 +9,7 @@ import {
   readingSessions,
   readingProgress,
   annotations,
-  createApiKeyInput,
+  users,
 } from "@verso/shared";
 import {
   kosyncProgressPushInput,
@@ -163,7 +164,7 @@ describe("e-reader schema", () => {
     expect(progress!.deviceId).toBe("kindle-001");
   });
 
-  it("annotations allows null cfiPosition with pageNumber", async () => {
+  it("annotations allows null cfiPosition with pageNumber as text", async () => {
     const bookId = crypto.randomUUID();
     await ctx.db.insert(books).values({
       id: bookId,
@@ -181,13 +182,27 @@ describe("e-reader schema", () => {
       type: "highlight",
       content: "Some text",
       cfiPosition: null,
-      pageNumber: 42,
+      pageNumber: "42",
       source: "koinsight",
     });
     const ann = await ctx.db.select().from(annotations).get();
     expect(ann!.cfiPosition).toBeNull();
-    expect(ann!.pageNumber).toBe(42);
+    expect(ann!.pageNumber).toBe("42");
     expect(ann!.source).toBe("koinsight");
+  });
+
+  it("users table has appPasswordHash and appPasswordMd5 columns", async () => {
+    await ctx.db
+      .update(users)
+      .set({
+        appPasswordHash: "$2b$10$fakehash",
+        appPasswordMd5: "5f4dcc3b5aa765d61d8327deb882cf99",
+      })
+      .where(eq(users.id, userId));
+
+    const user = await ctx.db.select().from(users).where(eq(users.id, userId)).get();
+    expect(user!.appPasswordHash).toBe("$2b$10$fakehash");
+    expect(user!.appPasswordMd5).toBe("5f4dcc3b5aa765d61d8327deb882cf99");
   });
 });
 
@@ -218,31 +233,5 @@ describe("kosync validators", () => {
       document: "d41d8cd98f00b204e9800998ecf8427e",
     });
     expect(result.success).toBe(true);
-  });
-});
-
-describe("api key scopes", () => {
-  it("accepts kosync scope", () => {
-    const result = createApiKeyInput.safeParse({
-      name: "KOReader",
-      scopes: ["kosync"],
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("accepts plugin scope", () => {
-    const result = createApiKeyInput.safeParse({
-      name: "KoInsight",
-      scopes: ["plugin"],
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects invalid scope", () => {
-    const result = createApiKeyInput.safeParse({
-      name: "Bad",
-      scopes: ["invalid"],
-    });
-    expect(result.success).toBe(false);
   });
 });

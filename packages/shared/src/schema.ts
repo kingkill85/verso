@@ -16,6 +16,8 @@ export const users = sqliteTable("users", {
     .notNull()
     .default(sql`(datetime('now'))`),
   lastLoginAt: text("last_login_at"),
+  appPasswordHash: text("app_password_hash"),
+  appPasswordMd5: text("app_password_md5", { length: 32 }),
 });
 
 export const books = sqliteTable("books", {
@@ -138,7 +140,7 @@ export const annotations = sqliteTable("annotations", {
   cfiEnd: text("cfi_end"),
   color: text("color", { length: 20 }).default("yellow"),
   chapter: text("chapter", { length: 255 }),
-  pageNumber: integer("page_number"),
+  pageNumber: text("page_number"),
   deviceId: text("device_id").references(() => devices.id, { onDelete: "cascade" }),
   source: text("source", { length: 20 }).default("web"),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
@@ -173,17 +175,6 @@ export const metadataCache = sqliteTable("metadata_cache", {
   uniqueIndex("metadata_cache_query_source_idx").on(table.queryKey, table.source),
 ]);
 
-export const apiKeys = sqliteTable("api_keys", {
-  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  name: text("name", { length: 100 }).notNull(),
-  keyHash: text("key_hash", { length: 255 }).notNull(),
-  keyPrefix: text("key_prefix", { length: 12 }).notNull(),
-  scopes: text("scopes").notNull().default('["opds"]'),
-  lastUsedAt: text("last_used_at"),
-  expiresAt: text("expires_at"),
-  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
-});
 
 export const devices = sqliteTable("devices", {
   id: text("id").primaryKey(),

@@ -57,6 +57,13 @@
       "when": 1774801155623,
       "tag": "0007_sudden_venom",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1774810465767,
+      "tag": "0008_clever_swordsman",
+      "breakpoints": true
     }
   ]
 }
