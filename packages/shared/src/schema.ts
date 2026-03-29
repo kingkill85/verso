@@ -36,6 +36,7 @@ export const books = sqliteTable("books", {
   fileFormat: text("file_format", { length: 10 }).notNull(),
   fileSize: integer("file_size").notNull(),
   fileHash: text("file_hash", { length: 64 }),
+  md5Hash: text("md5_hash", { length: 32 }),
   pageCount: integer("page_count"),
   addedBy: text("added_by")
     .notNull()
@@ -86,6 +87,7 @@ export const readingProgress = sqliteTable("reading_progress", {
   lastReadAt: text("last_read_at"),
   finishedAt: text("finished_at"),
   timeSpentMinutes: integer("time_spent_minutes").default(0),
+  deviceId: text("device_id").references(() => devices.id, { onDelete: "cascade" }),
 });
 
 export const shelves = sqliteTable("shelves", {
@@ -132,10 +134,13 @@ export const annotations = sqliteTable("annotations", {
   type: text("type", { length: 20 }).notNull().default("highlight"),
   content: text("content"),
   note: text("note"),
-  cfiPosition: text("cfi_position").notNull(),
+  cfiPosition: text("cfi_position"),
   cfiEnd: text("cfi_end"),
   color: text("color", { length: 20 }).default("yellow"),
   chapter: text("chapter", { length: 255 }),
+  pageNumber: integer("page_number"),
+  deviceId: text("device_id").references(() => devices.id, { onDelete: "cascade" }),
+  source: text("source", { length: 20 }).default("web"),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
@@ -153,6 +158,9 @@ export const readingSessions = sqliteTable("reading_sessions", {
   startedAt: text("started_at").notNull(),
   endedAt: text("ended_at").notNull(),
   durationMinutes: integer("duration_minutes").notNull().default(0),
+  deviceId: text("device_id").references(() => devices.id, { onDelete: "cascade" }),
+  source: text("source", { length: 20 }).default("web"),
+  bookTitle: text("book_title"),
 });
 
 export const metadataCache = sqliteTable("metadata_cache", {
@@ -176,3 +184,51 @@ export const apiKeys = sqliteTable("api_keys", {
   expiresAt: text("expires_at"),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
 });
+
+export const devices = sqliteTable("devices", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name", { length: 255 }),
+  model: text("model", { length: 255 }),
+  lastSeen: text("last_seen").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+export const kosyncProgress = sqliteTable("kosync_progress", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  documentHash: text("document_hash", { length: 32 }).notNull(),
+  progress: text("progress").notNull(),
+  percentage: real("percentage").notNull(),
+  deviceId: text("device_id").notNull(), // No FK — device may not be registered yet when kosync sends progress
+  device: text("device", { length: 255 }),
+  updatedAt: text("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("kosync_progress_user_doc_idx").on(table.userId, table.documentHash),
+]);
+
+export const pageStats = sqliteTable("page_stats", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  bookId: text("book_id").references(() => books.id, { onDelete: "set null" }),
+  bookMd5: text("book_md5").notNull(),
+  deviceId: text("device_id")
+    .notNull()
+    .references(() => devices.id, { onDelete: "cascade" }),
+  page: integer("page").notNull(),
+  startTime: integer("start_time").notNull(),
+  duration: integer("duration").notNull(),
+  totalPages: integer("total_pages").notNull(),
+}, (table) => [
+  uniqueIndex("page_stats_dedup_idx").on(table.deviceId, table.bookMd5, table.page, table.startTime),
+]);
