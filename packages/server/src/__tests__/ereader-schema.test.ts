@@ -10,6 +10,10 @@ import {
   annotations,
   createApiKeyInput,
 } from "@verso/shared";
+import {
+  kosyncProgressPushInput,
+  kosyncProgressPullParams,
+} from "@verso/shared";
 
 describe("e-reader schema", () => {
   let ctx: Awaited<ReturnType<typeof createTestContext>>;
@@ -184,6 +188,36 @@ describe("e-reader schema", () => {
     expect(ann!.cfiPosition).toBeNull();
     expect(ann!.pageNumber).toBe(42);
     expect(ann!.source).toBe("koinsight");
+  });
+});
+
+describe("kosync validators", () => {
+  it("validates progress push input", () => {
+    const result = kosyncProgressPushInput.safeParse({
+      document: "d41d8cd98f00b204e9800998ecf8427e",
+      progress: "page-42",
+      percentage: 0.42,
+      device: "Kindle Paperwhite",
+      device_id: "kindle-001",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects progress push without document", () => {
+    const result = kosyncProgressPushInput.safeParse({
+      progress: "page-42",
+      percentage: 0.42,
+      device: "Kindle",
+      device_id: "kindle-001",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("validates progress pull params", () => {
+    const result = kosyncProgressPullParams.safeParse({
+      document: "d41d8cd98f00b204e9800998ecf8427e",
+    });
+    expect(result.success).toBe(true);
   });
 });
 
