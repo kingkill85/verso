@@ -42,8 +42,12 @@ export async function buildApp(config: Config) {
     await verifyCalibreInstalled(config.CALIBRE_PATH);
     console.log("Calibre CLI tools verified");
   } catch (err: any) {
-    console.error(err.message);
-    process.exit(1);
+    if (config.NODE_ENV === "test") {
+      console.warn("Calibre not available (test mode, skipping)");
+    } else {
+      console.error(err.message);
+      process.exit(1);
+    }
   }
 
   const storage = new StorageService(config);
