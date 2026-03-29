@@ -20,16 +20,18 @@ import { registerCoversRoute } from "./routes/covers.js";
 import { registerImportRoutes } from "./routes/import.js";
 import { registerExportRoute } from "./routes/export.js";
 import { registerOpdsRoutes } from "./routes/opds.js";
+import { registerKosyncRoutes } from "./routes/kosync.js";
 import { verifyCalibreInstalled } from "./services/calibre.js";
 import type { Config } from "./config.js";
+import type { AppDatabase } from "./db/client.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export async function buildApp(config: Config) {
+export async function buildApp(config: Config, externalDb?: AppDatabase) {
   const app = Fastify({ logger: true });
 
-  const db = createDb(config);
-  runMigrations(db);
+  const db = externalDb ?? createDb(config);
+  if (!externalDb) runMigrations(db);
 
   // Backfill any missing default shelves for all existing users
   const { users } = await import("@verso/shared");
@@ -79,6 +81,7 @@ export async function buildApp(config: Config) {
   registerImportRoutes(app, db, storage, config);
   registerExportRoute(app, db, storage, config);
   registerOpdsRoutes(app, db, config);
+  registerKosyncRoutes(app, db, config);
 
   app.get("/health", async (_req, reply) => {
     try {
