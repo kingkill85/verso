@@ -8,3 +8,4 @@ export * from "./stats-validators.js";
 export * from "./schemas/api-keys.js";
 export * from "./admin-validators.js";
 export * from "./kosync-validators.js";
+export * from "./koinsight-validators.js";
