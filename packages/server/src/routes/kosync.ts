@@ -122,7 +122,7 @@ export function registerKosyncRoutes(
         if (progress) {
           return reply.send({
             document,
-            progress: progress.cfiPosition || `${progress.currentPage || 0}`,
+            progress: `${progress.percentage / 100}`,
             percentage: progress.percentage / 100,
             device: "",
             device_id: progress.deviceId || "",

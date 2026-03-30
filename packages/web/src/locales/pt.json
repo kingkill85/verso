@@ -304,7 +304,6 @@
   "kindle.testSuccess": "Conexão bem-sucedida!",
   "kindle.custom": "Personalizado",
   "kindle.helpGmail": "Acesse myaccount.google.com → Segurança → Verificação em duas etapas → Senhas de app → Criar para \"E-mail\"",
-  "kindle.helpOutlook": "Acesse account.microsoft.com → Segurança → Senhas de app → Criar nova",
   "kindle.helpIcloud": "Acesse appleid.apple.com → Segurança → Senhas específicas de apps → Gerar",
   "kindle.helpYahoo": "Acesse login.yahoo.com → Segurança da conta → Gerar senha de app",
   "kindle.appPasswordHelp": "Como obter uma senha de aplicativo",

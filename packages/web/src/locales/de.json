@@ -304,7 +304,6 @@
   "kindle.testSuccess": "Verbindung erfolgreich!",
   "kindle.custom": "Benutzerdefiniert",
   "kindle.helpGmail": "Gehe zu myaccount.google.com → Sicherheit → Bestätigung in zwei Schritten → App-Passwörter → Erstelle eines für \"Mail\"",
-  "kindle.helpOutlook": "Gehe zu account.microsoft.com → Sicherheit → App-Passwörter → Neues App-Passwort erstellen",
   "kindle.helpIcloud": "Gehe zu appleid.apple.com → Sicherheit → App-spezifische Passwörter → Generieren",
   "kindle.helpYahoo": "Gehe zu login.yahoo.com → Kontosicherheit → App-Passwort generieren",
   "kindle.appPasswordHelp": "So erhältst du ein App-Passwort",

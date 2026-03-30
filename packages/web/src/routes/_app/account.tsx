@@ -108,7 +108,6 @@ function AppPasswordSection() {
 
 const PROVIDER_PRESETS: Record<string, { host: string; port: number; encryption: string }> = {
   gmail: { host: "smtp.gmail.com", port: 465, encryption: "ssl" },
-  outlook: { host: "smtp-mail.outlook.com", port: 587, encryption: "starttls" },
   icloud: { host: "smtp.mail.me.com", port: 587, encryption: "starttls" },
   yahoo: { host: "smtp.mail.yahoo.com", port: 465, encryption: "ssl" },
 };
@@ -235,7 +234,6 @@ function KindleSection() {
             style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", color: "var(--text)" }}
           >
             <option value="gmail">Gmail</option>
-            <option value="outlook">Outlook / Hotmail</option>
             <option value="icloud">iCloud</option>
             <option value="yahoo">Yahoo</option>
             <option value="custom">{t("kindle.custom")}</option>
