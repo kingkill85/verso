@@ -85,6 +85,7 @@ export const readingProgress = sqliteTable("reading_progress", {
   totalPages: integer("total_pages"),
   percentage: real("percentage").notNull().default(0),
   cfiPosition: text("cfi_position"),
+  kosyncProgress: text("kosync_progress"),
   startedAt: text("started_at"),
   lastReadAt: text("last_read_at"),
   finishedAt: text("finished_at"),
