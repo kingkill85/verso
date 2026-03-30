@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import type { ReaderSettings } from "@/hooks/use-epub-reader";
+import type { ReaderSettings } from "@/hooks/use-reader";
 
 type SettingsPanelProps = {
   settings: ReaderSettings;
