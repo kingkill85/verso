@@ -304,7 +304,6 @@
   "kindle.testSuccess": "Connessione riuscita!",
   "kindle.custom": "Personalizzato",
   "kindle.helpGmail": "Vai su myaccount.google.com → Sicurezza → Verifica in due passaggi → Password per le app → Creane una per \"Posta\"",
-  "kindle.helpOutlook": "Vai su account.microsoft.com → Sicurezza → Password per le app → Crea nuova",
   "kindle.helpIcloud": "Vai su appleid.apple.com → Sicurezza → Password specifiche per le app → Genera",
   "kindle.helpYahoo": "Vai su login.yahoo.com → Sicurezza dell'account → Genera password per le app",
   "kindle.appPasswordHelp": "Come ottenere una password dell'app",

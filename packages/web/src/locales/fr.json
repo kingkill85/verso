@@ -304,7 +304,6 @@
   "kindle.testSuccess": "Connexion réussie !",
   "kindle.custom": "Personnalisé",
   "kindle.helpGmail": "Accédez à myaccount.google.com → Sécurité → Validation en deux étapes → Mots de passe d'application → Créer pour « Mail »",
-  "kindle.helpOutlook": "Accédez à account.microsoft.com → Sécurité → Mots de passe d'application → Créer un nouveau",
   "kindle.helpIcloud": "Accédez à appleid.apple.com → Sécurité → Mots de passe spécifiques aux apps → Générer",
   "kindle.helpYahoo": "Accédez à login.yahoo.com → Sécurité du compte → Générer un mot de passe d'application",
   "kindle.appPasswordHelp": "Comment obtenir un mot de passe d'application",
