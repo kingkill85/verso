@@ -56,7 +56,7 @@ export async function buildApp(config: Config, externalDb?: AppDatabase) {
   const storage = new StorageService(config);
 
   await app.register(rateLimit, {
-    max: 100,
+    max: 500,
     timeWindow: "1 minute",
   });
 
@@ -74,6 +74,13 @@ export async function buildApp(config: Config, externalDb?: AppDatabase) {
       router: appRouter,
       createContext: createContextFactory(db, config, storage),
     },
+  });
+
+  // Prevent browser/proxy caching of API responses
+  app.addHook("onSend", async (request, reply) => {
+    if (request.url.startsWith("/trpc/") || request.url.startsWith("/api/")) {
+      reply.header("Cache-Control", "no-store");
+    }
   });
 
   registerUploadRoute(app, db, storage, config);

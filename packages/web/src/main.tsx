@@ -14,6 +14,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 30_000,
+      refetchOnWindowFocus: true,
       retry: (failureCount, error: any) => {
         if (error?.data?.httpStatus === 401) return false;
         return failureCount < 2;

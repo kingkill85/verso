@@ -30,7 +30,7 @@ export const shelvesRouter = router({
         if (shelf.isSmart) {
           return { ...shelf, bookCount: 0 };
         }
-        const countResult = ctx.db
+        const countResult = await ctx.db
           .select({ count: sql<number>`count(*)` })
           .from(shelfBooks)
           .where(eq(shelfBooks.shelfId, shelf.id))
