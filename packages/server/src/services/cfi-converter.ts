@@ -195,7 +195,11 @@ export class CfiConverter {
     let current: Element | null = this.doc.body;
     if (!current) return null;
 
-    for (const step of steps) {
+    // The first step in a content CFI path is always /4 (body element).
+    // Since we start at body, skip that first step.
+    const contentSteps = steps.length > 0 ? steps.slice(1) : steps;
+
+    for (const step of contentSteps) {
       const childIndex = (step.index / 2) - 1;
       const children = current.children;
       if (childIndex < 0 || childIndex >= children.length) {
@@ -227,7 +231,8 @@ export class CfiConverter {
         }
       }
 
-      parts.unshift(totalSameTag === 1 ? tagName : `${tagName}[${siblingIndex + 1}]`);
+      // Omit the [1] index for first-occurrence elements — bare tag name implies index 1
+      parts.unshift(siblingIndex === 0 ? tagName : `${tagName}[${siblingIndex + 1}]`);
       current = parent;
     }
 
