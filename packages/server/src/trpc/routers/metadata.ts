@@ -4,7 +4,7 @@ import { books, metadataCache, metadataSearchInput, metadataApplyInput } from "@
 import type { ExternalBook } from "@verso/shared";
 import { router, protectedProcedure, adminProcedure } from "../index.js";
 import { searchExternalMetadata, scoreMatch } from "../../services/metadata-enrichment.js";
-import { searchMetadata as calibreSearchMetadata, writeMetadata, getFileHash } from "../../services/calibre.js";
+import { searchMetadata as calibreSearchMetadata, writeMetadata, writeCover, getFileHash } from "../../services/calibre.js";
 import sharp from "sharp";
 
 const CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -179,6 +179,12 @@ export const metadataRouter = router({
       try {
         const filePath = ctx.storage.fullPath(book.filePath);
         await writeMetadata(filePath, metadataFields);
+
+        // Write cover into EPUB if it was updated
+        if (coverUrl && updateData.coverPath) {
+          const coverFilePath = ctx.storage.fullPath(updateData.coverPath);
+          await writeCover(filePath, coverFilePath);
+        }
 
         // Update file hash after modification
         const newHash = await getFileHash(filePath);
