@@ -4,10 +4,13 @@ import { createKosyncAuthHook } from "../middleware/kosync-auth.js";
 import { books, devices, readingProgress, kosyncProgress, kosyncProgressPushInput } from "@verso/shared";
 import type { AppDatabase } from "../db/client.js";
 import type { Config } from "../config.js";
+import type { StorageService } from "../services/storage.js";
+import { convertPosition } from "../services/epub-position.js";
 
 export function registerKosyncRoutes(
   app: FastifyInstance,
   db: AppDatabase,
+  storage: StorageService,
   config: Config,
 ) {
   const authHook = createKosyncAuthHook(db);
@@ -58,10 +61,22 @@ export function registerKosyncRoutes(
 
       const finishedAt = percentage >= 0.98 ? now : null;
 
+      // Try to convert KOReader XPointer → CFI
+      let convertedCfi: string | undefined;
+      const book = await db.select({ filePath: books.filePath, fileFormat: books.fileFormat }).from(books).where(eq(books.id, matchedBook.id)).get();
+      if (book?.fileFormat === "epub" && book.filePath) {
+        try {
+          convertedCfi = await convertPosition(storage.fullPath(book.filePath), progress, "xpointer");
+        } catch (e) {
+          app.log.warn({ err: e, bookId: matchedBook.id }, "kosync: XPointer→CFI conversion failed");
+        }
+      }
+
       if (existing) {
         await db.update(readingProgress).set({
           percentage: percentage * 100,
-          cfiPosition: null,  // Clear CFI — web reader will recalculate from percentage
+          kosyncProgress: progress,
+          ...(convertedCfi ? { cfiPosition: convertedCfi } : {}),
           lastReadAt: now,
           deviceId: device_id,
           finishedAt: existing.finishedAt ?? finishedAt,
@@ -70,7 +85,8 @@ export function registerKosyncRoutes(
         await db.insert(readingProgress).values({
           userId, bookId: matchedBook.id,
           percentage: percentage * 100,
-          cfiPosition: null,  // No CFI from kosync
+          kosyncProgress: progress,
+          cfiPosition: convertedCfi ?? null,
           startedAt: now, lastReadAt: now,
           deviceId: device_id, finishedAt,
         });
@@ -122,7 +138,7 @@ export function registerKosyncRoutes(
         if (progress) {
           return reply.send({
             document,
-            progress: `${progress.percentage / 100}`,
+            progress: progress.kosyncProgress || `${progress.percentage / 100}`,
             percentage: progress.percentage / 100,
             device: "",
             device_id: progress.deviceId || "",
