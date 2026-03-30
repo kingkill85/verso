@@ -25,6 +25,7 @@ import { Route as AppShelvesNewRouteImport } from './routes/_app/shelves/new'
 import { Route as AppShelvesIdRouteImport } from './routes/_app/shelves/$id'
 import { Route as AppBooksIdRouteImport } from './routes/_app/books/$id'
 import { Route as AppAdminUsersRouteImport } from './routes/_app/admin/users'
+import { Route as AppAdminLogsRouteImport } from './routes/_app/admin/logs'
 import { Route as AppShelvesIdEditRouteImport } from './routes/_app/shelves/$id_.edit'
 import { Route as AppBooksIdReadRouteImport } from './routes/_app/books/$id_.read'
 import { Route as AppBooksIdMetadataRouteImport } from './routes/_app/books/$id_.metadata'
@@ -108,6 +109,11 @@ const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminLogsRoute = AppAdminLogsRouteImport.update({
+  id: '/admin/logs',
+  path: '/admin/logs',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppShelvesIdEditRoute = AppShelvesIdEditRouteImport.update({
   id: '/shelves/$id_/edit',
   path: '/shelves/$id/edit',
@@ -140,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/upload': typeof AppUploadRoute
   '/login': typeof AuthLoginRoute
   '/setup': typeof AuthSetupRoute
+  '/admin/logs': typeof AppAdminLogsRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/books/$id': typeof AppBooksIdRoute
   '/shelves/$id': typeof AppShelvesIdRoute
@@ -160,6 +167,7 @@ export interface FileRoutesByTo {
   '/upload': typeof AppUploadRoute
   '/login': typeof AuthLoginRoute
   '/setup': typeof AuthSetupRoute
+  '/admin/logs': typeof AppAdminLogsRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/books/$id': typeof AppBooksIdRoute
   '/shelves/$id': typeof AppShelvesIdRoute
@@ -183,6 +191,7 @@ export interface FileRoutesById {
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/setup': typeof AuthSetupRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/admin/logs': typeof AppAdminLogsRoute
   '/_app/admin/users': typeof AppAdminUsersRoute
   '/_app/books/$id': typeof AppBooksIdRoute
   '/_app/shelves/$id': typeof AppShelvesIdRoute
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/upload'
     | '/login'
     | '/setup'
+    | '/admin/logs'
     | '/admin/users'
     | '/books/$id'
     | '/shelves/$id'
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/upload'
     | '/login'
     | '/setup'
+    | '/admin/logs'
     | '/admin/users'
     | '/books/$id'
     | '/shelves/$id'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '/_auth/login'
     | '/_auth/setup'
     | '/_app/'
+    | '/_app/admin/logs'
     | '/_app/admin/users'
     | '/_app/books/$id'
     | '/_app/shelves/$id'
@@ -376,6 +388,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminUsersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/logs': {
+      id: '/_app/admin/logs'
+      path: '/admin/logs'
+      fullPath: '/admin/logs'
+      preLoaderRoute: typeof AppAdminLogsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/shelves/$id_/edit': {
       id: '/_app/shelves/$id_/edit'
       path: '/shelves/$id/edit'
@@ -416,6 +435,7 @@ interface AppRouteChildren {
   AppStatsRoute: typeof AppStatsRoute
   AppUploadRoute: typeof AppUploadRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppAdminLogsRoute: typeof AppAdminLogsRoute
   AppAdminUsersRoute: typeof AppAdminUsersRoute
   AppBooksIdRoute: typeof AppBooksIdRoute
   AppShelvesIdRoute: typeof AppShelvesIdRoute
@@ -435,6 +455,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppStatsRoute: AppStatsRoute,
   AppUploadRoute: AppUploadRoute,
   AppIndexRoute: AppIndexRoute,
+  AppAdminLogsRoute: AppAdminLogsRoute,
   AppAdminUsersRoute: AppAdminUsersRoute,
   AppBooksIdRoute: AppBooksIdRoute,
   AppShelvesIdRoute: AppShelvesIdRoute,
