@@ -223,3 +223,26 @@ export const pageStats = sqliteTable("page_stats", {
 }, (table) => [
   uniqueIndex("page_stats_dedup_idx").on(table.deviceId, table.bookMd5, table.page, table.startTime),
 ]);
+
+export const smtpSettings = sqliteTable("smtp_settings", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" })
+    .unique(),
+  provider: text("provider", { length: 20 }).notNull().default("custom"),
+  host: text("host", { length: 255 }).notNull(),
+  port: integer("port").notNull(),
+  username: text("username", { length: 255 }).notNull(),
+  encryptedPassword: text("encrypted_password").notNull(),
+  encryption: text("encryption", { length: 10 }).notNull().default("ssl"),
+  kindleEmail: text("kindle_email", { length: 255 }).notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
