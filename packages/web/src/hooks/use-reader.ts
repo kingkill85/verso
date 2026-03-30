@@ -103,6 +103,8 @@ function buildStylesheet(s: ReaderSettings): string {
 export function useReader({ bookId, initialCfi, initialPercentage, enabled = true }: UseReaderOptions) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<any>(null);
+  // Track annotations so we can re-apply them when foliate-js loads new sections
+  const annotationsMapRef = useRef<Map<string, string>>(new Map());
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [settingsVersion, setSettingsVersion] = useState(0);
@@ -175,7 +177,7 @@ export function useReader({ bookId, initialCfi, initialPercentage, enabled = tru
         }
       });
 
-      // Handle annotation drawing
+      // Handle annotation drawing — foliate-js emits this when addAnnotation resolves to a loaded section
       view.addEventListener("draw-annotation", (e: any) => {
         const { draw, annotation } = e.detail;
         const color = annotation?.color || "yellow";
@@ -186,6 +188,13 @@ export function useReader({ bookId, initialCfi, initialPercentage, enabled = tru
           pink: "rgba(236,72,153,0.35)",
         };
         draw(Overlayer.highlight, { color: colorMap[color] || colorMap.yellow });
+      });
+
+      // Re-apply all tracked annotations when a new section's overlayer is created
+      view.addEventListener("create-overlay", () => {
+        for (const [cfi, color] of annotationsMapRef.current) {
+          view.addAnnotation({ value: cfi, color });
+        }
       });
 
       // Navigate to initial position
@@ -227,10 +236,13 @@ export function useReader({ bookId, initialCfi, initialPercentage, enabled = tru
   }, []);
 
   const addAnnotation = useCallback((cfi: string, color?: string) => {
-    viewRef.current?.addAnnotation({ value: cfi, color: color || "yellow" });
+    const c = color || "yellow";
+    annotationsMapRef.current.set(cfi, c);
+    viewRef.current?.addAnnotation({ value: cfi, color: c });
   }, []);
 
   const removeAnnotation = useCallback((cfi: string) => {
+    annotationsMapRef.current.delete(cfi);
     viewRef.current?.deleteAnnotation({ value: cfi });
   }, []);
 
