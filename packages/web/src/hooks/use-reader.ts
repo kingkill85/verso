@@ -137,13 +137,16 @@ export function useReader({ bookId, initialCfi, initialPercentage, enabled = tru
       const blob = await response.blob();
       if (cancelled) return;
 
+      // Convert Blob to File — foliate-js checks file.name for format detection
+      const file = new File([blob], "book.epub", { type: "application/epub+zip" });
+
       // Create view element
       const view = document.createElement("foliate-view") as any;
       container.appendChild(view);
       viewRef.current = view;
 
       // Open book
-      const book = await makeBook(blob);
+      const book = await makeBook(file);
       await view.open(book);
       if (cancelled) return;
 
