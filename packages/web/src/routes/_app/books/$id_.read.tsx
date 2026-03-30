@@ -131,10 +131,14 @@ function ReaderPage() {
   // Render existing annotations via foliate-js
   useEffect(() => {
     if (!isLoaded || !annotationsQuery.data) return;
-    for (const ann of annotationsQuery.data) {
-      if (!ann.cfiPosition) continue;
-      addAnnotation(ann.cfiPosition, ann.color ?? "yellow");
-    }
+    // Use rAF to ensure the overlayer is attached before drawing
+    const id = requestAnimationFrame(() => {
+      for (const ann of annotationsQuery.data) {
+        if (!ann.cfiPosition) continue;
+        addAnnotation(ann.cfiPosition, ann.color ?? "yellow");
+      }
+    });
+    return () => cancelAnimationFrame(id);
   }, [annotationsQuery.data, isLoaded, settingsVersion, addAnnotation]);
 
   // Handle annotation clicks via foliate-js show-annotation event

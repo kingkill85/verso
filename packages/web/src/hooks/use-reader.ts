@@ -233,21 +233,29 @@ export function useReader({ bookId, initialCfi, initialPercentage, enabled = tru
         });
       });
 
-      // Re-apply all tracked annotations when a new section's overlayer is created
+      // Re-apply all tracked annotations when a new section's overlayer is created.
+      // Use requestAnimationFrame because the overlayer isn't attached to the
+      // renderer yet when create-overlay fires — #getOverlayer would return null.
       view.addEventListener("create-overlay", () => {
-        for (const [cfi, color] of annotationsMapRef.current) {
-          view.addAnnotation({ value: cfi, color });
-        }
+        requestAnimationFrame(() => {
+          for (const [cfi, color] of annotationsMapRef.current) {
+            view.addAnnotation({ value: cfi, color });
+          }
+        });
       });
 
       // Navigate to initial position
-      if (initialCfi) {
-        await view.init({ lastLocation: initialCfi });
-      } else if (initialPercentage && initialPercentage > 0) {
-        // kosync-synced position — use percentage
-        await view.goToFraction(initialPercentage / 100);
-      } else {
-        await view.init({ showTextStart: true });
+      try {
+        if (initialCfi) {
+          await view.init({ lastLocation: initialCfi });
+        } else if (initialPercentage && initialPercentage > 0) {
+          await view.goToFraction(initialPercentage / 100);
+        } else {
+          await view.init({ showTextStart: true });
+        }
+      } catch (e) {
+        console.warn("Failed to navigate to initial position, falling back to start", e);
+        try { await view.init({ showTextStart: true }); } catch { /* ok */ }
       }
 
       if (!cancelled) setIsLoaded(true);
@@ -258,8 +266,8 @@ export function useReader({ bookId, initialCfi, initialPercentage, enabled = tru
     return () => {
       cancelled = true;
       if (viewRef.current) {
-        viewRef.current.close?.();
-        viewRef.current.remove();
+        try { viewRef.current.close?.(); } catch { /* renderer may not be initialized */ }
+        try { viewRef.current.remove(); } catch { /* ok */ }
         viewRef.current = null;
       }
       container.innerHTML = "";
