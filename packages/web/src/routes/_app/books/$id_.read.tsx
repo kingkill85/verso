@@ -6,7 +6,6 @@ import { useProgressSync } from "@/hooks/use-progress-sync";
 import { useReadingTimer } from "@/hooks/use-reading-timer";
 import { ReaderTopBar } from "@/components/reader/reader-top-bar";
 import { ReaderBottomBar } from "@/components/reader/reader-bottom-bar";
-import { TapZones } from "@/components/reader/tap-zones";
 import { ReaderSidebar } from "@/components/reader/reader-sidebar";
 import { SettingsPanel } from "@/components/reader/settings-panel";
 import { HighlightToolbar } from "@/components/reader/highlight-toolbar";
@@ -32,9 +31,10 @@ function ReaderPage() {
   const initialPercentage = (!initialCfi && progressQuery.data?.percentage) ? progressQuery.data.percentage : null;
   const dataReady = bookQuery.isSuccess && progressQuery.isSuccess;
 
-  // Declare before useReader so the onTextSelect callback can reference them
+  // Declare before useReader so callbacks can reference them
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
   const pendingSelectionRef = useRef<{ range: Range; doc: Document } | null>(null);
+  const tapHandlerRef = useRef<(zone: "prev" | "next" | "center") => void>(() => {});
 
   const {
     containerRef,
@@ -64,6 +64,9 @@ function ReaderPage() {
       }
       setToolbarPos(sel.pos);
       pendingSelectionRef.current = { range: sel.range, doc: sel.doc };
+    }, []),
+    onTap: useCallback((zone: "prev" | "next" | "center") => {
+      tapHandlerRef.current(zone);
     }, []),
   });
 
@@ -205,6 +208,13 @@ function ReaderPage() {
 
   const toggleControls = useCallback(() => setControlsVisible((v) => !v), []);
 
+  // Update tap handler ref — called from the hook's load event listener
+  tapHandlerRef.current = (zone) => {
+    if (zone === "prev") { clearSelection(); prevPage(); syncNow(); }
+    else if (zone === "next") { clearSelection(); nextPage(); syncNow(); }
+    else { toggleControls(); }
+  };
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       switch (e.key) {
@@ -244,13 +254,7 @@ function ReaderPage() {
     <div className="fixed inset-0 z-50" style={{ backgroundColor: "var(--bg)" }}>
       <div ref={containerRef} className="absolute inset-0 z-0" />
 
-      <TapZones
-        viewRef={viewRef}
-        isLoaded={isLoaded}
-        onPrev={() => { clearSelection(); prevPage(); syncNow(); }}
-        onNext={() => { clearSelection(); nextPage(); syncNow(); }}
-        onCenter={toggleControls}
-      />
+
 
       {!controlsVisible && (
         <div className="fixed top-0 left-0 right-0 h-12 z-[25]" onMouseEnter={() => setControlsVisible(true)} />

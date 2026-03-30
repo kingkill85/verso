@@ -76,6 +76,7 @@ type UseReaderOptions = {
   initialPercentage?: number | null;
   enabled?: boolean;
   onTextSelect?: (selection: TextSelection | null) => void;
+  onTap?: (zone: "prev" | "next" | "center") => void;
 };
 
 function buildStylesheet(s: ReaderSettings): string {
@@ -107,13 +108,15 @@ function buildStylesheet(s: ReaderSettings): string {
   `;
 }
 
-export function useReader({ bookId, initialCfi, initialPercentage, enabled = true, onTextSelect }: UseReaderOptions) {
+export function useReader({ bookId, initialCfi, initialPercentage, enabled = true, onTextSelect, onTap }: UseReaderOptions) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<any>(null);
   // Track annotations so we can re-apply them when foliate-js loads new sections
   const annotationsMapRef = useRef<Map<string, string>>(new Map());
   const onTextSelectRef = useRef(onTextSelect);
   onTextSelectRef.current = onTextSelect;
+  const onTapRef = useRef(onTap);
+  onTapRef.current = onTap;
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [settingsVersion, setSettingsVersion] = useState(0);
@@ -216,6 +219,17 @@ export function useReader({ bookId, initialCfi, initialPercentage, enabled = tru
           const x = (iframeRect?.left ?? 0) + rect.left + rect.width / 2;
           const y = (iframeRect?.top ?? 0) + rect.top - 10;
           onTextSelectRef.current?.({ range, doc, pos: { x, y } });
+        });
+        doc.addEventListener("click", (e: MouseEvent) => {
+          const sel = doc.getSelection?.();
+          if (sel && sel.toString().trim().length > 0) return;
+          const iframe = doc.defaultView?.frameElement as HTMLIFrameElement | null;
+          const iframeRect = iframe?.getBoundingClientRect();
+          const absoluteX = (iframeRect?.left ?? 0) + e.clientX;
+          const relX = absoluteX / window.innerWidth;
+          if (relX < 0.25) onTapRef.current?.("prev");
+          else if (relX > 0.75) onTapRef.current?.("next");
+          else onTapRef.current?.("center");
         });
       });
 
