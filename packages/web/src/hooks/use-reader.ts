@@ -73,6 +73,7 @@ export type TextSelection = {
 
 type UseReaderOptions = {
   bookId: string;
+  format?: "epub" | "pdf";
   initialCfi?: string | null;
   initialPercentage?: number | null;
   enabled?: boolean;
@@ -113,7 +114,7 @@ function buildStylesheet(s: ReaderSettings): string {
   `;
 }
 
-export function useReader({ bookId, initialCfi, initialPercentage, enabled = true, onTextSelect, onTap }: UseReaderOptions) {
+export function useReader({ bookId, format = "epub", initialCfi, initialPercentage, enabled = true, onTextSelect, onTap }: UseReaderOptions) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<any>(null);
   // Track annotations so we can re-apply them when foliate-js loads new sections
@@ -157,7 +158,12 @@ export function useReader({ bookId, initialCfi, initialPercentage, enabled = tru
       if (cancelled) return;
 
       // Convert Blob to File — foliate-js checks file.name for format detection
-      const file = new File([blob], "book.epub", { type: "application/epub+zip" });
+      const isPDF = format === "pdf";
+      const file = new File(
+        [blob],
+        isPDF ? "book.pdf" : "book.epub",
+        { type: isPDF ? "application/pdf" : "application/epub+zip" },
+      );
 
       // Create view element
       const view = document.createElement("foliate-view") as any;
@@ -174,11 +180,13 @@ export function useReader({ bookId, initialCfi, initialPercentage, enabled = tru
         setToc(book.toc);
       }
 
-      // Apply settings
-      const s = loadSettings();
-      view.renderer.setAttribute("flow", s.flow === "scrolled" ? "scrolled" : "paginated");
-      view.renderer.setAttribute("margin", MARGIN_MAP[s.margins]);
-      view.renderer.setStyles(buildStylesheet(s));
+      // Apply settings (skip for PDFs — canvas-rendered, styles don't apply)
+      if (!isPDF) {
+        const s = loadSettings();
+        view.renderer.setAttribute("flow", s.flow === "scrolled" ? "scrolled" : "paginated");
+        view.renderer.setAttribute("margin", MARGIN_MAP[s.margins]);
+        view.renderer.setStyles(buildStylesheet(s));
+      }
 
       // Handle relocate events
       view.addEventListener("relocate", (e: any) => {
@@ -333,6 +341,7 @@ export function useReader({ bookId, initialCfi, initialPercentage, enabled = tru
     containerRef,
     viewRef,
     isLoaded,
+    isPDF: format === "pdf",
     currentCfi,
     percentage,
     toc,

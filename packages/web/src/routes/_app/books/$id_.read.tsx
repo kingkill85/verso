@@ -40,6 +40,7 @@ function ReaderPage() {
     containerRef,
     viewRef,
     isLoaded,
+    isPDF,
     currentCfi,
     percentage,
     toc,
@@ -55,6 +56,7 @@ function ReaderPage() {
     settingsVersion,
   } = useReader({
     bookId: id,
+    format: (bookQuery.data?.fileFormat as "epub" | "pdf") ?? "epub",
     initialCfi: dataReady ? initialCfi : undefined,
     initialPercentage: dataReady ? initialPercentage : undefined,
     enabled: dataReady,
@@ -269,7 +271,7 @@ function ReaderPage() {
         visible={controlsVisible}
         onClose={handleClose}
         onToggleSidebar={() => { setSidebarOpen((v) => !v); setControlsVisible(true); }}
-        onToggleSettings={() => { setSettingsOpen((v) => !v); setControlsVisible(true); }}
+        onToggleSettings={isPDF ? undefined : () => { setSettingsOpen((v) => !v); setControlsVisible(true); }}
         onToggleBookmark={handleToggleBookmark}
         isBookmarked={isBookmarked}
       />
@@ -299,7 +301,7 @@ function ReaderPage() {
         }}
         onAnnotationNavigate={(cfi) => { clearSelection(); goTo(cfi); syncNow(); }}
       />
-      <SettingsPanel settings={settings} open={settingsOpen} onClose={() => setSettingsOpen(false)} onUpdate={updateSettings} />
+      {!isPDF && <SettingsPanel settings={settings} open={settingsOpen} onClose={() => setSettingsOpen(false)} onUpdate={updateSettings} />}
 
       <HighlightToolbar position={toolbarPos} onHighlight={handleHighlight} onDismiss={handleDismissToolbar} />
       <HighlightPopover

@@ -201,7 +201,7 @@ function BookDetailPage() {
 
             {/* Actions — hidden on mobile, shown on md+ */}
             <div className="hidden md:flex flex-wrap items-center gap-2 mt-4">
-              {book.fileFormat === "epub" && (
+              {(book.fileFormat === "epub" || book.fileFormat === "pdf") && (
                 <Link
                   to="/books/$id/read"
                   params={{ id }}
@@ -234,7 +234,7 @@ function BookDetailPage() {
 
       {/* Mobile actions — below hero card */}
       <div className="flex md:hidden flex-wrap items-center gap-2 mb-4">
-        {book.fileFormat === "epub" && (
+        {(book.fileFormat === "epub" || book.fileFormat === "pdf") && (
           <Link
             to="/books/$id/read"
             params={{ id }}

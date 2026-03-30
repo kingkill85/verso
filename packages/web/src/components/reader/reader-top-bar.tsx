@@ -5,7 +5,7 @@ type ReaderTopBarProps = {
   visible: boolean;
   onClose: () => void;
   onToggleSidebar: () => void;
-  onToggleSettings: () => void;
+  onToggleSettings?: () => void;
   onToggleBookmark: () => void;
   isBookmarked: boolean;
 };
@@ -94,14 +94,14 @@ export function ReaderTopBar({
         </span>
       </div>
       <div className="flex items-center gap-1">
-        <button
+        {onToggleSettings && <button
           onClick={onToggleSettings}
           className={ICON_BUTTON}
           style={{ color: "var(--text-dim)" }}
           title={t("reader.settings")}
         >
           <SettingsIcon />
-        </button>
+        </button>}
         <button
           onClick={onClose}
           className={ICON_BUTTON}
