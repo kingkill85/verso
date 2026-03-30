@@ -1,8 +1,12 @@
 const pdfjsPath = path => new URL(`./vendor/pdfjs/${path}`, import.meta.url).toString()
 
-import './vendor/pdfjs/pdf.mjs'
-const pdfjsLib = globalThis.pdfjsLib
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsPath('pdf.worker.mjs')
+let pdfjsLib
+const initPdfjs = async () => {
+    if (pdfjsLib) return
+    await import('./vendor/pdfjs/pdf.mjs')
+    pdfjsLib = globalThis.pdfjsLib
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsPath('pdf.worker.mjs')
+}
 
 const fetchText = async url => await (await fetch(url)).text()
 
@@ -119,6 +123,7 @@ const makeTOCItem = item => ({
 })
 
 export const makePDF = async file => {
+    await initPdfjs()
     const transport = new pdfjsLib.PDFDataRangeTransport(file.size, [])
     transport.requestDataRange = (begin, end) => {
         file.slice(begin, end).arrayBuffer().then(chunk => {
