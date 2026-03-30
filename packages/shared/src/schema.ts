@@ -247,3 +247,16 @@ export const smtpSettings = sqliteTable("smtp_settings", {
     .notNull()
     .default(sql`(datetime('now'))`),
 });
+
+export const activityLog = sqliteTable("activity_log", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  type: text("type").notNull(),
+  userId: text("user_id"),
+  bookId: text("book_id"),
+  bookTitle: text("book_title"),
+  details: text("details"),
+  level: text("level").notNull().default("info"),
+  createdAt: text("created_at").notNull(),
+});
