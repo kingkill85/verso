@@ -1,6 +1,7 @@
 import { eq, and, desc } from "drizzle-orm";
-import { readingProgress, readingSessions, progressGetInput, progressSyncInput } from "@verso/shared";
+import { readingProgress, readingSessions, progressGetInput, progressSyncInput, books } from "@verso/shared";
 import { router, protectedProcedure } from "../index.js";
+import { convertPosition } from "../../services/epub-position.js";
 
 const SESSION_GAP_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -66,11 +67,23 @@ export const progressRouter = router({
     }
 
     if (existing) {
+      // Try to convert CFI → XPointer for KOReader
+      let convertedXPointer: string | undefined;
+      if (input.cfiPosition) {
+        const book = await ctx.db.select({ filePath: books.filePath, fileFormat: books.fileFormat }).from(books).where(eq(books.id, input.bookId)).get();
+        if (book?.fileFormat === "epub" && book.filePath) {
+          try {
+            convertedXPointer = await convertPosition(ctx.storage.fullPath(book.filePath), input.cfiPosition, "cfi");
+          } catch { /* conversion failed — leave kosyncProgress unchanged */ }
+        }
+      }
+
       const [updated] = await ctx.db
         .update(readingProgress)
         .set({
           percentage: input.percentage,
           cfiPosition: input.cfiPosition ?? existing.cfiPosition,
+          ...(convertedXPointer ? { kosyncProgress: convertedXPointer } : {}),
           currentPage: input.currentPage ?? existing.currentPage,
           timeSpentMinutes: (existing.timeSpentMinutes ?? 0) + (input.timeSpentMinutes ?? 0),
           lastReadAt: now,
@@ -81,6 +94,17 @@ export const progressRouter = router({
       return updated;
     }
 
+    // Try to convert CFI → XPointer for KOReader
+    let convertedXPointer: string | undefined;
+    if (input.cfiPosition) {
+      const book = await ctx.db.select({ filePath: books.filePath, fileFormat: books.fileFormat }).from(books).where(eq(books.id, input.bookId)).get();
+      if (book?.fileFormat === "epub" && book.filePath) {
+        try {
+          convertedXPointer = await convertPosition(ctx.storage.fullPath(book.filePath), input.cfiPosition, "cfi");
+        } catch { /* conversion failed */ }
+      }
+    }
+
     const [created] = await ctx.db
       .insert(readingProgress)
       .values({
@@ -88,6 +112,7 @@ export const progressRouter = router({
         bookId: input.bookId,
         percentage: input.percentage,
         cfiPosition: input.cfiPosition,
+        kosyncProgress: convertedXPointer ?? null,
         currentPage: input.currentPage,
         timeSpentMinutes: input.timeSpentMinutes ?? 0,
         startedAt: now,

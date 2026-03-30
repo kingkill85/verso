@@ -149,7 +149,7 @@ export class CfiConverter {
     let current: Element | null = element;
 
     while (current && current.tagName.toLowerCase() !== "body") {
-      const parent = current.parentElement;
+      const parent: Element | null = current.parentElement;
       if (!parent) break;
 
       let siblingIndex = 0;
@@ -217,14 +217,14 @@ export class CfiConverter {
     const root = this.doc.body?.parentElement ?? null;
 
     while (current && current !== root) {
-      const parent = current.parentElement;
+      const parent: Element | null = current.parentElement;
       if (!parent) break;
 
       const tagName = current.tagName.toLowerCase();
       let siblingIndex = 0;
       let totalSameTag = 0;
 
-      for (const sibling of Array.from(parent.children)) {
+      for (const sibling of Array.from(parent.children) as Element[]) {
         if (sibling.tagName.toLowerCase() === tagName) {
           if (sibling === current) siblingIndex = totalSameTag;
           totalSameTag++;
@@ -269,13 +269,13 @@ export class CfiConverter {
     }
 
     // Walk up to nearest significant (block) element
-    let textParent = targetNode.parentElement;
+    let textParent: Element | null = targetNode.parentElement;
     while (textParent && INLINE_ELEMENTS.has(textParent.tagName.toLowerCase())) {
       textParent = textParent.parentElement;
     }
-    if (!textParent) textParent = element;
+    const resolvedParent: Element = textParent ?? element;
 
-    return this.buildXPointerPath(textParent) + `/text().${offsetInNode}`;
+    return this.buildXPointerPath(resolvedParent) + `/text().${offsetInNode}`;
   }
 
   private collectTextNodes(element: Element): Node[] {
