@@ -15,6 +15,7 @@ import type { StorageService } from "../services/storage.js";
 import type { AppDatabase } from "../db/client.js";
 import type { Config } from "../config.js";
 import { createAdminAuthHook } from "../middleware/auth.js";
+import { partialMd5 } from "../services/partial-md5.js";
 import sharp from "sharp";
 
 const EBOOK_FORMATS = ["epub", "mobi", "azw", "azw3", "fb2", "cbz", "cbr"];
@@ -103,7 +104,7 @@ export function registerUploadRoute(
         await storage.put(filePath, storedBuffer);
 
         const fileHash = createHash("sha256").update(storedBuffer).digest("hex");
-        const md5Hash = createHash("md5").update(storedBuffer).digest("hex");
+        const md5Hash = partialMd5(storedBuffer);
         const fileSize = storedBuffer.length;
 
         // Extract metadata from the stored file

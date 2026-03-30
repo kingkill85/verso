@@ -9,6 +9,7 @@ import { books } from "@verso/shared";
 import type { StorageService } from "../services/storage.js";
 import type { AppDatabase } from "../db/client.js";
 import type { Config } from "../config.js";
+import { partialMd5 } from "../services/partial-md5.js";
 import sharp from "sharp";
 import yauzl from "yauzl-promise";
 import path from "node:path";
@@ -143,7 +144,7 @@ export function registerImportRoutes(
             }
 
             const fileHash = createHash("sha256").update(finalBuffer).digest("hex");
-            const md5Hash = createHash("md5").update(finalBuffer).digest("hex");
+            const md5Hash = partialMd5(finalBuffer);
             const filePath = `books/${bookId}/book.${outputExt}`;
             await storage.put(filePath, finalBuffer);
 

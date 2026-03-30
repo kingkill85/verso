@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { eq, isNull } from "drizzle-orm";
 import { books } from "@verso/shared";
@@ -6,6 +5,7 @@ import { createDb } from "../db/client.js";
 import { runMigrations } from "../db/migrate.js";
 import { loadConfig } from "../config.js";
 import { StorageService } from "../services/storage.js";
+import { partialMd5 } from "../services/partial-md5.js";
 
 async function backfillMd5() {
   const config = loadConfig();
@@ -25,7 +25,7 @@ async function backfillMd5() {
     try {
       const fullPath = storage.fullPath(book.filePath);
       const buffer = readFileSync(fullPath);
-      const md5Hash = createHash("md5").update(buffer).digest("hex");
+      const md5Hash = partialMd5(buffer);
       await db
         .update(books)
         .set({ md5Hash })
