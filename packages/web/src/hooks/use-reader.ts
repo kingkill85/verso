@@ -67,6 +67,7 @@ export type TocItem = {
 export type TextSelection = {
   range: Range;
   doc: Document;
+  index: number;
   pos: { x: number; y: number };
 };
 
@@ -205,6 +206,7 @@ export function useReader({ bookId, initialCfi, initialPercentage, enabled = tru
       // Text selection — register on each section's document via load event
       view.addEventListener("load", (e: any) => {
         const doc = e.detail?.doc;
+        const index = e.detail?.index ?? -1;
         if (!doc) return;
         doc.addEventListener("pointerup", () => {
           const sel = doc.getSelection();
@@ -218,7 +220,7 @@ export function useReader({ bookId, initialCfi, initialPercentage, enabled = tru
           const iframeRect = iframe?.getBoundingClientRect();
           const x = (iframeRect?.left ?? 0) + rect.left + rect.width / 2;
           const y = (iframeRect?.top ?? 0) + rect.top - 10;
-          onTextSelectRef.current?.({ range, doc, pos: { x, y } });
+          onTextSelectRef.current?.({ range, doc, index, pos: { x, y } });
         });
         doc.addEventListener("click", (e: MouseEvent) => {
           const sel = doc.getSelection?.();
@@ -286,6 +288,12 @@ export function useReader({ bookId, initialCfi, initialPercentage, enabled = tru
     viewRef.current?.goTo(target);
   }, []);
 
+  const getCFI = useCallback((index: number, range: Range): string | null => {
+    try {
+      return viewRef.current?.getCFI(index, range) ?? null;
+    } catch { return null; }
+  }, []);
+
   const addAnnotation = useCallback((cfi: string, color?: string) => {
     const c = color || "yellow";
     annotationsMapRef.current.set(cfi, c);
@@ -329,6 +337,7 @@ export function useReader({ bookId, initialCfi, initialPercentage, enabled = tru
     nextPage,
     prevPage,
     goTo,
+    getCFI,
     addAnnotation,
     removeAnnotation,
     updateSettings,

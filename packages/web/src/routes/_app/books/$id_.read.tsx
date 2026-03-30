@@ -33,7 +33,7 @@ function ReaderPage() {
 
   // Declare before useReader so callbacks can reference them
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
-  const pendingSelectionRef = useRef<{ range: Range; doc: Document } | null>(null);
+  const pendingSelectionRef = useRef<{ range: Range; doc: Document; index: number } | null>(null);
   const tapHandlerRef = useRef<(zone: "prev" | "next" | "center") => void>(() => {});
 
   const {
@@ -48,6 +48,7 @@ function ReaderPage() {
     nextPage,
     prevPage,
     goTo,
+    getCFI,
     addAnnotation,
     removeAnnotation,
     updateSettings,
@@ -63,7 +64,7 @@ function ReaderPage() {
         return;
       }
       setToolbarPos(sel.pos);
-      pendingSelectionRef.current = { range: sel.range, doc: sel.doc };
+      pendingSelectionRef.current = { range: sel.range, doc: sel.doc, index: sel.index };
     }, []),
     onTap: useCallback((zone: "prev" | "next" | "center") => {
       tapHandlerRef.current(zone);
@@ -167,11 +168,10 @@ function ReaderPage() {
     return () => view.removeEventListener("show-annotation", handleShowAnnotation);
   }, [viewRef, isLoaded, annotationsQuery.data]);
 
-  const handleHighlight = async (color: string, note?: string) => {
+  const handleHighlight = (color: string, note?: string) => {
     if (!pendingSelectionRef.current) return;
-    const { range, doc } = pendingSelectionRef.current;
-    const { fromRange } = await import("@/lib/foliate/epubcfi.js");
-    const cfi = fromRange(range);
+    const { range, doc, index } = pendingSelectionRef.current;
+    const cfi = getCFI(index, range);
     if (!cfi) return;
 
     const text = range.toString();
