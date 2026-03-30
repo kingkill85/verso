@@ -1,7 +1,7 @@
 const CFI_PATTERN = /^epubcfi\((.+)\)$/;
 const CFI_SPINE_PATTERN = /^\/6\/(\d+)!(.*)$/;
 const CFI_PATH_STEP_PATTERN = /\/(\d+)(?:\[(.*?)\])?(?::(\d+))?/g;
-const XPOINTER_DOC_FRAGMENT_PATTERN = /^\/body\/DocFragment\[(\d+)\]\/body(.*)$/;
+const XPOINTER_DOC_FRAGMENT_PATTERN = /^\/body\/DocFragment\[(\d+)\](?:\.(\d+))?(?:\/body(.*))?$/;
 const XPOINTER_TEXT_OFFSET_PATTERN = /\/text\(\)\.(\d+)$/;
 const XPOINTER_SEGMENT_WITH_INDEX_PATTERN = /^(\w+)\[(\d+)\]$/;
 const XPOINTER_SEGMENT_WITHOUT_INDEX_PATTERN = /^(\w+)$/;
@@ -94,7 +94,9 @@ export class CfiConverter {
     const pathMatch = path.match(XPOINTER_DOC_FRAGMENT_PATTERN);
     if (!pathMatch) throw new Error(`Invalid XPointer format: ${path}`);
 
-    const elementPath = pathMatch[2];
+    // Group 2 = optional .offset (short form like /body/DocFragment[30].0)
+    // Group 3 = optional element path after /body
+    const elementPath = pathMatch[3];
     const body = this.doc.body;
     if (!body) throw new Error("Document has no body element");
     if (!elementPath || elementPath === "") return body;
