@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { NavItem } from "epubjs";
+import type { TocItem } from "@/hooks/use-reader";
 import type { Annotation } from "@verso/shared";
 import { BookCover } from "@/components/books/book-cover";
 import { XIcon } from "@/components/icons";
@@ -11,7 +11,7 @@ type ReaderSidebarProps = {
   // Book info for header
   book: { id: string; title: string; author: string; coverPath?: string | null; updatedAt?: string | null } | null;
   // Contents tab
-  toc: NavItem[];
+  toc: TocItem[];
   currentChapter: string;
   onNavigate: (href: string) => void;
   // Bookmarks tab
@@ -161,7 +161,7 @@ function ContentsTab({
   onNavigate,
   onClose,
 }: {
-  toc: NavItem[];
+  toc: TocItem[];
   currentChapter: string;
   onNavigate: (href: string) => void;
   onClose: () => void;
