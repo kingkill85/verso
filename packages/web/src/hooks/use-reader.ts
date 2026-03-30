@@ -58,6 +58,7 @@ const THEME_MAP: Record<ReaderSettings["theme"], { color: string; background: st
 };
 
 export type TocItem = {
+  id?: string;
   label: string;
   href: string;
   subitems?: TocItem[];
