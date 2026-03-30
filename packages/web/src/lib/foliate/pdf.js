@@ -1,7 +1,8 @@
-// Vite can't statically analyze template literal URLs, so use explicit paths
+// Vite can't statically analyze template literal URLs, so use explicit paths.
+// For directory URLs, use a dummy file and strip it to preserve the trailing slash.
 const workerUrl = new URL('./vendor/pdfjs/pdf.worker.mjs', import.meta.url).toString()
-const cmapUrl = new URL('./vendor/pdfjs/cmaps/', import.meta.url).toString()
-const standardFontUrl = new URL('./vendor/pdfjs/standard_fonts/', import.meta.url).toString()
+const cmapUrl = new URL('./vendor/pdfjs/cmaps/_', import.meta.url).toString().replace(/_$/, '')
+const standardFontUrl = new URL('./vendor/pdfjs/standard_fonts/_', import.meta.url).toString().replace(/_$/, '')
 const textLayerCssUrl = new URL('./vendor/pdfjs/text_layer_builder.css', import.meta.url).toString()
 const annotationCssUrl = new URL('./vendor/pdfjs/annotation_layer_builder.css', import.meta.url).toString()
 
