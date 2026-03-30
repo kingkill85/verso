@@ -82,7 +82,7 @@ export async function buildApp(config: Config, externalDb?: AppDatabase) {
   registerImportRoutes(app, db, storage, config);
   registerExportRoute(app, db, storage, config);
   registerOpdsRoutes(app, db, config);
-  registerKosyncRoutes(app, db, config);
+  registerKosyncRoutes(app, db, storage, config);
   registerSyncRoutes(app, db, storage, config);
 
   app.get("/health", async (_req, reply) => {

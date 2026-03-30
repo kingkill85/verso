@@ -4,10 +4,12 @@ import { createKosyncAuthHook } from "../middleware/kosync-auth.js";
 import { books, devices, readingProgress, kosyncProgress, kosyncProgressPushInput } from "@verso/shared";
 import type { AppDatabase } from "../db/client.js";
 import type { Config } from "../config.js";
+import type { StorageService } from "../services/storage.js";
 
 export function registerKosyncRoutes(
   app: FastifyInstance,
   db: AppDatabase,
+  storage: StorageService,
   config: Config,
 ) {
   const authHook = createKosyncAuthHook(db);
