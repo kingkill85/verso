@@ -11,6 +11,7 @@ import {
   UploadIcon,
   DownloadIcon,
   UsersIcon,
+  ScrollTextIcon,
   ArchiveIcon,
   BookmarkIcon,
   renderShelfIcon,
@@ -116,6 +117,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
               <span className="flex-1 text-left">{t("nav.export")}</span>
             </button>
             <SidebarItem to="/admin/users" label={t("nav.users")} icon={<UsersIcon />} active={isActive("/admin/users")} onClick={onClose} />
+            <SidebarItem to="/admin/logs" label={t("nav.logs", "Activity Log")} icon={<ScrollTextIcon />} active={isActive("/admin/logs")} onClick={onClose} />
           </>
         )}
       </nav>

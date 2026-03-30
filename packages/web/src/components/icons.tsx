@@ -25,6 +25,7 @@ export {
   Flame as FlameIcon,
   Tag as TagIcon,
   Layers as LayersIcon,
+  ScrollText as ScrollTextIcon,
 } from "lucide-react";
 
 import type { ReactNode } from "react";
