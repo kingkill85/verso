@@ -17,6 +17,7 @@ import type { Config } from "../config.js";
 import { createAdminAuthHook } from "../middleware/auth.js";
 import { partialMd5 } from "../services/partial-md5.js";
 import sharp from "sharp";
+import { logActivity } from "../services/activity-log.js";
 
 const EBOOK_FORMATS = ["epub", "mobi", "azw", "azw3", "fb2", "cbz", "cbr"];
 const DOCUMENT_FORMATS = ["docx", "rtf"];
@@ -162,6 +163,18 @@ export function registerUploadRoute(
             metadataSource: "extracted",
           })
           .returning();
+
+        logActivity(db, {
+          type: "upload",
+          userId: user.sub,
+          bookId,
+          bookTitle: metadata.title || data.filename,
+          details: {
+            fileName: data.filename,
+            fileSize: data.file.bytesRead,
+            fileFormat: outputFormat,
+          },
+        });
 
         // Auto-migrate kosyncProgress if a matching document hash exists
         if (md5Hash) {
