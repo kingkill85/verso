@@ -143,6 +143,7 @@ export function registerImportRoutes(
             }
 
             const fileHash = createHash("sha256").update(finalBuffer).digest("hex");
+            const md5Hash = createHash("md5").update(finalBuffer).digest("hex");
             const filePath = `books/${bookId}/book.${outputExt}`;
             await storage.put(filePath, finalBuffer);
 
@@ -190,6 +191,7 @@ export function registerImportRoutes(
               fileFormat: outputExt,
               fileSize: finalBuffer.length,
               fileHash,
+              md5Hash,
               pageCount: metadata.pageCount,
               series: metadata.series,
               seriesIndex: metadata.seriesIndex,
