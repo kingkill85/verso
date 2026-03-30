@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { trpc } from "@/trpc";
-import { useEpubReader } from "@/hooks/use-epub-reader";
+import { useReader } from "@/hooks/use-reader";
 import { useProgressSync } from "@/hooks/use-progress-sync";
 import { useReadingTimer } from "@/hooks/use-reading-timer";
 import { ReaderTopBar } from "@/components/reader/reader-top-bar";
@@ -20,13 +20,6 @@ export const Route = createFileRoute("/_app/books/$id_/read")({
   }),
 });
 
-const HL_COLORS: Record<string, Record<string, string>> = {
-  yellow: { fill: "rgb(250,204,21)", "fill-opacity": "0.4", "mix-blend-mode": "multiply" },
-  green:  { fill: "rgb(34,197,94)",  "fill-opacity": "0.4", "mix-blend-mode": "multiply" },
-  blue:   { fill: "rgb(59,130,246)", "fill-opacity": "0.35", "mix-blend-mode": "multiply" },
-  pink:   { fill: "rgb(236,72,153)", "fill-opacity": "0.35", "mix-blend-mode": "multiply" },
-};
-
 function ReaderPage() {
   const { id } = Route.useParams();
   const { cfi: searchCfi } = Route.useSearch();
@@ -36,11 +29,12 @@ function ReaderPage() {
   const progressQuery = trpc.progress.get.useQuery({ bookId: id });
 
   const initialCfi = searchCfi ?? progressQuery.data?.cfiPosition ?? null;
+  const initialPercentage = (!initialCfi && progressQuery.data?.percentage) ? progressQuery.data.percentage : null;
   const dataReady = bookQuery.isSuccess && progressQuery.isSuccess;
 
   const {
     containerRef,
-    renditionRef,
+    viewRef,
     isLoaded,
     currentCfi,
     percentage,
@@ -50,11 +44,14 @@ function ReaderPage() {
     nextPage,
     prevPage,
     goTo,
+    addAnnotation,
+    removeAnnotation,
     updateSettings,
     settingsVersion,
-  } = useEpubReader({
+  } = useReader({
     bookId: id,
     initialCfi: dataReady ? initialCfi : undefined,
+    initialPercentage: dataReady ? initialPercentage : undefined,
     enabled: dataReady,
   });
 
@@ -106,13 +103,10 @@ function ReaderPage() {
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
   const [popoverAnnotation, setPopoverAnnotation] = useState<Annotation | null>(null);
   const [popoverPos, setPopoverPos] = useState<{ x: number; y: number } | null>(null);
-  const [selectionData, setSelectionData] = useState<{ text: string; cfiRange: string } | null>(null);
+  const pendingSelectionRef = useRef<{ range: Range; doc: Document } | null>(null);
 
-  // Keep ref to annotations for use in highlight click callbacks
-  const annotationsRef = useRef<Annotation[]>([]);
+  // Keep popover in sync with latest annotation data after mutations
   useEffect(() => {
-    annotationsRef.current = annotationsQuery.data || [];
-    // Keep popover in sync with latest annotation data after mutations
     if (popoverAnnotation) {
       const updated = annotationsQuery.data?.find((a) => a.id === popoverAnnotation.id);
       if (updated && (updated.color !== popoverAnnotation.color || updated.note !== popoverAnnotation.note)) {
@@ -121,207 +115,105 @@ function ReaderPage() {
     }
   }, [annotationsQuery.data]);
 
-  // Track which CFIs we've already added to avoid duplicates
-  const addedHighlightsRef = useRef(new Set<string>());
-
-  // Render highlights — re-add when annotations or settings change
+  // Render existing annotations via foliate-js
   useEffect(() => {
-    const rendition = renditionRef.current;
-    if (!rendition || !annotationsQuery.data) return;
-
-    // Clear existing highlights on settings change so SVG rects get recalculated
-    if (addedHighlightsRef.current.size > 0) {
-      for (const cfi of addedHighlightsRef.current) {
-        try { rendition.annotations.remove(cfi, "highlight"); } catch { /* ok */ }
-      }
-      addedHighlightsRef.current.clear();
-    }
-
-    // Small delay to let epub.js finish re-rendering after settings change
-    const timer = setTimeout(() => {
+    if (!isLoaded || !annotationsQuery.data) return;
     for (const ann of annotationsQuery.data) {
-      if (!ann.cfiPosition || addedHighlightsRef.current.has(ann.cfiPosition)) continue;
-      addedHighlightsRef.current.add(ann.cfiPosition);
-
-      try {
-        rendition.annotations.highlight(
-          ann.cfiPosition,
-          { id: ann.id },
-          undefined,
-          "epubjs-hl",
-          HL_COLORS[ann.color || "yellow"] || HL_COLORS.yellow,
-        );
-      } catch { /* CFI not in current chapter — epub.js handles this */ }
+      if (!ann.cfiPosition) continue;
+      addAnnotation(ann.cfiPosition, ann.color ?? "yellow");
     }
+  }, [annotationsQuery.data, isLoaded, settingsVersion, addAnnotation]);
 
-    }, 200);
-
-    return () => clearTimeout(timer);
-  }, [annotationsQuery.data, isLoaded, settingsVersion]);
-
-  // After page navigation, force SVG highlight rects to recalculate positions.
-  // epub.js calculates rects before layout fully settles — this fixes the offset.
+  // Text selection via foliate-js load event
   useEffect(() => {
-    const rendition = renditionRef.current;
-    if (!rendition || !isLoaded) return;
+    const view = viewRef.current;
+    if (!view || !isLoaded) return;
 
-    const onRelocated = () => {
-      const container = containerRef.current;
-      const svgs = container?.querySelectorAll<SVGSVGElement>("svg");
-      // Instantly hide, then fade in after recalculation
-      svgs?.forEach((svg) => {
-        if (svg.querySelector("g.epubjs-hl")) {
-          svg.style.transition = "none";
-          svg.style.opacity = "0";
+    const handleLoad = ({ detail: { doc } }: any) => {
+      doc.addEventListener("pointerup", () => {
+        const sel = doc.getSelection();
+        if (!sel || sel.isCollapsed || !sel.toString().trim()) {
+          setToolbarPos(null);
+          return;
         }
-      });
+        const range = sel.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
 
-      setTimeout(() => {
-        try {
-          const views = rendition.views();
-          if (views?.forEach) {
-            views.forEach((view: any) => {
-              if (view.pane) view.pane.render();
-            });
-          }
-        } catch { /* ignore */ }
-        svgs?.forEach((svg) => {
-          if (svg.querySelector("g.epubjs-hl")) {
-            svg.style.transition = "opacity 150ms ease-in";
-            svg.style.opacity = "1";
-          }
-        });
-      }, 150);
-    };
+        const contents = view.renderer?.getContents?.();
+        const iframe = contents?.[0]?.doc?.defaultView?.frameElement ?? doc.defaultView?.frameElement;
+        const iframeRect = iframe?.getBoundingClientRect();
 
-    rendition.on("relocated", onRelocated);
-    return () => rendition.off("relocated", onRelocated);
-  }, [isLoaded]);
+        const x = (iframeRect?.left ?? 0) + rect.left + rect.width / 2;
+        const y = (iframeRect?.top ?? 0) + rect.top - 10;
 
-  // Enable pointer-events on highlight <g> elements so clicks reach them
-  // directly instead of relying on marks-pane's broken mouse proxy.
-  // Uses MutationObserver to catch highlights added by epub.js on page turns.
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container || !isLoaded) return;
-
-    const enablePointerEvents = () => {
-      container.querySelectorAll<SVGGElement>("g.epubjs-hl").forEach((g) => {
-        if (!g.style.pointerEvents) {
-          g.style.pointerEvents = "auto";
-          g.style.cursor = "pointer";
-        }
+        setToolbarPos({ x, y });
+        pendingSelectionRef.current = { range, doc };
       });
     };
 
-    enablePointerEvents();
+    view.addEventListener("load", handleLoad);
+    return () => view.removeEventListener("load", handleLoad);
+  }, [viewRef, isLoaded]);
 
-    const observer = new MutationObserver(enablePointerEvents);
-    observer.observe(container, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, [isLoaded]);
-
-  // Handle highlight clicks via rendition markClicked event
+  // Handle annotation clicks via foliate-js show-annotation event
   useEffect(() => {
-    const rendition = renditionRef.current;
-    if (!rendition || !isLoaded) return;
+    const view = viewRef.current;
+    if (!view || !isLoaded) return;
 
-    const onMarkClicked = (cfiRange: string, data: { id?: string }, contents: any) => {
-      if (!data?.id) return;
-      const matched = annotationsRef.current.find((a) => a.id === data.id);
-      if (!matched) return;
+    const handleShowAnnotation = ({ detail }: any) => {
+      const { value, range } = detail;
+      const ann = annotationsQuery.data?.find((a) => a.cfiPosition === value);
+      if (!ann) return;
 
-      try {
-        const range = contents.range(cfiRange);
-        const rect = range.getBoundingClientRect();
-        const iframe = contents.document.defaultView.frameElement as HTMLIFrameElement | null;
-        if (!iframe) return;
-        const iframeRect = iframe.getBoundingClientRect();
+      const rect = range.getBoundingClientRect();
+      const contents = view.renderer?.getContents?.();
+      const iframe = contents?.[0]?.doc?.defaultView?.frameElement;
+      const iframeRect = iframe?.getBoundingClientRect();
 
-        setPopoverAnnotation(matched);
-        setPopoverPos({
-          x: iframeRect.left + rect.left + rect.width / 2,
-          y: iframeRect.top + rect.top - 10,
-        });
-        setToolbarPos(null);
-      } catch { /* ignore */ }
+      setPopoverAnnotation(ann);
+      setPopoverPos({
+        x: (iframeRect?.left ?? 0) + rect.left + rect.width / 2,
+        y: (iframeRect?.top ?? 0) + rect.top - 10,
+      });
     };
 
-    rendition.on("markClicked", onMarkClicked);
-    return () => rendition.off("markClicked", onMarkClicked);
-  }, [isLoaded]);
+    view.addEventListener("show-annotation", handleShowAnnotation);
+    return () => view.removeEventListener("show-annotation", handleShowAnnotation);
+  }, [viewRef, isLoaded, annotationsQuery.data]);
 
-  // Text selection → show toolbar
-  useEffect(() => {
-    const rendition = renditionRef.current;
-    if (!rendition || !isLoaded) return;
+  const handleHighlight = async (color: string, note?: string) => {
+    if (!pendingSelectionRef.current) return;
+    const { range, doc } = pendingSelectionRef.current;
+    const { fromRange } = await import("@/lib/foliate/epubcfi.js");
+    const cfi = fromRange(range);
+    if (!cfi) return;
 
-    const onSelected = (cfiRange: string, contents: any) => {
-      try {
-        const sel = contents.window.getSelection();
-        if (!sel || sel.isCollapsed) return;
-        const text = sel.toString().trim();
-        if (!text) return;
+    const text = range.toString();
+    addAnnotation(cfi, color);
 
-        // Get rect from the CFI range via contents.range()
-        const range = contents.range(cfiRange);
-        const rect = range.getBoundingClientRect();
-
-        // Get iframe position in the outer document
-        const iframe = contents.document.defaultView.frameElement;
-        if (!iframe) return;
-        const iframeRect = iframe.getBoundingClientRect();
-
-        setToolbarPos({
-          x: iframeRect.left + rect.left + rect.width / 2,
-          y: iframeRect.top + rect.top - 20,
-        });
-        setSelectionData({ text, cfiRange });
-        setPopoverAnnotation(null); // dismiss any open popover
-      } catch { /* ignore */ }
-    };
-
-    rendition.on("selected", onSelected);
-    return () => rendition.off("selected", onSelected);
-  }, [isLoaded]);
-
-  const handleHighlight = (color: string, note?: string) => {
-    if (!selectionData) return;
     createAnnotation.mutate({
       bookId: id,
-      cfiPosition: selectionData.cfiRange,
-      content: selectionData.text,
+      cfiPosition: cfi,
+      content: text.slice(0, 500),
       color: color as any,
       note,
       chapter: currentChapter,
     });
+
+    doc.getSelection()?.removeAllRanges();
     setToolbarPos(null);
-    setSelectionData(null);
-    // Clear selection in iframe
-    try {
-      (renditionRef.current as any)?.manager?.container
-        ?.querySelector("iframe")
-        ?.contentWindow?.getSelection()
-        ?.removeAllRanges();
-    } catch { /* ignore */ }
+    pendingSelectionRef.current = null;
   };
 
   const handleDismissToolbar = () => {
     setToolbarPos(null);
-    setSelectionData(null);
+    pendingSelectionRef.current = null;
   };
 
-  // Clear any active text selection + toolbar/popover — call before any navigation
   const clearSelection = useCallback(() => {
     setToolbarPos(null);
-    setSelectionData(null);
+    pendingSelectionRef.current = null;
     setPopoverAnnotation(null);
-    try {
-      (renditionRef.current as any)?.manager?.container
-        ?.querySelector("iframe")
-        ?.contentWindow?.getSelection()
-        ?.removeAllRanges();
-    } catch { /* ignore */ }
   }, []);
 
   // ─── Reader chrome ───
@@ -374,7 +266,7 @@ function ReaderPage() {
       <div ref={containerRef} className="absolute inset-0 z-0" />
 
       <TapZones
-        renditionRef={renditionRef}
+        viewRef={viewRef}
         isLoaded={isLoaded}
         onPrev={() => { clearSelection(); prevPage(); syncNow(); }}
         onNext={() => { clearSelection(); nextPage(); syncNow(); }}
@@ -415,10 +307,7 @@ function ReaderPage() {
         annotations={annotationsQuery.data ?? []}
         onDeleteAnnotation={(annId) => {
           const ann = annotationsQuery.data?.find((a) => a.id === annId);
-          if (ann) {
-            try { if (ann.cfiPosition) renditionRef.current?.annotations.remove(ann.cfiPosition, "highlight"); } catch {}
-            if (ann.cfiPosition) addedHighlightsRef.current.delete(ann.cfiPosition);
-          }
+          if (ann?.cfiPosition) removeAnnotation(ann.cfiPosition);
           deleteAnnotation.mutate({ id: annId });
         }}
         onAnnotationNavigate={(cfi) => { clearSelection(); goTo(cfi); syncNow(); }}
@@ -433,10 +322,7 @@ function ReaderPage() {
         onUpdateNote={(aid, note) => updateAnnotation.mutate({ id: aid, note })}
         onDelete={(aid) => {
           const ann = annotationsQuery.data?.find((a) => a.id === aid);
-          if (ann) {
-            try { if (ann.cfiPosition) renditionRef.current?.annotations.remove(ann.cfiPosition, "highlight"); } catch {}
-            if (ann.cfiPosition) addedHighlightsRef.current.delete(ann.cfiPosition);
-          }
+          if (ann?.cfiPosition) removeAnnotation(ann.cfiPosition);
           deleteAnnotation.mutate({ id: aid });
           setPopoverAnnotation(null);
         }}
