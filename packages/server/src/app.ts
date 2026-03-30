@@ -29,7 +29,7 @@ import type { AppDatabase } from "./db/client.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export async function buildApp(config: Config, externalDb?: AppDatabase) {
-  const app = Fastify({ logger: true });
+  const app = Fastify({ logger: true, bodyLimit: 50 * 1024 * 1024 }); // 50MB for e-reader sync payloads
 
   const db = externalDb ?? createDb(config);
   if (!externalDb) runMigrations(db);
