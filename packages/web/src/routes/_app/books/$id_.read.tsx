@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { trpc } from "@/trpc";
-import { useReader } from "@/hooks/use-reader";
+import { useReader, type TextSelection } from "@/hooks/use-reader";
 import { useProgressSync } from "@/hooks/use-progress-sync";
 import { useReadingTimer } from "@/hooks/use-reading-timer";
 import { ReaderTopBar } from "@/components/reader/reader-top-bar";
@@ -32,6 +32,10 @@ function ReaderPage() {
   const initialPercentage = (!initialCfi && progressQuery.data?.percentage) ? progressQuery.data.percentage : null;
   const dataReady = bookQuery.isSuccess && progressQuery.isSuccess;
 
+  // Declare before useReader so the onTextSelect callback can reference them
+  const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
+  const pendingSelectionRef = useRef<{ range: Range; doc: Document } | null>(null);
+
   const {
     containerRef,
     viewRef,
@@ -53,6 +57,14 @@ function ReaderPage() {
     initialCfi: dataReady ? initialCfi : undefined,
     initialPercentage: dataReady ? initialPercentage : undefined,
     enabled: dataReady,
+    onTextSelect: useCallback((sel: TextSelection | null) => {
+      if (!sel) {
+        setToolbarPos(null);
+        return;
+      }
+      setToolbarPos(sel.pos);
+      pendingSelectionRef.current = { range: sel.range, doc: sel.doc };
+    }, []),
   });
 
   const { consumeMinutes } = useReadingTimer();
@@ -100,10 +112,8 @@ function ReaderPage() {
     }
   }, [currentCfi, bookmarksQuery.data, id, currentChapter, percentage]);
 
-  const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
   const [popoverAnnotation, setPopoverAnnotation] = useState<Annotation | null>(null);
   const [popoverPos, setPopoverPos] = useState<{ x: number; y: number } | null>(null);
-  const pendingSelectionRef = useRef<{ range: Range; doc: Document } | null>(null);
 
   // Keep popover in sync with latest annotation data after mutations
   useEffect(() => {
@@ -123,37 +133,6 @@ function ReaderPage() {
       addAnnotation(ann.cfiPosition, ann.color ?? "yellow");
     }
   }, [annotationsQuery.data, isLoaded, settingsVersion, addAnnotation]);
-
-  // Text selection via foliate-js load event
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view || !isLoaded) return;
-
-    const handleLoad = ({ detail: { doc } }: any) => {
-      doc.addEventListener("pointerup", () => {
-        const sel = doc.getSelection();
-        if (!sel || sel.isCollapsed || !sel.toString().trim()) {
-          setToolbarPos(null);
-          return;
-        }
-        const range = sel.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-
-        const contents = view.renderer?.getContents?.();
-        const iframe = contents?.[0]?.doc?.defaultView?.frameElement ?? doc.defaultView?.frameElement;
-        const iframeRect = iframe?.getBoundingClientRect();
-
-        const x = (iframeRect?.left ?? 0) + rect.left + rect.width / 2;
-        const y = (iframeRect?.top ?? 0) + rect.top - 10;
-
-        setToolbarPos({ x, y });
-        pendingSelectionRef.current = { range, doc };
-      });
-    };
-
-    view.addEventListener("load", handleLoad);
-    return () => view.removeEventListener("load", handleLoad);
-  }, [viewRef, isLoaded]);
 
   // Handle annotation clicks via foliate-js show-annotation event
   useEffect(() => {

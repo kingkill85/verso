@@ -64,11 +64,18 @@ export type TocItem = {
   subitems?: TocItem[];
 };
 
+export type TextSelection = {
+  range: Range;
+  doc: Document;
+  pos: { x: number; y: number };
+};
+
 type UseReaderOptions = {
   bookId: string;
   initialCfi?: string | null;
   initialPercentage?: number | null;
   enabled?: boolean;
+  onTextSelect?: (selection: TextSelection | null) => void;
 };
 
 function buildStylesheet(s: ReaderSettings): string {
@@ -100,11 +107,13 @@ function buildStylesheet(s: ReaderSettings): string {
   `;
 }
 
-export function useReader({ bookId, initialCfi, initialPercentage, enabled = true }: UseReaderOptions) {
+export function useReader({ bookId, initialCfi, initialPercentage, enabled = true, onTextSelect }: UseReaderOptions) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<any>(null);
   // Track annotations so we can re-apply them when foliate-js loads new sections
   const annotationsMapRef = useRef<Map<string, string>>(new Map());
+  const onTextSelectRef = useRef(onTextSelect);
+  onTextSelectRef.current = onTextSelect;
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [settingsVersion, setSettingsVersion] = useState(0);
@@ -188,6 +197,26 @@ export function useReader({ bookId, initialCfi, initialPercentage, enabled = tru
           pink: "rgba(236,72,153,0.35)",
         };
         draw(Overlayer.highlight, { color: colorMap[color] || colorMap.yellow });
+      });
+
+      // Text selection — register on each section's document via load event
+      view.addEventListener("load", (e: any) => {
+        const doc = e.detail?.doc;
+        if (!doc) return;
+        doc.addEventListener("pointerup", () => {
+          const sel = doc.getSelection();
+          if (!sel || sel.isCollapsed || !sel.toString().trim()) {
+            onTextSelectRef.current?.(null);
+            return;
+          }
+          const range = sel.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          const iframe = doc.defaultView?.frameElement as HTMLIFrameElement | null;
+          const iframeRect = iframe?.getBoundingClientRect();
+          const x = (iframeRect?.left ?? 0) + rect.left + rect.width / 2;
+          const y = (iframeRect?.top ?? 0) + rect.top - 10;
+          onTextSelectRef.current?.({ range, doc, pos: { x, y } });
+        });
       });
 
       // Re-apply all tracked annotations when a new section's overlayer is created
