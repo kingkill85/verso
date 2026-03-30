@@ -1,11 +1,16 @@
-const pdfjsPath = path => new URL(`./vendor/pdfjs/${path}`, import.meta.url).toString()
+// Vite can't statically analyze template literal URLs, so use explicit paths
+const workerUrl = new URL('./vendor/pdfjs/pdf.worker.mjs', import.meta.url).toString()
+const cmapUrl = new URL('./vendor/pdfjs/cmaps/', import.meta.url).toString()
+const standardFontUrl = new URL('./vendor/pdfjs/standard_fonts/', import.meta.url).toString()
+const textLayerCssUrl = new URL('./vendor/pdfjs/text_layer_builder.css', import.meta.url).toString()
+const annotationCssUrl = new URL('./vendor/pdfjs/annotation_layer_builder.css', import.meta.url).toString()
 
 let pdfjsLib
 const initPdfjs = async () => {
     if (pdfjsLib) return
     await import('./vendor/pdfjs/pdf.mjs')
     pdfjsLib = globalThis.pdfjsLib
-    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsPath('pdf.worker.mjs')
+    pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 }
 
 const fetchText = async url => await (await fetch(url)).text()
@@ -15,8 +20,8 @@ let textLayerBuilderCSS, annotationLayerBuilderCSS
 const loadCSS = async () => {
     if (!textLayerBuilderCSS) {
         [textLayerBuilderCSS, annotationLayerBuilderCSS] = await Promise.all([
-            fetchText(pdfjsPath('text_layer_builder.css')),
-            fetchText(pdfjsPath('annotation_layer_builder.css')),
+            fetchText(textLayerCssUrl),
+            fetchText(annotationCssUrl),
         ])
     }
 }
@@ -132,8 +137,8 @@ export const makePDF = async file => {
     }
     const pdf = await pdfjsLib.getDocument({
         range: transport,
-        cMapUrl: pdfjsPath('cmaps/'),
-        standardFontDataUrl: pdfjsPath('standard_fonts/'),
+        cMapUrl: cmapUrl,
+        standardFontDataUrl: standardFontUrl,
         isEvalSupported: false,
     }).promise
 
