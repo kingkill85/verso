@@ -102,9 +102,13 @@ function buildStylesheet(s: ReaderSettings): string {
     html, body {
       color: ${theme.color} !important;
       background: ${theme.background} !important;
+    }
+    * {
+      color: inherit !important;
       font-family: ${FONT_MAP[s.fontFamily]} !important;
       font-size: ${s.fontSize}px !important;
       line-height: ${LINE_HEIGHT_MAP[s.lineSpacing]} !important;
+      -webkit-text-fill-color: inherit !important;
     }
   `;
 }
