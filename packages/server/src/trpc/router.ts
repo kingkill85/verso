@@ -8,6 +8,7 @@ import { annotationsRouter } from "./routers/annotations.js";
 import { statsRouter } from "./routers/stats.js";
 import { appPasswordRouter } from "./routers/app-password.js";
 import { adminRouter } from "./routers/admin.js";
+import { kindleRouter } from "./routers/kindle.js";
 
 export const appRouter = router({
   auth: authRouter,
@@ -19,6 +20,7 @@ export const appRouter = router({
   stats: statsRouter,
   appPassword: appPasswordRouter,
   admin: adminRouter,
+  kindle: kindleRouter,
 });
 
 export type AppRouter = typeof appRouter;
