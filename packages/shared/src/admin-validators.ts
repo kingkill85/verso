@@ -15,3 +15,10 @@ export const adminUpdateRoleInput = z.object({
 export const adminDeleteUserInput = z.object({
   userId: z.string().uuid(),
 });
+
+export const activityLogInput = z.object({
+  type: z.string().optional(),
+  level: z.string().optional(),
+  limit: z.number().min(1).max(500).default(100),
+  offset: z.number().min(0).default(0),
+});

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
@@ -118,6 +118,23 @@ function AdminUsersPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-12">
+      {/* Admin nav */}
+      <div className="flex gap-4 mb-6">
+        <span
+          className="text-sm font-medium"
+          style={{ color: "var(--warm)" }}
+        >
+          {t("admin.users")}
+        </span>
+        <Link
+          to="/admin/logs"
+          className="text-sm font-medium transition-colors"
+          style={{ color: "var(--text-dim)" }}
+        >
+          {t("admin.logs", "Activity Log")}
+        </Link>
+      </div>
+
       <div className="flex items-center justify-between mb-8">
         <h1
           className="font-display text-2xl font-bold"

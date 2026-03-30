@@ -11,6 +11,7 @@ import type { AppDatabase } from "../db/client.js";
 import type { Config } from "../config.js";
 import { partialMd5 } from "../services/partial-md5.js";
 import sharp from "sharp";
+import { logActivity } from "../services/activity-log.js";
 import yauzl from "yauzl-promise";
 import path from "node:path";
 import os from "node:os";
@@ -355,6 +356,12 @@ export function registerImportRoutes(
         progressData,
         bookIdMap
       );
+
+      logActivity(db, {
+        type: "import",
+        userId: req.user!.sub,
+        details: { format: "zip" },
+      });
 
       return reply.send({
         success: true,

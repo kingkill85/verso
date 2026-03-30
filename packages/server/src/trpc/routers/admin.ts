@@ -1,12 +1,14 @@
 import { TRPCError } from "@trpc/server";
-import { eq } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { hash } from "bcrypt";
 import {
   users,
   sessions,
+  activityLog,
   adminCreateUserInput,
   adminUpdateRoleInput,
   adminDeleteUserInput,
+  activityLogInput,
 } from "@verso/shared";
 import type { SafeUser } from "@verso/shared";
 import { router, adminProcedure } from "../index.js";
@@ -116,5 +118,28 @@ export const adminRouter = router({
       await ctx.db.delete(users).where(eq(users.id, input.userId));
 
       return { success: true };
+    }),
+
+  activityLog: adminProcedure
+    .input(activityLogInput)
+    .query(async ({ ctx, input }) => {
+      const conditions = [];
+      if (input.type) conditions.push(eq(activityLog.type, input.type));
+      if (input.level) conditions.push(eq(activityLog.level, input.level));
+
+      const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const rows = await ctx.db
+        .select()
+        .from(activityLog)
+        .where(where)
+        .orderBy(desc(activityLog.createdAt))
+        .limit(input.limit)
+        .offset(input.offset);
+
+      return rows.map((row) => ({
+        ...row,
+        details: row.details ? JSON.parse(row.details) : null,
+      }));
     }),
 });

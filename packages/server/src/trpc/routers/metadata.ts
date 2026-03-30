@@ -6,6 +6,7 @@ import { router, protectedProcedure, adminProcedure } from "../index.js";
 import { searchExternalMetadata, scoreMatch } from "../../services/metadata-enrichment.js";
 import { searchMetadata as calibreSearchMetadata, writeMetadata, writeCover, getFileHash } from "../../services/calibre.js";
 import sharp from "sharp";
+import { logActivity } from "../../services/activity-log.js";
 
 const CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
@@ -173,6 +174,17 @@ export const metadataRouter = router({
       .set(updateData)
       .where(eq(books.id, input.bookId))
       .returning();
+
+    logActivity(ctx.db, {
+      type: "metadata.apply",
+      userId: ctx.user.sub,
+      bookId: input.bookId,
+      bookTitle: updated.title ?? book.title,
+      details: {
+        source: input.source ?? "manual",
+        fields: Object.keys(input.fields).filter((k) => (input.fields as any)[k] != null),
+      },
+    });
 
     // EPUB write-back (non-fatal)
     if (book.fileFormat === "epub") {

@@ -6,6 +6,7 @@ import type { AppDatabase } from "../db/client.js";
 import type { Config } from "../config.js";
 import type { StorageService } from "../services/storage.js";
 import { convertPosition } from "../services/epub-position.js";
+import { logActivity } from "../services/activity-log.js";
 
 export function registerKosyncRoutes(
   app: FastifyInstance,
@@ -91,6 +92,22 @@ export function registerKosyncRoutes(
           deviceId: device_id, finishedAt,
         });
       }
+
+      // Log sync event
+      const matchedBookTitle = db.select({ title: books.title }).from(books).where(eq(books.id, matchedBook.id)).get();
+      logActivity(db, {
+        type: "sync.push",
+        userId,
+        bookId: matchedBook.id,
+        bookTitle: matchedBookTitle?.title ?? "Unknown",
+        details: {
+          device,
+          md5: document,
+          matched: true,
+          percentage: Math.round(percentage * 100),
+          xpointerToCfi: convertedCfi ? "ok" : "failed",
+        },
+      });
     } else {
       // Store in kosyncProgress for unmatched books
       const existing = await db
@@ -109,6 +126,17 @@ export function registerKosyncRoutes(
           deviceId: device_id, device, updatedAt: now,
         });
       }
+
+      logActivity(db, {
+        type: "sync.push",
+        userId,
+        level: "warn",
+        details: {
+          device,
+          md5: document,
+          matched: false,
+        },
+      });
     }
 
     return reply.send({ document, timestamp });
@@ -136,6 +164,19 @@ export function registerKosyncRoutes(
           .get();
 
         if (progress) {
+          const matchedTitle = db.select({ title: books.title }).from(books).where(eq(books.id, matchedBook.id)).get();
+          logActivity(db, {
+            type: "sync.pull",
+            userId,
+            bookId: matchedBook.id,
+            bookTitle: matchedTitle?.title ?? "Unknown",
+            details: {
+              md5: document,
+              matched: true,
+              percentage: Math.round(progress.percentage),
+            },
+          });
+
           return reply.send({
             document,
             progress: progress.kosyncProgress || `${progress.percentage / 100}`,

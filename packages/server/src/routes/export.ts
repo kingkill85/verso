@@ -6,6 +6,7 @@ import type { StorageService } from "../services/storage.js";
 import type { AppDatabase } from "../db/client.js";
 import type { Config } from "../config.js";
 import fs from "node:fs";
+import { logActivity } from "../services/activity-log.js";
 
 export function registerExportRoute(
   app: FastifyInstance,
@@ -85,6 +86,15 @@ export function registerExportRoute(
           }
         }
       }
+
+      logActivity(db, {
+        type: "export",
+        userId: req.user!.sub,
+        details: {
+          format: "zip",
+          bookCount: exportData.metadata.books.length,
+        },
+      });
 
       await archive.finalize();
     }
