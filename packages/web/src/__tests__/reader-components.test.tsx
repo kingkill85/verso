@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { ReaderTopBar } from "@/components/reader/reader-top-bar";
 import { ReaderBottomBar } from "@/components/reader/reader-bottom-bar";
 import { SettingsPanel } from "@/components/reader/settings-panel";
-import type { ReaderSettings } from "@/hooks/use-epub-reader";
+import type { ReaderSettings } from "@/hooks/use-reader";
 
 const defaultSettings: ReaderSettings = {
   fontSize: 16,
