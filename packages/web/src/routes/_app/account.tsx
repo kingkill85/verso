@@ -44,7 +44,7 @@ function AppPasswordSection() {
   };
 
   return (
-    <div className="mt-10">
+    <div>
       <h2
         className="text-sm font-medium uppercase tracking-wider mb-2"
         style={{ color: "var(--text-dim)" }}
@@ -200,7 +200,7 @@ function KindleSection() {
   const helpText = provider !== "custom" ? t(helpKey) : null;
 
   return (
-    <div className="mt-10">
+    <div>
       <h2
         className="text-sm font-medium uppercase tracking-wider mb-2"
         style={{ color: "var(--text-dim)" }}
@@ -407,7 +407,7 @@ function KindleSection() {
   );
 }
 
-function AccountPage() {
+function ChangePasswordSection() {
   const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -448,14 +448,7 @@ function AccountPage() {
   };
 
   return (
-    <div className="max-w-sm mx-auto px-4 py-12">
-      <h1
-        className="font-display text-2xl font-bold mb-8"
-        style={{ color: "var(--text)" }}
-      >
-        {t("account.title")}
-      </h1>
-
+    <div>
       <h2
         className="text-sm font-medium uppercase tracking-wider mb-4"
         style={{ color: "var(--text-dim)" }}
@@ -568,9 +561,46 @@ function AccountPage() {
           {changePassword.isPending ? t("account.changing") : t("account.changeBtn")}
         </button>
       </form>
+    </div>
+  );
+}
 
-      <AppPasswordSection />
-      <KindleSection />
+function AccountPage() {
+  const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState<"user" | "app" | "kindle">("user");
+
+  return (
+    <div className="max-w-sm mx-auto px-4 py-12">
+      <h1
+        className="font-display text-2xl font-bold mb-6"
+        style={{ color: "var(--text)" }}
+      >
+        {t("account.title")}
+      </h1>
+
+      <div
+        className="flex gap-6 mb-8 border-b"
+        style={{ borderColor: "var(--border)" }}
+      >
+        {(["user", "app", "kindle"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className="pb-2 text-sm font-medium transition-colors"
+            style={{
+              color: activeTab === tab ? "var(--warm)" : "var(--text-dim)",
+              borderBottom: activeTab === tab ? "2px solid var(--warm)" : "2px solid transparent",
+              marginBottom: "-1px",
+            }}
+          >
+            {t(`account.tab.${tab}`)}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "user" && <ChangePasswordSection />}
+      {activeTab === "app" && <AppPasswordSection />}
+      {activeTab === "kindle" && <KindleSection />}
     </div>
   );
 }

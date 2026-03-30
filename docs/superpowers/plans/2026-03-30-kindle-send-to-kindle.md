@@ -92,7 +92,19 @@ export const kindleEmailSchema = z
     message: "Must be a Kindle email address (e.g. name@kindle.com)",
   });
 
-export const smtpSettingsInput = z.object({
+export const smtpSettingsSaveInput = z.object({
+  provider: smtpProvider,
+  host: z.string().min(1).max(255),
+  port: z.number().int().min(1).max(65535),
+  username: z.string().min(1).max(255),
+  password: z.string().min(1).optional(),
+  encryption: smtpEncryption,
+  kindleEmail: kindleEmailSchema,
+});
+
+export type SmtpSettingsSaveInput = z.infer<typeof smtpSettingsSaveInput>;
+
+export const smtpTestInput = z.object({
   provider: smtpProvider,
   host: z.string().min(1).max(255),
   port: z.number().int().min(1).max(65535),
@@ -102,16 +114,18 @@ export const smtpSettingsInput = z.object({
   kindleEmail: kindleEmailSchema,
 });
 
-export type SmtpSettingsInput = z.infer<typeof smtpSettingsInput>;
+export type SmtpTestInput = z.infer<typeof smtpTestInput>;
 
 export const sendBookInput = z.object({
   bookId: z.string().uuid(),
 });
 ```
 
+Note: `smtpSettingsSaveInput` has `password` optional — on update, if omitted, the existing encrypted password is kept. `smtpTestInput` requires password because we need the plaintext to test the SMTP connection.
+
 - [ ] **Step 2: Export from shared index**
 
-In `packages/shared/src/index.ts`, add:
+In `packages/shared/src/index.ts`, add at the end:
 
 ```typescript
 export * from "./kindle-validators.js";
@@ -153,7 +167,6 @@ Create `packages/server/src/services/kindle.ts`:
 import { createCipheriv, createDecipheriv, randomBytes, hkdf } from "node:crypto";
 import { promisify } from "node:util";
 import nodemailer from "nodemailer";
-import type { SmtpSettingsInput } from "@verso/shared";
 
 const hkdfAsync = promisify(hkdf);
 
@@ -180,14 +193,14 @@ export async function decryptPassword(encrypted: string, jwtSecret: string): Pro
   return decrypted.toString("utf8");
 }
 
-function createTransport(settings: {
+export async function testSmtpConnection(settings: {
   host: string;
   port: number;
   username: string;
   password: string;
   encryption: string;
-}) {
-  return nodemailer.createTransport({
+}): Promise<void> {
+  const transport = nodemailer.createTransport({
     host: settings.host,
     port: settings.port,
     secure: settings.encryption === "ssl",
@@ -196,18 +209,6 @@ function createTransport(settings: {
       pass: settings.password,
     },
     ...(settings.encryption === "starttls" ? { requireTLS: true } : {}),
-  });
-}
-
-export async function testSmtpConnection(
-  settings: SmtpSettingsInput,
-): Promise<void> {
-  const transport = createTransport({
-    host: settings.host,
-    port: settings.port,
-    username: settings.username,
-    password: settings.password,
-    encryption: settings.encryption,
   });
   await transport.verify();
   transport.close();
@@ -228,12 +229,15 @@ export async function sendBookToKindle(options: {
 }): Promise<void> {
   const password = await decryptPassword(options.encryptedPassword, options.jwtSecret);
 
-  const transport = createTransport({
+  const transport = nodemailer.createTransport({
     host: options.host,
     port: options.port,
-    username: options.username,
-    password,
-    encryption: options.encryption,
+    secure: options.encryption === "ssl",
+    auth: {
+      user: options.username,
+      pass: password,
+    },
+    ...(options.encryption === "starttls" ? { requireTLS: true } : {}),
   });
 
   await transport.sendMail({
@@ -256,11 +260,9 @@ export async function sendBookToKindle(options: {
 - [ ] **Step 3: Commit**
 
 ```bash
-git add packages/server/src/services/kindle.ts packages/server/package.json packages/server/pnpm-lock.yaml
+git add packages/server/src/services/kindle.ts packages/server/package.json pnpm-lock.yaml
 git commit -m "feat(kindle): add kindle service with SMTP encryption and email sending"
 ```
-
-Note: the pnpm-lock.yaml may be at the workspace root — add that too if needed.
 
 ---
 
@@ -278,8 +280,18 @@ Create `packages/server/src/trpc/routers/kindle.ts`:
 import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../index.js";
-import { smtpSettings, smtpSettingsInput, sendBookInput, books } from "@verso/shared";
-import { encryptPassword, testSmtpConnection, sendBookToKindle } from "../../services/kindle.js";
+import {
+  smtpSettings,
+  smtpSettingsSaveInput,
+  smtpTestInput,
+  sendBookInput,
+  books,
+} from "@verso/shared";
+import {
+  encryptPassword,
+  testSmtpConnection,
+  sendBookToKindle,
+} from "../../services/kindle.js";
 
 export const kindleRouter = router({
   getSettings: protectedProcedure.query(async ({ ctx }) => {
@@ -300,17 +312,27 @@ export const kindleRouter = router({
   }),
 
   saveSettings: protectedProcedure
-    .input(smtpSettingsInput)
+    .input(smtpSettingsSaveInput)
     .mutation(async ({ ctx, input }) => {
-      const encrypted = await encryptPassword(input.password, ctx.config.JWT_SECRET);
-
       const existing = await ctx.db
-        .select({ id: smtpSettings.id })
+        .select({ id: smtpSettings.id, encryptedPassword: smtpSettings.encryptedPassword })
         .from(smtpSettings)
         .where(eq(smtpSettings.userId, ctx.user.sub))
         .get();
 
       const now = new Date().toISOString();
+
+      let encrypted: string;
+      if (input.password) {
+        encrypted = await encryptPassword(input.password, ctx.config.JWT_SECRET);
+      } else if (existing) {
+        encrypted = existing.encryptedPassword;
+      } else {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Password is required for initial setup",
+        });
+      }
 
       if (existing) {
         await ctx.db
@@ -350,17 +372,24 @@ export const kindleRouter = router({
   }),
 
   testConnection: protectedProcedure
-    .input(smtpSettingsInput)
+    .input(smtpTestInput)
     .mutation(async ({ input }) => {
       try {
-        await testSmtpConnection(input);
+        await testSmtpConnection({
+          host: input.host,
+          port: input.port,
+          username: input.username,
+          password: input.password,
+          encryption: input.encryption,
+        });
         return { success: true, message: "Connection successful" };
       } catch (err: any) {
-        const message = err.code === "EAUTH"
-          ? "Authentication failed — check your app password"
-          : err.code === "ECONNECTION" || err.code === "ETIMEDOUT"
-            ? "Could not connect — check host, port, and encryption settings"
-            : `Connection failed: ${err.message}`;
+        const message =
+          err.code === "EAUTH"
+            ? "Authentication failed — check your app password"
+            : err.code === "ECONNECTION" || err.code === "ETIMEDOUT"
+              ? "Could not connect — check host, port, and encryption settings"
+              : `Connection failed: ${err.message}`;
         throw new TRPCError({ code: "BAD_REQUEST", message });
       }
     }),
@@ -399,8 +428,7 @@ export const kindleRouter = router({
       }
 
       const fileBuffer = await ctx.storage.get(book.filePath);
-      const ext = book.fileFormat || "epub";
-      const fileName = `${book.title}.${ext}`;
+      const fileName = `${book.title}.${book.fileFormat}`;
 
       try {
         await sendBookToKindle({
@@ -417,9 +445,10 @@ export const kindleRouter = router({
           fileBuffer,
         });
       } catch (err: any) {
-        const message = err.code === "EAUTH"
-          ? "Authentication failed — check your app password in Account settings"
-          : `Failed to send email: ${err.message}`;
+        const message =
+          err.code === "EAUTH"
+            ? "Authentication failed — check your app password in Account settings"
+            : `Failed to send email: ${err.message}`;
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
       }
 
@@ -430,16 +459,16 @@ export const kindleRouter = router({
 
 - [ ] **Step 2: Register in main router**
 
-In `packages/server/src/trpc/router.ts`, add the import and register:
+In `packages/server/src/trpc/router.ts`, add the import after the existing imports:
 
 ```typescript
 import { kindleRouter } from "./routers/kindle.js";
 ```
 
-Add to the `router({})` call:
+Add to the `router({})` call, after `admin: adminRouter,`:
 
 ```typescript
-kindle: kindleRouter,
+  kindle: kindleRouter,
 ```
 
 - [ ] **Step 3: Verify server builds**
@@ -459,15 +488,14 @@ git commit -m "feat(kindle): add tRPC router for SMTP settings and send"
 
 ---
 
-### Task 5: Frontend — Account Page "Send to Kindle" Section
+### Task 5: Frontend — i18n Strings
 
 **Files:**
-- Modify: `packages/web/src/routes/_app/account.tsx`
 - Modify: `packages/web/src/locales/en.json`
 
-- [ ] **Step 1: Add i18n strings**
+- [ ] **Step 1: Add all kindle i18n strings**
 
-Add to `packages/web/src/locales/en.json` (before the closing `}`):
+Add these entries before the closing `}` in `packages/web/src/locales/en.json`:
 
 ```json
   "kindle.title": "Send to Kindle",
@@ -493,12 +521,31 @@ Add to `packages/web/src/locales/en.json` (before the closing `}`):
   "kindle.helpOutlook": "Go to account.microsoft.com → Security → App passwords → Create new app password",
   "kindle.helpIcloud": "Go to appleid.apple.com → Security → App-specific passwords → Generate",
   "kindle.helpYahoo": "Go to login.yahoo.com → Account Security → Generate app password",
-  "kindle.appPasswordHelp": "How to get an app password"
+  "kindle.appPasswordHelp": "How to get an app password",
+  "kindle.sendToKindle": "Send to Kindle",
+  "kindle.sending": "Sending to Kindle...",
+  "kindle.sent": "Sent to Kindle!",
+  "kindle.sendFailed": "Failed to send to Kindle",
+  "kindle.passwordRequired": "Password is required"
 ```
 
-- [ ] **Step 2: Create the KindleSection component**
+- [ ] **Step 2: Commit**
 
-In `packages/web/src/routes/_app/account.tsx`, add the `KindleSection` component after the `AppPasswordSection` function. This is a large component — add it as a new function:
+```bash
+git add packages/web/src/locales/en.json
+git commit -m "feat(kindle): add i18n strings for Send to Kindle"
+```
+
+---
+
+### Task 6: Frontend — Account Page "Send to Kindle" Section
+
+**Files:**
+- Modify: `packages/web/src/routes/_app/account.tsx`
+
+- [ ] **Step 1: Add provider presets constant and KindleSection component**
+
+Add the following after the `AppPasswordSection` function (before `function AccountPage()`):
 
 ```typescript
 const PROVIDER_PRESETS: Record<string, { host: string; port: number; encryption: string }> = {
@@ -520,26 +567,25 @@ function KindleSection() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showHelp, setShowHelp] = useState(false);
-  const [loaded, setLoaded] = useState(false);
 
-  const settingsQuery = trpc.kindle.getSettings.useQuery(undefined, {
-    onSuccess: (data) => {
-      if (data && !loaded) {
-        setProvider(data.provider);
-        setHost(data.host);
-        setPort(data.port);
-        setUsername(data.username);
-        setEncryption(data.encryption);
-        setKindleEmail(data.kindleEmail);
-        setLoaded(true);
-      }
-    },
-  });
+  const settingsQuery = trpc.kindle.getSettings.useQuery();
+
+  useEffect(() => {
+    if (settingsQuery.data) {
+      setProvider(settingsQuery.data.provider);
+      setHost(settingsQuery.data.host);
+      setPort(settingsQuery.data.port);
+      setUsername(settingsQuery.data.username);
+      setEncryption(settingsQuery.data.encryption);
+      setKindleEmail(settingsQuery.data.kindleEmail);
+    }
+  }, [settingsQuery.data]);
 
   const saveMut = trpc.kindle.saveSettings.useMutation({
     onSuccess: () => {
       setSuccess(t("kindle.saved"));
       setError("");
+      setPassword("");
       settingsQuery.refetch();
     },
     onError: (err) => { setError(err.message); setSuccess(""); },
@@ -573,25 +619,23 @@ function KindleSection() {
     }
   };
 
-  const getFormData = () => ({
-    provider: provider as any,
-    host,
-    port,
-    username,
-    password,
-    encryption: encryption as any,
-    kindleEmail,
-  });
-
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
     if (!password && !settingsQuery.data) {
-      setError("Password is required");
+      setError(t("kindle.passwordRequired"));
       return;
     }
-    saveMut.mutate(getFormData());
+    saveMut.mutate({
+      provider: provider as any,
+      host,
+      port,
+      username,
+      password: password || undefined,
+      encryption: encryption as any,
+      kindleEmail,
+    });
   };
 
   const helpKey = `kindle.help${provider.charAt(0).toUpperCase() + provider.slice(1)}` as any;
@@ -768,7 +812,15 @@ function KindleSection() {
             onClick={() => {
               setError("");
               setSuccess("");
-              testMut.mutate(getFormData());
+              testMut.mutate({
+                provider: provider as any,
+                host,
+                port,
+                username,
+                password,
+                encryption: encryption as any,
+                kindleEmail,
+              });
             }}
             disabled={testMut.isPending || !password}
             className="px-5 py-2.5 rounded-full text-sm font-medium border transition-colors hover:opacity-80 disabled:opacity-50"
@@ -798,7 +850,13 @@ function KindleSection() {
 }
 ```
 
-- [ ] **Step 3: Add KindleSection to AccountPage**
+- [ ] **Step 2: Add useEffect import and render KindleSection**
+
+In the import block at the top of `account.tsx`, add `useEffect` to the React import:
+
+```typescript
+import { useState, useEffect } from "react";
+```
 
 In the `AccountPage` function's return JSX, add `<KindleSection />` after `<AppPasswordSection />`:
 
@@ -809,7 +867,7 @@ In the `AccountPage` function's return JSX, add `<KindleSection />` after `<AppP
   );
 ```
 
-- [ ] **Step 4: Verify frontend builds**
+- [ ] **Step 3: Verify frontend builds**
 
 ```bash
 cd packages/web && pnpm build
@@ -817,53 +875,49 @@ cd packages/web && pnpm build
 
 Expected: clean build.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add packages/web/src/routes/_app/account.tsx packages/web/src/locales/en.json
+git add packages/web/src/routes/_app/account.tsx
 git commit -m "feat(kindle): add Send to Kindle settings section on Account page"
 ```
 
 ---
 
-### Task 6: Frontend — "Send to Kindle" in Book Overflow Menu
+### Task 7: Frontend — "Send to Kindle" in Book Overflow Menu
 
 **Files:**
 - Modify: `packages/web/src/routes/_app/books/$id.tsx`
-- Modify: `packages/web/src/locales/en.json`
 
-- [ ] **Step 1: Add i18n strings**
+- [ ] **Step 1: Add Send to Kindle to the OverflowMenu**
 
-Add to `packages/web/src/locales/en.json`:
-
-```json
-  "kindle.sendToKindle": "Send to Kindle",
-  "kindle.sending": "Sending...",
-  "kindle.sent": "Sent to Kindle!",
-  "kindle.sendFailed": "Failed to send to Kindle"
-```
-
-- [ ] **Step 2: Add Send to Kindle button to the OverflowMenu**
-
-In `packages/web/src/routes/_app/books/$id.tsx`, inside the `OverflowMenu` function:
-
-First, add the kindle settings query and send mutation inside the function body (after the existing `resetMutation`):
+In `packages/web/src/routes/_app/books/$id.tsx`, inside the `OverflowMenu` function body, after the `resetMutation` declaration (line ~438), add:
 
 ```typescript
   const kindleSettings = trpc.kindle.getSettings.useQuery();
+  const [kindleStatus, setKindleStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const sendToKindleMut = trpc.kindle.sendBook.useMutation({
     onSuccess: () => {
+      setKindleStatus("sent");
       setOpen(false);
+      setTimeout(() => setKindleStatus("idle"), 3000);
+    },
+    onError: () => {
+      setKindleStatus("error");
+      setTimeout(() => setKindleStatus("idle"), 3000);
     },
   });
 ```
 
-Then, in the JSX dropdown menu, add the "Send to Kindle" button after the "Download" button (before the edit button):
+Then, in the JSX dropdown menu, add the "Send to Kindle" button after the Download button (after the `</button>` that closes the download button, before the `{isAdmin && (` block):
 
 ```tsx
           {kindleSettings.data && (
             <button
-              onClick={() => { sendToKindleMut.mutate({ bookId }); }}
+              onClick={() => {
+                setKindleStatus("sending");
+                sendToKindleMut.mutate({ bookId });
+              }}
               disabled={sendToKindleMut.isPending}
               className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
               style={{ color: "var(--text)" }}
@@ -871,6 +925,25 @@ Then, in the JSX dropdown menu, add the "Send to Kindle" button after the "Downl
               {sendToKindleMut.isPending ? t("kindle.sending") : t("kindle.sendToKindle")}
             </button>
           )}
+```
+
+- [ ] **Step 2: Add status indicator below the overflow menu button**
+
+After the closing `</div>` of the dropdown (the `{open && (` block), but still inside the outer `<div className="relative">`, add a status toast that appears below the menu button:
+
+```tsx
+      {kindleStatus === "sent" && (
+        <div className="absolute top-full mt-2 right-0 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap"
+          style={{ backgroundColor: "rgba(74,138,90,0.15)", color: "var(--green)" }}>
+          {t("kindle.sent")}
+        </div>
+      )}
+      {kindleStatus === "error" && (
+        <div className="absolute top-full mt-2 right-0 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap"
+          style={{ backgroundColor: "rgba(220,38,38,0.1)", color: "#ef4444" }}>
+          {t("kindle.sendFailed")}
+        </div>
+      )}
 ```
 
 - [ ] **Step 3: Verify frontend builds**
@@ -882,13 +955,13 @@ cd packages/web && pnpm build
 - [ ] **Step 4: Commit**
 
 ```bash
-git add packages/web/src/routes/_app/books/$id.tsx packages/web/src/locales/en.json
+git add packages/web/src/routes/_app/books/$id.tsx
 git commit -m "feat(kindle): add Send to Kindle button in book overflow menu"
 ```
 
 ---
 
-### Task 7: Browser Test — End to End
+### Task 8: Browser Test — End to End
 
 **Files:**
 - None created — manual/Playwright verification
@@ -903,15 +976,21 @@ cd /Users/michaelkusche/dev/verso && pnpm dev
 
 Navigate to the Account page in the browser. Verify:
 - "Send to Kindle" section appears below App Password
-- Provider dropdown works (selecting Gmail pre-fills host/port)
-- Help text expands/collapses
-- All fields are present
+- Provider dropdown works (selecting Gmail pre-fills host/port/encryption)
+- Selecting Outlook changes host to `smtp-mail.outlook.com`, port to 587, encryption to STARTTLS
+- Help text expands/collapses for each provider
+- All form fields present and editable
+- "Custom" provider shows no help text
+- Save button disabled while saving
+- Test Connection button disabled when password field is empty
 
 - [ ] **Step 3: Verify book detail overflow menu**
 
 Navigate to any book's detail page. Open the overflow menu (three dots). Verify:
 - "Send to Kindle" does NOT appear (because SMTP isn't configured yet)
-- After configuring SMTP settings, the button appears
+- After configuring SMTP settings on Account page, return to book detail — "Send to Kindle" now appears in the overflow menu
+- Clicking "Send to Kindle" shows "Sending to Kindle..." state
+- After completion (success or failure), a brief status toast appears below the menu button
 
 - [ ] **Step 4: Commit any fixes discovered during testing**
 
