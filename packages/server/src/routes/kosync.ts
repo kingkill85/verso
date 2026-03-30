@@ -34,8 +34,6 @@ export function registerKosyncRoutes(
     const now = new Date().toISOString();
     const timestamp = Math.floor(Date.now() / 1000);
 
-    app.log.info({ document, progress, percentage, device, device_id, userId }, "kosync: PUT /syncs/progress");
-
     // Upsert device
     const existingDevice = await db.select().from(devices).where(eq(devices.id, device_id)).get();
     if (existingDevice) {
@@ -51,12 +49,6 @@ export function registerKosyncRoutes(
       .where(eq(books.md5Hash, document))
       .get();
 
-    app.log.info({ document, matchedBookId: matchedBook?.id ?? "NO MATCH" }, "kosync: book lookup by md5Hash");
-
-    // Also log all books' md5Hash for debugging
-    const allBooks = await db.select({ id: books.id, title: books.title, md5Hash: books.md5Hash }).from(books).all();
-    app.log.info({ books: allBooks }, "kosync: all books in DB");
-
     if (matchedBook) {
       const existing = await db
         .select()
@@ -67,24 +59,23 @@ export function registerKosyncRoutes(
       const finishedAt = percentage >= 0.98 ? now : null;
 
       if (existing) {
-        app.log.info({ existingId: existing.id, oldPct: existing.percentage, newPct: percentage * 100 }, "kosync: updating existing readingProgress");
         await db.update(readingProgress).set({
           percentage: percentage * 100,
+          cfiPosition: null,  // Clear CFI — web reader will recalculate from percentage
           lastReadAt: now,
           deviceId: device_id,
           finishedAt: existing.finishedAt ?? finishedAt,
         }).where(eq(readingProgress.id, existing.id));
       } else {
-        app.log.info({ bookId: matchedBook.id, pct: percentage * 100 }, "kosync: creating new readingProgress");
         await db.insert(readingProgress).values({
           userId, bookId: matchedBook.id,
           percentage: percentage * 100,
+          cfiPosition: null,  // No CFI from kosync
           startedAt: now, lastReadAt: now,
           deviceId: device_id, finishedAt,
         });
       }
     } else {
-      app.log.info({ document }, "kosync: no book match, storing to kosyncProgress");
       // Store in kosyncProgress for unmatched books
       const existing = await db
         .select().from(kosyncProgress)
