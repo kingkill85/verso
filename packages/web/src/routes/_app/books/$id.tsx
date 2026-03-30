@@ -438,6 +438,20 @@ function OverflowMenu({
     onSuccess: invalidateProgress,
   });
 
+  const kindleSettings = trpc.kindle.getSettings.useQuery();
+  const [kindleStatus, setKindleStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const sendToKindleMut = trpc.kindle.sendBook.useMutation({
+    onSuccess: () => {
+      setKindleStatus("sent");
+      setOpen(false);
+      setTimeout(() => setKindleStatus("idle"), 3000);
+    },
+    onError: () => {
+      setKindleStatus("error");
+      setTimeout(() => setKindleStatus("idle"), 3000);
+    },
+  });
+
   useEffect(() => {
     if (!open) return;
     const handleClick = (e: MouseEvent) => {
@@ -483,6 +497,19 @@ function OverflowMenu({
           >
             {t("book.download")}
           </button>
+          {kindleSettings.data && (
+            <button
+              onClick={() => {
+                setKindleStatus("sending");
+                sendToKindleMut.mutate({ bookId });
+              }}
+              disabled={sendToKindleMut.isPending}
+              className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
+              style={{ color: "var(--text)" }}
+            >
+              {sendToKindleMut.isPending ? t("kindle.sending") : t("kindle.sendToKindle")}
+            </button>
+          )}
           {isAdmin && (
             <Link
               to="/books/$id/edit"
@@ -525,6 +552,18 @@ function OverflowMenu({
               {isDeleting ? t("book.deleting") : t("book.delete")}
             </button>
           )}
+        </div>
+      )}
+      {kindleStatus === "sent" && (
+        <div className="absolute top-full mt-2 right-0 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap"
+          style={{ backgroundColor: "rgba(74,138,90,0.15)", color: "var(--green)" }}>
+          {t("kindle.sent")}
+        </div>
+      )}
+      {kindleStatus === "error" && (
+        <div className="absolute top-full mt-2 right-0 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap"
+          style={{ backgroundColor: "rgba(220,38,38,0.1)", color: "#ef4444" }}>
+          {t("kindle.sendFailed")}
         </div>
       )}
       <ConfirmDialog
