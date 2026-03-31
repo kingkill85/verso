@@ -12,6 +12,7 @@ import type { Config } from "../config.js";
 import { partialMd5 } from "../services/partial-md5.js";
 import sharp from "sharp";
 import { logActivity } from "../services/activity-log.js";
+import { saveHash } from "../services/hash-history.js";
 import yauzl from "yauzl-promise";
 import path from "node:path";
 import os from "node:os";
@@ -200,6 +201,8 @@ export function registerImportRoutes(
               addedBy: user.sub,
               metadataSource: "extracted",
             });
+
+            if (md5Hash) saveHash(db, bookId, md5Hash);
 
             sendEvent({ type: "progress", id, title, status: "done" });
             logActivity(db, {
