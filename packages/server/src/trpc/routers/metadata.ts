@@ -7,6 +7,9 @@ import { searchExternalMetadata, scoreMatch } from "../../services/metadata-enri
 import { searchMetadata as calibreSearchMetadata, writeMetadata, writeCover, getFileHash } from "../../services/calibre.js";
 import sharp from "sharp";
 import { logActivity } from "../../services/activity-log.js";
+import { saveHash } from "../../services/hash-history.js";
+import { partialMd5 } from "../../services/partial-md5.js";
+import { readFile } from "node:fs/promises";
 
 const CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
@@ -198,11 +201,22 @@ export const metadataRouter = router({
           await writeCover(filePath, coverFilePath);
         }
 
-        // Update file hash after modification
-        const newHash = await getFileHash(filePath);
+        // Save old MD5 to hash history before updating
+        if (book.md5Hash) {
+          saveHash(ctx.db, input.bookId, book.md5Hash);
+        }
+
+        // Update file hashes after modification
+        const newFileHash = await getFileHash(filePath);
+        const newFileBuffer = await readFile(filePath);
+        const newMd5Hash = partialMd5(newFileBuffer);
+
+        // Save new MD5 to hash history too
+        saveHash(ctx.db, input.bookId, newMd5Hash);
+
         await ctx.db
           .update(books)
-          .set({ fileHash: newHash })
+          .set({ fileHash: newFileHash, md5Hash: newMd5Hash })
           .where(eq(books.id, input.bookId));
       } catch (err) {
         console.error(`Failed to write metadata back to EPUB for book ${input.bookId}:`, err);

@@ -260,3 +260,14 @@ export const activityLog = sqliteTable("activity_log", {
   level: text("level").notNull().default("info"),
   createdAt: text("created_at").notNull(),
 });
+
+export const bookHashes = sqliteTable("book_hashes", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  bookId: text("book_id")
+    .notNull()
+    .references(() => books.id, { onDelete: "cascade" }),
+  md5Hash: text("md5_hash", { length: 32 }).notNull(),
+  createdAt: text("created_at").notNull(),
+});

@@ -18,6 +18,7 @@ import { createAdminAuthHook } from "../middleware/auth.js";
 import { partialMd5 } from "../services/partial-md5.js";
 import sharp from "sharp";
 import { logActivity } from "../services/activity-log.js";
+import { saveHash } from "../services/hash-history.js";
 
 const EBOOK_FORMATS = ["epub", "mobi", "azw", "azw3", "fb2", "cbz", "cbr"];
 const DOCUMENT_FORMATS = ["docx", "rtf"];
@@ -163,6 +164,8 @@ export function registerUploadRoute(
             metadataSource: "extracted",
           })
           .returning();
+
+        if (md5Hash) saveHash(db, bookId, md5Hash);
 
         logActivity(db, {
           type: "upload",
