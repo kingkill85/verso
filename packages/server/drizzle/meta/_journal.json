@@ -92,6 +92,13 @@
       "when": 1774940908118,
       "tag": "0012_busy_odin",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1774953811033,
+      "tag": "0013_pale_nomad",
+      "breakpoints": true
     }
   ]
 }
