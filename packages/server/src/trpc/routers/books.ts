@@ -269,8 +269,8 @@ export const booksRouter = router({
       const tier2 = scored.filter((b) => b.priority === 2).sort(() => Math.random() - 0.5);
       let combined = [...tier1, ...tier2];
 
-      // 6. Backfill with random unread books if there are no matches at all
-      if (combined.length === 0) {
+      // 6. Backfill with random unread books if fewer than 3 matches
+      if (combined.length < 3) {
         const usedIds = new Set([...startedIds, ...combined.map((b) => b.id)]);
         const fillers = await ctx.db
           .select()

@@ -296,9 +296,15 @@ describe("books router", () => {
       });
 
       const result = await authedCaller.books.recommended({});
-      expect(result).toHaveLength(1);
+      expect(result.length).toBeGreaterThanOrEqual(1);
+      // First result should be the author match
       expect(result[0].title).toBe("Children of Dune");
       expect(result[0].reason).toContain("Frank Herbert");
+      // Backfilled books (if any) should have empty reason
+      const backfilled = result.filter((r: any) => r.reason === "");
+      for (const b of backfilled) {
+        expect(b.title).not.toBe("Dune"); // should not include the reading book
+      }
     });
 
     it("recommends unread books by same genre as finished books", async () => {
@@ -316,7 +322,8 @@ describe("books router", () => {
       });
 
       const result = await authedCaller.books.recommended({});
-      expect(result).toHaveLength(1);
+      expect(result.length).toBeGreaterThanOrEqual(1);
+      // First result should be the genre match
       expect(result[0].title).toBe("Snow Crash");
       expect(result[0].reason).toContain("Sci-Fi");
     });
