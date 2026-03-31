@@ -10,3 +10,4 @@ export * from "./admin-validators.js";
 export * from "./kosync-validators.js";
 export * from "./koinsight-validators.js";
 export * from "./kindle-validators.js";
+export * from "./author-validators.js";
