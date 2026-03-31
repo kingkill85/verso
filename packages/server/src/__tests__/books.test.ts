@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createTestContext } from "../test-utils.js";
-import { books } from "@verso/shared";
+import { books, readingProgress } from "@verso/shared";
 
 describe("books router", () => {
   let ctx: Awaited<ReturnType<typeof createTestContext>>;
@@ -189,6 +189,89 @@ describe("books router", () => {
       }
       const result = await authedCaller.books.recentlyAdded({ limit: 3 });
       expect(result).toHaveLength(3);
+    });
+  });
+
+  describe("almostFinished", () => {
+    it("returns empty array when no progress exists", async () => {
+      await insertBook();
+      const result = await authedCaller.books.almostFinished();
+      expect(result).toHaveLength(0);
+    });
+
+    it("returns books with 75%+ progress that are not finished", async () => {
+      const book1 = await insertBook({ title: "Almost Done" });
+      const book2 = await insertBook({ title: "Just Started" });
+      const book3 = await insertBook({ title: "Finished Book" });
+
+      await ctx.db.insert(readingProgress).values([
+        {
+          userId,
+          bookId: book1.id,
+          percentage: 82,
+          currentPage: 246,
+          totalPages: 300,
+          startedAt: new Date().toISOString(),
+          lastReadAt: new Date().toISOString(),
+        },
+        {
+          userId,
+          bookId: book2.id,
+          percentage: 20,
+          currentPage: 60,
+          totalPages: 300,
+          startedAt: new Date().toISOString(),
+          lastReadAt: new Date().toISOString(),
+        },
+        {
+          userId,
+          bookId: book3.id,
+          percentage: 100,
+          currentPage: 300,
+          totalPages: 300,
+          startedAt: new Date().toISOString(),
+          finishedAt: new Date().toISOString(),
+          lastReadAt: new Date().toISOString(),
+        },
+      ]);
+
+      const result = await authedCaller.books.almostFinished();
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe("Almost Done");
+      expect(result[0].percentage).toBe(82);
+      expect(result[0].currentPage).toBe(246);
+      expect(result[0].totalPages).toBe(300);
+    });
+
+    it("orders by percentage descending", async () => {
+      const book1 = await insertBook({ title: "78 percent" });
+      const book2 = await insertBook({ title: "95 percent" });
+
+      await ctx.db.insert(readingProgress).values([
+        {
+          userId,
+          bookId: book1.id,
+          percentage: 78,
+          currentPage: 234,
+          totalPages: 300,
+          startedAt: new Date().toISOString(),
+          lastReadAt: new Date().toISOString(),
+        },
+        {
+          userId,
+          bookId: book2.id,
+          percentage: 95,
+          currentPage: 285,
+          totalPages: 300,
+          startedAt: new Date().toISOString(),
+          lastReadAt: new Date().toISOString(),
+        },
+      ]);
+
+      const result = await authedCaller.books.almostFinished();
+      expect(result).toHaveLength(2);
+      expect(result[0].title).toBe("95 percent");
+      expect(result[1].title).toBe("78 percent");
     });
   });
 

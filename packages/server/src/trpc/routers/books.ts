@@ -170,6 +170,35 @@ export const booksRouter = router({
     return rows;
   }),
 
+  almostFinished: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select({
+        id: books.id,
+        title: books.title,
+        author: books.author,
+        coverPath: books.coverPath,
+        fileFormat: books.fileFormat,
+        pageCount: books.pageCount,
+        percentage: readingProgress.percentage,
+        currentPage: readingProgress.currentPage,
+        totalPages: readingProgress.totalPages,
+        lastReadAt: readingProgress.lastReadAt,
+      })
+      .from(readingProgress)
+      .innerJoin(books, eq(books.id, readingProgress.bookId))
+      .where(
+        and(
+          eq(readingProgress.userId, ctx.user.sub),
+          sql`${readingProgress.percentage} >= 75`,
+          isNotNull(readingProgress.startedAt),
+          isNull(readingProgress.finishedAt),
+        )
+      )
+      .orderBy(desc(readingProgress.percentage))
+      .limit(10);
+    return rows;
+  }),
+
   search: protectedProcedure.input(searchInput).query(async ({ ctx, input }) => {
     const { query, genre, author, format, page = 1, limit = 50 } = input;
     const offset = (page - 1) * limit;
