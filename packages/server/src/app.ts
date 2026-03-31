@@ -79,7 +79,10 @@ export async function buildApp(config: Config, externalDb?: AppDatabase) {
     timeWindow: "1 minute",
   });
 
-  await app.register(cors, { origin: config.CORS_ORIGIN });
+  const corsOrigin = config.CORS_ORIGIN.includes(",")
+    ? config.CORS_ORIGIN.split(",").map((s) => s.trim())
+    : config.CORS_ORIGIN;
+  await app.register(cors, { origin: corsOrigin });
 
   if (config.CORS_ORIGIN === "*" && config.NODE_ENV === "production") {
     app.log.warn("CORS_ORIGIN is set to '*' in production — consider restricting to your domain");
