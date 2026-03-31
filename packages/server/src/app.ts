@@ -23,6 +23,7 @@ import { registerOpdsRoutes } from "./routes/opds.js";
 import { registerKosyncRoutes } from "./routes/kosync.js";
 import { registerSyncRoutes } from "./routes/sync.js";
 import { verifyCalibreInstalled } from "./services/calibre.js";
+import { migrateExistingAuthors } from "./services/migrate-authors.js";
 import type { Config } from "./config.js";
 import type { AppDatabase } from "./db/client.js";
 
@@ -54,6 +55,19 @@ export async function buildApp(config: Config, externalDb?: AppDatabase) {
   }
 
   const storage = new StorageService(config);
+
+  // One-time migration: create author records for existing books
+  if (!externalDb) {
+    const { bookAuthors, books } = await import("@verso/shared");
+    const hasLinks = db.select().from(bookAuthors).limit(1).all().length > 0;
+    const hasBooks = db.select().from(books).limit(1).all().length > 0;
+    if (!hasLinks && hasBooks) {
+      console.log("Migrating existing books to author records...");
+      migrateExistingAuthors(db, storage)
+        .then((count) => console.log(`Author migration complete: ${count} authors created`))
+        .catch((err) => console.error("Author migration failed:", err));
+    }
+  }
 
   await app.register(rateLimit, {
     max: 500,
