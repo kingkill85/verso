@@ -3,8 +3,8 @@ const CFI_SPINE_PATTERN = /^\/6\/(\d+)!(.*)$/;
 const CFI_PATH_STEP_PATTERN = /\/(\d+)(?:\[(.*?)\])?(?::(\d+))?/g;
 const XPOINTER_DOC_FRAGMENT_PATTERN = /^\/body\/DocFragment\[(\d+)\](?:\.(\d+))?(?:\/body(.*))?$/;
 const XPOINTER_TEXT_OFFSET_PATTERN = /\/text\(\)\.(\d+)$/;
-const XPOINTER_SEGMENT_WITH_INDEX_PATTERN = /^(\w+)\[(\d+)\]$/;
-const XPOINTER_SEGMENT_WITHOUT_INDEX_PATTERN = /^(\w+)$/;
+const XPOINTER_SEGMENT_WITH_INDEX_PATTERN = /^(\w+)\[(\d+)\](?:\.\d+)?$/;
+const XPOINTER_SEGMENT_WITHOUT_INDEX_PATTERN = /^(\w+)(?:\.\d+)?$/;
 
 const INLINE_ELEMENTS = new Set([
   "span", "em", "strong", "i", "b", "u", "small", "mark", "sup", "sub",
