@@ -27,7 +27,7 @@ export type SmartFilterCondition = z.infer<typeof smartFilterCondition>;
 // Shelf CRUD inputs
 export const shelfCreateInput = z.object({
   name: z.string().min(1).max(100),
-  emoji: z.string().max(10).optional(),
+  emoji: z.string().max(50).optional(),
   description: z.string().max(500).optional(),
   isSmart: z.boolean().default(false),
   smartFilter: smartFilter.optional(),
@@ -39,7 +39,7 @@ export const shelfCreateInput = z.object({
 export const shelfUpdateInput = z.object({
   id: z.string().uuid(),
   name: z.string().min(1).max(100).optional(),
-  emoji: z.string().max(10).optional(),
+  emoji: z.string().max(50).optional(),
   description: z.string().max(500).optional(),
   smartFilter: smartFilter.optional(),
 });

@@ -128,7 +128,7 @@ export const shelves = sqliteTable("shelves", {
     .$defaultFn(() => crypto.randomUUID()),
   name: text("name", { length: 100 }).notNull(),
   description: text("description"),
-  emoji: text("emoji", { length: 10 }),
+  emoji: text("emoji", { length: 50 }),
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
