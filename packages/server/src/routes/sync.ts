@@ -91,12 +91,14 @@ export function registerSyncRoutes(
     for (const b of importBooks) {
       let matched = await db.select({ id: books.id }).from(books).where(eq(books.md5Hash, b.md5)).get();
       if (!matched) {
-        const hashEntry = await db
-          .select({ bookId: bookHashes.bookId })
-          .from(bookHashes)
-          .where(eq(bookHashes.md5Hash, b.md5))
-          .get();
-        if (hashEntry) matched = { id: hashEntry.bookId };
+        try {
+          const hashEntry = await db
+            .select({ bookId: bookHashes.bookId })
+            .from(bookHashes)
+            .where(eq(bookHashes.md5Hash, b.md5))
+            .get();
+          if (hashEntry) matched = { id: hashEntry.bookId };
+        } catch { /* table may not exist yet */ }
       }
       if (matched) {
         md5ToBookId.set(b.md5, matched.id);

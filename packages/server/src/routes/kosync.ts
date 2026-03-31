@@ -55,14 +55,16 @@ export function registerKosyncRoutes(
 
     // Fallback: check hash history for books that changed after metadata edits
     if (!matchedBook) {
-      const hashEntry = await db
-        .select({ bookId: bookHashes.bookId })
-        .from(bookHashes)
-        .where(eq(bookHashes.md5Hash, document))
-        .get();
-      if (hashEntry) {
-        matchedBook = { id: hashEntry.bookId };
-      }
+      try {
+        const hashEntry = await db
+          .select({ bookId: bookHashes.bookId })
+          .from(bookHashes)
+          .where(eq(bookHashes.md5Hash, document))
+          .get();
+        if (hashEntry) {
+          matchedBook = { id: hashEntry.bookId };
+        }
+      } catch { /* table may not exist yet */ }
     }
 
     if (matchedBook) {
