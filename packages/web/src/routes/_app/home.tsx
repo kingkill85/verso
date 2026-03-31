@@ -2,6 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
 import { ContinueReadingRow } from "@/components/books/continue-reading-row";
+import { AlmostFinishedRow } from "@/components/books/almost-finished-row";
+import { ReadingStatsCard } from "@/components/books/reading-stats-card";
+import { RecommendedRow } from "@/components/books/recommended-row";
 import { BookCover } from "@/components/books/book-cover";
 import { useAuth } from "@/hooks/use-auth";
 import { renderShelfIcon, translateShelfName } from "@/components/icons";
@@ -42,6 +45,15 @@ function HomePage() {
 
       {/* Continue Reading */}
       <ContinueReadingRow />
+
+      {/* Almost Finished */}
+      <AlmostFinishedRow />
+
+      {/* Reading Stats */}
+      <ReadingStatsCard />
+
+      {/* Recommended For You */}
+      <RecommendedRow />
 
       {/* Recently Added — responsive cover sizes */}
       {recentBooks.length > 0 && (
