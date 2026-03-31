@@ -11,7 +11,7 @@ export const Route = createFileRoute("/_app/books/$id_/edit")({
 
 const FIELDS: { key: string; labelKey: string; type: "text" | "number" | "textarea"; half?: boolean; group: string }[] = [
   { key: "title", labelKey: "edit.field.title", type: "text", group: "basic" },
-  { key: "author", labelKey: "edit.field.author", type: "text", group: "basic" },
+  // author is handled separately as a multi-pick component
   { key: "description", labelKey: "edit.field.description", type: "textarea", group: "basic" },
   { key: "genre", labelKey: "edit.field.genre", type: "text", group: "classification" },
   { key: "language", labelKey: "edit.field.language", type: "text", group: "classification" },
@@ -60,6 +60,11 @@ function BookEditPage() {
   const [initialized, setInitialized] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Author multi-pick state
+  const [authorTags, setAuthorTags] = useState<string[]>([]);
+  const [initialAuthorTags, setInitialAuthorTags] = useState<string[]>([]);
+  const authorsQuery = trpc.authors.list.useQuery({});
+
   // Initialize form from book data ONCE, merge metadata selections on top
   useEffect(() => {
     if (!bookQuery.data || initialized) return;
@@ -68,6 +73,13 @@ function BookEditPage() {
       const val = (bookQuery.data as any)[key];
       v[key] = val != null ? String(val) : "";
     }
+    // Handle author separately
+    const authorStr = metadataApply?.fields?.author ?? bookQuery.data.author ?? "";
+    v["author"] = authorStr;
+    const tags = authorStr.split(",").map((s: string) => s.trim()).filter(Boolean);
+    setAuthorTags(tags);
+    setInitialAuthorTags(tags);
+
     setInitialValues(v);
     setValues(metadataApply ? { ...v, ...metadataApply.fields } : v);
     setInitialized(true);
@@ -75,8 +87,9 @@ function BookEditPage() {
 
   const isDirty = useMemo(() => {
     if (coverUrl) return true;
+    if (authorTags.join(", ") !== initialAuthorTags.join(", ")) return true;
     return Object.keys(values).some((k) => values[k] !== initialValues[k]);
-  }, [values, initialValues, coverUrl]);
+  }, [values, initialValues, coverUrl, authorTags, initialAuthorTags]);
 
   useEffect(() => {
     if (!isDirty || saving) return;
@@ -113,6 +126,11 @@ function BookEditPage() {
       } else {
         fields[key] = val;
       }
+    }
+    // Include author from tags
+    const authorStr = authorTags.join(", ");
+    if (authorStr !== (bookQuery.data.author ?? "")) {
+      fields.author = authorStr || null;
     }
     if (coverUrl) fields.coverUrl = coverUrl;
     updateMutation.mutate(fields as any);
@@ -191,6 +209,14 @@ function BookEditPage() {
                 <p className="text-xs font-medium uppercase tracking-wider mb-4" style={{ color: "var(--text-faint)" }}>{group.label}</p>
                 <div className="flex flex-col gap-3">
                   {renderFieldRows(groupFields, values, set, t)}
+                  {group.id === "basic" && (
+                    <AuthorMultiPick
+                      tags={authorTags}
+                      onChange={setAuthorTags}
+                      suggestions={authorsQuery.data?.map((a) => a.name) ?? []}
+                      t={t}
+                    />
+                  )}
                 </div>
               </div>
             );
@@ -335,6 +361,126 @@ function renderField(field: typeof FIELDS[number], values: Record<string, string
           className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
           style={{ backgroundColor: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }}
         />
+      )}
+    </div>
+  );
+}
+
+function AuthorMultiPick({ tags, onChange, suggestions, t }: {
+  tags: string[];
+  onChange: (tags: string[]) => void;
+  suggestions: string[];
+  t: (key: string) => string;
+}) {
+  const [input, setInput] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const filtered = input.trim()
+    ? suggestions.filter(
+        (s) =>
+          s.toLowerCase().includes(input.toLowerCase()) &&
+          !tags.some((t) => t.toLowerCase() === s.toLowerCase())
+      )
+    : [];
+
+  const addTag = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    if (tags.some((t) => t.toLowerCase() === trimmed.toLowerCase())) return;
+    onChange([...tags, trimmed]);
+    setInput("");
+    setShowSuggestions(false);
+    inputRef.current?.focus();
+  };
+
+  const removeTag = (index: number) => {
+    onChange(tags.filter((_, i) => i !== index));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      if (filtered.length > 0) {
+        addTag(filtered[0]);
+      } else if (input.trim()) {
+        addTag(input);
+      }
+    } else if (e.key === "Backspace" && !input && tags.length > 0) {
+      removeTag(tags.length - 1);
+    }
+  };
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={containerRef}>
+      <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-dim)" }}>
+        {t("edit.field.author")}
+      </label>
+      <div
+        className="flex flex-wrap gap-1.5 rounded-lg border px-2 py-1.5 min-h-[38px] cursor-text"
+        style={{ backgroundColor: "var(--bg)", borderColor: "var(--border)" }}
+        onClick={() => inputRef.current?.focus()}
+      >
+        {tags.map((tag, i) => (
+          <span
+            key={tag}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium"
+            style={{ backgroundColor: "var(--card)", color: "var(--text)" }}
+          >
+            {tag}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); removeTag(i); }}
+              className="ml-0.5 hover:opacity-70"
+              style={{ color: "var(--text-faint)" }}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <input
+          ref={inputRef}
+          type="text"
+          value={input}
+          onChange={(e) => { setInput(e.target.value); setShowSuggestions(true); }}
+          onFocus={() => setShowSuggestions(true)}
+          onKeyDown={handleKeyDown}
+          placeholder={tags.length === 0 ? t("edit.field.author") : ""}
+          className="flex-1 min-w-[100px] bg-transparent outline-none text-sm py-0.5"
+          style={{ color: "var(--text)" }}
+        />
+      </div>
+      {showSuggestions && filtered.length > 0 && (
+        <div
+          className="mt-1 rounded-lg border shadow-lg overflow-hidden max-h-40 overflow-y-auto"
+          style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
+        >
+          {filtered.slice(0, 8).map((name) => (
+            <button
+              key={name}
+              type="button"
+              onClick={() => addTag(name)}
+              className="w-full text-left px-3 py-2 text-sm hover:opacity-80 transition-colors"
+              style={{ color: "var(--text)" }}
+              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "var(--bg)")}
+              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
