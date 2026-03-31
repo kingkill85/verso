@@ -18,6 +18,7 @@
   "home.recommendedSubtitle": "Based on your reading",
   "nav.home": "Inicio",
   "nav.library": "Biblioteca",
+  "nav.authors": "Authors",
   "nav.stats": "Estatisticas",
   "nav.upload": "Enviar",
   "nav.import": "Importar",
@@ -338,5 +339,14 @@
   "kindle.sending": "Enviando para Kindle...",
   "kindle.sent": "Enviado para Kindle!",
   "kindle.sendFailed": "Falha ao enviar para Kindle",
-  "kindle.passwordRequired": "A senha é obrigatória"
+  "kindle.passwordRequired": "A senha é obrigatória",
+  "authors.title": "Authors",
+  "authors.subtitle_one": "{{count}} author in your library",
+  "authors.subtitle_other": "{{count}} authors in your library",
+  "authors.searchPlaceholder": "Search authors...",
+  "authors.books_one": "{{count}} book",
+  "authors.books_other": "{{count}} books",
+  "authors.noBio": "No biography available",
+  "authors.refreshMetadata": "Refresh metadata",
+  "authors.booksSection": "Books"
 }

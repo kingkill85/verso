@@ -18,6 +18,7 @@
   "home.recommendedSubtitle": "Based on your reading",
   "nav.home": "Startseite",
   "nav.library": "Bibliothek",
+  "nav.authors": "Authors",
   "nav.stats": "Statistiken",
   "nav.upload": "Hochladen",
   "nav.import": "Importieren",
@@ -338,5 +339,14 @@
   "kindle.sending": "Wird an Kindle gesendet...",
   "kindle.sent": "An Kindle gesendet!",
   "kindle.sendFailed": "Senden an Kindle fehlgeschlagen",
-  "kindle.passwordRequired": "Passwort ist erforderlich"
+  "kindle.passwordRequired": "Passwort ist erforderlich",
+  "authors.title": "Authors",
+  "authors.subtitle_one": "{{count}} author in your library",
+  "authors.subtitle_other": "{{count}} authors in your library",
+  "authors.searchPlaceholder": "Search authors...",
+  "authors.books_one": "{{count}} book",
+  "authors.books_other": "{{count}} books",
+  "authors.noBio": "No biography available",
+  "authors.refreshMetadata": "Refresh metadata",
+  "authors.booksSection": "Books"
 }

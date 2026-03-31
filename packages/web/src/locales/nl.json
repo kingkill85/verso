@@ -18,6 +18,7 @@
   "home.recommendedSubtitle": "Based on your reading",
   "nav.home": "Home",
   "nav.library": "Bibliotheek",
+  "nav.authors": "Authors",
   "nav.stats": "Statistieken",
   "nav.upload": "Uploaden",
   "nav.import": "Importeren",
@@ -338,5 +339,14 @@
   "kindle.sending": "Wordt naar Kindle gestuurd...",
   "kindle.sent": "Naar Kindle gestuurd!",
   "kindle.sendFailed": "Verzenden naar Kindle mislukt",
-  "kindle.passwordRequired": "Wachtwoord is vereist"
+  "kindle.passwordRequired": "Wachtwoord is vereist",
+  "authors.title": "Authors",
+  "authors.subtitle_one": "{{count}} author in your library",
+  "authors.subtitle_other": "{{count}} authors in your library",
+  "authors.searchPlaceholder": "Search authors...",
+  "authors.books_one": "{{count}} book",
+  "authors.books_other": "{{count}} books",
+  "authors.noBio": "No biography available",
+  "authors.refreshMetadata": "Refresh metadata",
+  "authors.booksSection": "Books"
 }

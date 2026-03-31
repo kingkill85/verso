@@ -14,6 +14,7 @@ import {
   ScrollTextIcon,
   ArchiveIcon,
   BookmarkIcon,
+  PenIcon,
   renderShelfIcon,
   translateShelfName,
 } from "@/components/icons";
@@ -38,6 +39,8 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
         </div>
         <SidebarItem to="/home" label={t("nav.home")} icon={<HomeIcon />} active={isActive("/home")} onClick={onClose} />
         <SidebarItem to="/library" label={t("nav.library")} icon={<BookOpenIcon />} active={isActive("/library")} onClick={onClose} />
+        <SidebarItem to="/authors" label={t("nav.authors")} icon={<PenIcon />} active={isActive("/authors")} onClick={onClose} />
+        <SidebarItem to="/stats" label={t("nav.stats")} icon={<BarChartIcon />} active={isActive("/stats")} onClick={onClose} />
         {defaultShelves.map((shelf) => (
           <SidebarItem
             key={shelf.id}
@@ -75,8 +78,6 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
             onClick={onClose}
           />
         ))}
-
-        <SidebarItem to="/stats" label={t("nav.stats")} icon={<BarChartIcon />} active={isActive("/stats")} onClick={onClose} />
 
         {user?.role === "admin" && (
           <>
