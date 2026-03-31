@@ -25,6 +25,7 @@ import { Route as AppAuthorsIndexRouteImport } from './routes/_app/authors/index
 import { Route as AppShelvesNewRouteImport } from './routes/_app/shelves/new'
 import { Route as AppShelvesIdRouteImport } from './routes/_app/shelves/$id'
 import { Route as AppBooksIdRouteImport } from './routes/_app/books/$id'
+import { Route as AppAuthorsIdRouteImport } from './routes/_app/authors/$id'
 import { Route as AppAdminUsersRouteImport } from './routes/_app/admin/users'
 import { Route as AppAdminLogsRouteImport } from './routes/_app/admin/logs'
 import { Route as AppShelvesIdEditRouteImport } from './routes/_app/shelves/$id_.edit'
@@ -110,6 +111,11 @@ const AppBooksIdRoute = AppBooksIdRouteImport.update({
   path: '/books/$id',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAuthorsIdRoute = AppAuthorsIdRouteImport.update({
+  id: '/authors/$id',
+  path: '/authors/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
   id: '/admin/users',
   path: '/admin/users',
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/setup': typeof AuthSetupRoute
   '/admin/logs': typeof AppAdminLogsRoute
   '/admin/users': typeof AppAdminUsersRoute
+  '/authors/$id': typeof AppAuthorsIdRoute
   '/books/$id': typeof AppBooksIdRoute
   '/shelves/$id': typeof AppShelvesIdRoute
   '/shelves/new': typeof AppShelvesNewRoute
@@ -176,6 +183,7 @@ export interface FileRoutesByTo {
   '/setup': typeof AuthSetupRoute
   '/admin/logs': typeof AppAdminLogsRoute
   '/admin/users': typeof AppAdminUsersRoute
+  '/authors/$id': typeof AppAuthorsIdRoute
   '/books/$id': typeof AppBooksIdRoute
   '/shelves/$id': typeof AppShelvesIdRoute
   '/shelves/new': typeof AppShelvesNewRoute
@@ -201,6 +209,7 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/admin/logs': typeof AppAdminLogsRoute
   '/_app/admin/users': typeof AppAdminUsersRoute
+  '/_app/authors/$id': typeof AppAuthorsIdRoute
   '/_app/books/$id': typeof AppBooksIdRoute
   '/_app/shelves/$id': typeof AppShelvesIdRoute
   '/_app/shelves/new': typeof AppShelvesNewRoute
@@ -225,6 +234,7 @@ export interface FileRouteTypes {
     | '/setup'
     | '/admin/logs'
     | '/admin/users'
+    | '/authors/$id'
     | '/books/$id'
     | '/shelves/$id'
     | '/shelves/new'
@@ -247,6 +257,7 @@ export interface FileRouteTypes {
     | '/setup'
     | '/admin/logs'
     | '/admin/users'
+    | '/authors/$id'
     | '/books/$id'
     | '/shelves/$id'
     | '/shelves/new'
@@ -271,6 +282,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/admin/logs'
     | '/_app/admin/users'
+    | '/_app/authors/$id'
     | '/_app/books/$id'
     | '/_app/shelves/$id'
     | '/_app/shelves/new'
@@ -400,6 +412,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBooksIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/authors/$id': {
+      id: '/_app/authors/$id'
+      path: '/authors/$id'
+      fullPath: '/authors/$id'
+      preLoaderRoute: typeof AppAuthorsIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/users': {
       id: '/_app/admin/users'
       path: '/admin/users'
@@ -456,6 +475,7 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppAdminLogsRoute: typeof AppAdminLogsRoute
   AppAdminUsersRoute: typeof AppAdminUsersRoute
+  AppAuthorsIdRoute: typeof AppAuthorsIdRoute
   AppBooksIdRoute: typeof AppBooksIdRoute
   AppShelvesIdRoute: typeof AppShelvesIdRoute
   AppShelvesNewRoute: typeof AppShelvesNewRoute
@@ -477,6 +497,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppAdminLogsRoute: AppAdminLogsRoute,
   AppAdminUsersRoute: AppAdminUsersRoute,
+  AppAuthorsIdRoute: AppAuthorsIdRoute,
   AppBooksIdRoute: AppBooksIdRoute,
   AppShelvesIdRoute: AppShelvesIdRoute,
   AppShelvesNewRoute: AppShelvesNewRoute,
