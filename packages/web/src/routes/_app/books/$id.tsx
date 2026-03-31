@@ -38,6 +38,7 @@ function BookDetailPage() {
 
   const [activeTab, setActiveTab] = useState<"details" | "annotations" | "bookmarks">("details");
   const bookQuery = trpc.books.byId.useQuery({ id });
+  const authorsQuery = trpc.authors.list.useQuery({});
   const progressQuery = trpc.progress.get.useQuery({ bookId: id });
   const annotationsQuery = trpc.annotations.list.useQuery({ bookId: id });
   const bookmarksQuery = trpc.annotations.listBookmarks.useQuery({ bookId: id });
@@ -170,7 +171,29 @@ function BookDetailPage() {
               className="font-display italic text-sm md:text-base mt-0.5"
               style={{ color: "var(--text-dim)" }}
             >
-              {book.author}
+              {book.author.split(",").map((name, i, arr) => {
+                const trimmed = name.trim();
+                const match = authorsQuery.data?.find(
+                  (a) => a.name.toLowerCase() === trimmed.toLowerCase()
+                );
+                return (
+                  <span key={trimmed}>
+                    {match ? (
+                      <Link
+                        to="/authors/$id"
+                        params={{ id: match.id }}
+                        className="hover:underline"
+                        style={{ color: "var(--warm)" }}
+                      >
+                        {trimmed}
+                      </Link>
+                    ) : (
+                      trimmed
+                    )}
+                    {i < arr.length - 1 && ", "}
+                  </span>
+                );
+              })}
             </p>
             {book.series && (
               <p
