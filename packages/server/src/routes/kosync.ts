@@ -64,12 +64,13 @@ export function registerKosyncRoutes(
 
       // Try to convert KOReader XPointer → CFI
       let convertedCfi: string | undefined;
+      let conversionError: string | undefined;
       const book = await db.select({ filePath: books.filePath, fileFormat: books.fileFormat }).from(books).where(eq(books.id, matchedBook.id)).get();
       if (book?.fileFormat === "epub" && book.filePath) {
         try {
           convertedCfi = await convertPosition(storage.fullPath(book.filePath), progress, "xpointer");
-        } catch (e) {
-          app.log.warn({ err: e, bookId: matchedBook.id }, "kosync: XPointer→CFI conversion failed");
+        } catch (e: any) {
+          conversionError = e?.message ?? String(e);
         }
       }
 
@@ -105,8 +106,11 @@ export function registerKosyncRoutes(
           md5: document,
           matched: true,
           percentage: Math.round(percentage * 100),
+          xpointer: progress,
           xpointerToCfi: convertedCfi ? "ok" : "failed",
+          ...(conversionError ? { conversionError } : {}),
         },
+        ...(conversionError ? { level: "warn" as const } : {}),
       });
     } else {
       // Store in kosyncProgress for unmatched books
