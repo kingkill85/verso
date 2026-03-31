@@ -15,6 +15,7 @@ const TYPE_COLORS: Record<string, string> = {
   import: "#14b8a6",
   export: "#f59e0b",
   "metadata.apply": "#a855f7",
+  "hash.save": "#78716c",
 };
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -50,6 +51,8 @@ function formatSummary(entry: any): string {
       return `Library imported (${d.format ?? "zip"})`;
     case "export":
       return `Library exported — ${d.bookCount ?? "?"} books`;
+    case "hash.save":
+      return `Hash ${d.status}${entry.bookTitle ? ` for "${entry.bookTitle}"` : ""} — ${d.md5?.slice(0, 12)}…${d.error ? ` (${d.error})` : ""}`;
     case "metadata.apply":
       return `Metadata applied to${entry.bookTitle ? ` "${entry.bookTitle}"` : ""} — ${(d.fields ?? []).join(", ")} (${d.source ?? "?"})`;
     default:

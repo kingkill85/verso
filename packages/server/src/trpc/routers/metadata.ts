@@ -203,7 +203,7 @@ export const metadataRouter = router({
 
         // Save old MD5 to hash history before updating
         if (book.md5Hash) {
-          saveHash(ctx.db, input.bookId, book.md5Hash);
+          saveHash(ctx.db, input.bookId, book.md5Hash, book.title);
         }
 
         // Update file hashes after modification
@@ -212,7 +212,7 @@ export const metadataRouter = router({
         const newMd5Hash = partialMd5(newFileBuffer);
 
         // Save new MD5 to hash history too
-        saveHash(ctx.db, input.bookId, newMd5Hash);
+        saveHash(ctx.db, input.bookId, newMd5Hash, updated.title ?? book.title);
 
         await ctx.db
           .update(books)

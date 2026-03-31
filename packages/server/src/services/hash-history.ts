@@ -1,12 +1,13 @@
 import { bookHashes } from "@verso/shared";
 import { eq, and } from "drizzle-orm";
 import type { AppDatabase } from "../db/client.js";
+import { logActivity } from "./activity-log.js";
 
 /**
  * Save an MD5 hash to the book's hash history.
  * Silently skips if the hash already exists for this book.
  */
-export function saveHash(db: AppDatabase, bookId: string, md5Hash: string): void {
+export function saveHash(db: AppDatabase, bookId: string, md5Hash: string, bookTitle?: string): void {
   try {
     const existing = db
       .select()
@@ -18,7 +19,15 @@ export function saveHash(db: AppDatabase, bookId: string, md5Hash: string): void
         ),
       )
       .get();
-    if (existing) return;
+    if (existing) {
+      logActivity(db, {
+        type: "hash.save",
+        bookId,
+        bookTitle,
+        details: { md5: md5Hash, status: "duplicate" },
+      });
+      return;
+    }
 
     db.insert(bookHashes)
       .values({
@@ -27,7 +36,20 @@ export function saveHash(db: AppDatabase, bookId: string, md5Hash: string): void
         createdAt: new Date().toISOString(),
       })
       .run();
-  } catch (e) {
-    console.error("Failed to save hash history:", e);
+
+    logActivity(db, {
+      type: "hash.save",
+      bookId,
+      bookTitle,
+      details: { md5: md5Hash, status: "saved" },
+    });
+  } catch (e: any) {
+    logActivity(db, {
+      type: "hash.save",
+      bookId,
+      bookTitle,
+      level: "error",
+      details: { md5: md5Hash, status: "failed", error: e?.message ?? String(e) },
+    });
   }
 }

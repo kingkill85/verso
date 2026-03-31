@@ -165,7 +165,7 @@ export function registerUploadRoute(
           })
           .returning();
 
-        if (md5Hash) saveHash(db, bookId, md5Hash);
+        if (md5Hash) saveHash(db, bookId, md5Hash, metadata.title || data.filename);
 
         logActivity(db, {
           type: "upload",

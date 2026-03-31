@@ -202,7 +202,7 @@ export function registerImportRoutes(
               metadataSource: "extracted",
             });
 
-            if (md5Hash) saveHash(db, bookId, md5Hash);
+            if (md5Hash) saveHash(db, bookId, md5Hash, metadata.title || title);
 
             sendEvent({ type: "progress", id, title, status: "done" });
             logActivity(db, {
