@@ -24,17 +24,76 @@ export const shelvesRouter = router({
       .where(eq(shelves.userId, ctx.user.sub))
       .orderBy(shelves.position);
 
-    // Add book counts for manual shelves
+    // Add book counts for all shelves
     const result = await Promise.all(
       userShelves.map(async (shelf) => {
-        if (shelf.isSmart) {
-          return { ...shelf, bookCount: 0 };
+        if (!shelf.isSmart) {
+          const countResult = await ctx.db
+            .select({ count: sql<number>`count(*)` })
+            .from(shelfBooks)
+            .where(eq(shelfBooks.shelfId, shelf.id))
+            .get();
+          return { ...shelf, bookCount: countResult?.count ?? 0 };
         }
-        const countResult = await ctx.db
-          .select({ count: sql<number>`count(*)` })
-          .from(shelfBooks)
-          .where(eq(shelfBooks.shelfId, shelf.id))
-          .get();
+
+        // Smart shelf: count matching books using the filter
+        const filter = JSON.parse(shelf.smartFilter!) as SmartFilter;
+        const hasCurrentlyReading = filter.conditions.some(
+          (c: any) => c.field === "_currentlyReading"
+        );
+        const hasRecentlyAdded = filter.conditions.some(
+          (c: any) => c.field === "_recentlyAdded"
+        );
+        const hasFinished = filter.conditions.some(
+          (c: any) => c.field === "_finished"
+        );
+
+        let countResult: { count: number } | undefined;
+        if (hasCurrentlyReading) {
+          countResult = await ctx.db
+            .select({ count: sql<number>`count(*)` })
+            .from(readingProgress)
+            .innerJoin(books, eq(books.id, readingProgress.bookId))
+            .where(
+              and(
+                eq(readingProgress.userId, ctx.user.sub),
+                isNotNull(readingProgress.startedAt),
+                isNull(readingProgress.finishedAt),
+              )
+            )
+            .get();
+        } else if (hasFinished) {
+          countResult = await ctx.db
+            .select({ count: sql<number>`count(*)` })
+            .from(readingProgress)
+            .innerJoin(books, eq(books.id, readingProgress.bookId))
+            .where(
+              and(
+                eq(readingProgress.userId, ctx.user.sub),
+                isNotNull(readingProgress.finishedAt),
+              )
+            )
+            .get();
+        } else if (hasRecentlyAdded) {
+          const days = filter.conditions.find(
+            (c: any) => c.field === "_recentlyAdded"
+          )!.value;
+          countResult = await ctx.db
+            .select({ count: sql<number>`count(*)` })
+            .from(books)
+            .where(
+              sql`${books.createdAt} >= datetime('now', ${`-${days} days`})`
+            )
+            .get();
+        } else {
+          const filterCondition = buildFilterConditions(filter);
+          countResult = await ctx.db
+            .select({ count: sql<number>`count(*)` })
+            .from(books)
+            .where(filterCondition)
+            .get();
+        }
+
         return { ...shelf, bookCount: countResult?.count ?? 0 };
       })
     );

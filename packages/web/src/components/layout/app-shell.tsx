@@ -1,15 +1,34 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Sidebar } from "./sidebar";
 import { TopBar } from "./top-bar";
 
+const SIDEBAR_KEY = "verso-sidebar-open";
+
+function getInitialSidebarState(): boolean {
+  try {
+    const stored = localStorage.getItem(SIDEBAR_KEY);
+    if (stored !== null) return stored === "true";
+  } catch {}
+  // Default open on desktop-width screens
+  return window.matchMedia("(min-width: 1024px)").matches;
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarState);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(SIDEBAR_KEY, String(next)); } catch {}
+      return next;
+    });
+  }, []);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden" style={{ backgroundColor: "var(--bg)" }}>
       <TopBar
         sidebarOpen={sidebarOpen}
-        onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+        onMenuClick={toggleSidebar}
       />
 
       <div className="flex flex-1 min-h-0 relative">
