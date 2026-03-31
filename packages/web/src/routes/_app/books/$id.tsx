@@ -71,6 +71,15 @@ function BookDetailPage() {
   }
 
   if (bookQuery.error || !bookQuery.data) {
+    // Only show "not found" for actual NOT_FOUND errors, not transient network issues
+    const isNotFound = bookQuery.error?.data?.code === "NOT_FOUND";
+    if (!isNotFound && bookQuery.error) {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <p className="text-sm" style={{ color: "var(--text-dim)" }}>{t("book.loading")}</p>
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <p
