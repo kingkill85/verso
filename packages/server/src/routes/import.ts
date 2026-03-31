@@ -202,7 +202,11 @@ export function registerImportRoutes(
               metadataSource: "extracted",
             });
 
+            // Save hash of converted file
             if (md5Hash) saveHash(db, bookId, md5Hash, metadata.title || title);
+            // Save hash of original download too (KOReader may have either version)
+            const originalMd5 = partialMd5(buffer);
+            if (originalMd5 !== md5Hash) saveHash(db, bookId, originalMd5, metadata.title || title);
 
             sendEvent({ type: "progress", id, title, status: "done" });
             logActivity(db, {

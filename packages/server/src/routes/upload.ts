@@ -165,7 +165,11 @@ export function registerUploadRoute(
           })
           .returning();
 
+        // Save hash of stored/converted file
         if (md5Hash) saveHash(db, bookId, md5Hash, metadata.title || data.filename);
+        // Save hash of original upload too (KOReader may have either version)
+        const originalMd5 = partialMd5(buffer);
+        if (originalMd5 !== md5Hash) saveHash(db, bookId, originalMd5, metadata.title || data.filename);
 
         logActivity(db, {
           type: "upload",
