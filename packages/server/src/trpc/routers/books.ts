@@ -96,9 +96,10 @@ export const booksRouter = router({
 
     const [book] = await ctx.db.update(books).set(updateData).where(eq(books.id, id)).returning();
 
-    // If author field changed, re-sync author links
-    if (fields.author) {
-      await syncBookAuthors(ctx.db, id, fields.author);
+    // Re-sync author links from the final author string
+    const finalAuthor = fields.author ?? existing.author;
+    if (finalAuthor) {
+      await syncBookAuthors(ctx.db, id, finalAuthor);
     }
 
     // EPUB write-back (non-fatal)
