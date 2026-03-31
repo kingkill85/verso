@@ -19,6 +19,8 @@ import { partialMd5 } from "../services/partial-md5.js";
 import sharp from "sharp";
 import { logActivity } from "../services/activity-log.js";
 import { saveHash } from "../services/hash-history.js";
+import { syncBookAuthors } from "../services/sync-book-authors.js";
+import { enrichAuthor } from "../services/enrich-author.js";
 
 const EBOOK_FORMATS = ["epub", "mobi", "azw", "azw3", "fb2", "cbz", "cbr"];
 const DOCUMENT_FORMATS = ["docx", "rtf"];
@@ -164,6 +166,12 @@ export function registerUploadRoute(
             metadataSource: "extracted",
           })
           .returning();
+
+        // Sync author records and enrich new ones in background
+        const syncedAuthors = await syncBookAuthors(db, bookId, metadata.author);
+        for (const a of syncedAuthors) {
+          if (a.isNew) enrichAuthor(db, a.id, a.name, storage).catch(() => {});
+        }
 
         // Save hash of stored/converted file
         if (md5Hash) saveHash(db, bookId, md5Hash, metadata.title || data.filename);

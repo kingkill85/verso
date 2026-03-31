@@ -13,6 +13,8 @@ import { partialMd5 } from "../services/partial-md5.js";
 import sharp from "sharp";
 import { logActivity } from "../services/activity-log.js";
 import { saveHash } from "../services/hash-history.js";
+import { syncBookAuthors } from "../services/sync-book-authors.js";
+import { enrichAuthor } from "../services/enrich-author.js";
 import yauzl from "yauzl-promise";
 import path from "node:path";
 import os from "node:os";
@@ -201,6 +203,13 @@ export function registerImportRoutes(
               addedBy: user.sub,
               metadataSource: "extracted",
             });
+
+            // Sync author records and enrich new ones in background
+            const authorString = metadata.author || entry.author || "Unknown Author";
+            const syncedAuthors = await syncBookAuthors(db, bookId, authorString);
+            for (const a of syncedAuthors) {
+              if (a.isNew) enrichAuthor(db, a.id, a.name, storage).catch(() => {});
+            }
 
             // Save hash of converted file
             if (md5Hash) saveHash(db, bookId, md5Hash, metadata.title || title);

@@ -5,6 +5,7 @@ import type { SQL } from "drizzle-orm";
 import { books, readingProgress, bookListInput, bookByIdInput, bookUpdateInput, bookDeleteInput, searchInput } from "@verso/shared";
 import { router, protectedProcedure, adminProcedure } from "../index.js";
 import { writeMetadata, writeCover, getFileHash } from "../../services/calibre.js";
+import { syncBookAuthors } from "../../services/sync-book-authors.js";
 import { writeFile, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -94,6 +95,11 @@ export const booksRouter = router({
     }
 
     const [book] = await ctx.db.update(books).set(updateData).where(eq(books.id, id)).returning();
+
+    // If author field changed, re-sync author links
+    if (fields.author) {
+      await syncBookAuthors(ctx.db, id, fields.author);
+    }
 
     // EPUB write-back (non-fatal)
     if (existing.fileFormat === "epub") {
