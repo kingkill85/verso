@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { eq, and, desc, asc, sql, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, or, desc, asc, sql, isNull, isNotNull } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { books, readingProgress, bookListInput, bookByIdInput, bookUpdateInput, bookDeleteInput, searchInput } from "@verso/shared";
 import { router, protectedProcedure, adminProcedure } from "../index.js";
@@ -252,7 +252,7 @@ export const booksRouter = router({
       const candidates = await ctx.db
         .select()
         .from(books)
-        .where(sql`(${sql.join(allConditions, sql` OR `)})`)
+        .where(or(...allConditions))
         .limit(50);
 
       // 4. Filter out started books, score and attach reason
