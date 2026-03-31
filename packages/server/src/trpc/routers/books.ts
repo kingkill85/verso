@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 import { eq, and, desc, asc, sql, isNull, isNotNull } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { books, readingProgress, bookListInput, bookByIdInput, bookUpdateInput, bookDeleteInput, searchInput } from "@verso/shared";
@@ -198,6 +199,95 @@ export const booksRouter = router({
       .limit(10);
     return rows;
   }),
+
+  recommended: protectedProcedure
+    .input(z.object({ limit: z.number().min(1).max(20).default(8) }).default({}))
+    .query(async ({ ctx, input }) => {
+      // 1. Get genres and authors from books the user has read or is reading
+      const activeBooks = await ctx.db
+        .select({
+          author: books.author,
+          genre: books.genre,
+        })
+        .from(readingProgress)
+        .innerJoin(books, eq(books.id, readingProgress.bookId))
+        .where(
+          and(
+            eq(readingProgress.userId, ctx.user.sub),
+            isNotNull(readingProgress.startedAt),
+          )
+        );
+
+      if (activeBooks.length === 0) return [];
+
+      const authors = [...new Set(activeBooks.map((b) => b.author).filter(Boolean))];
+      const genres = [...new Set(activeBooks.map((b) => b.genre).filter(Boolean))];
+
+      if (authors.length === 0 && genres.length === 0) return [];
+
+      // 2. Get IDs of books the user has already started (to exclude)
+      const startedRows = await ctx.db
+        .select({ bookId: readingProgress.bookId })
+        .from(readingProgress)
+        .where(
+          and(
+            eq(readingProgress.userId, ctx.user.sub),
+            isNotNull(readingProgress.startedAt),
+          )
+        );
+      const startedIds = new Set(startedRows.map((r) => r.bookId));
+
+      // 3. Find candidate books matching author or genre
+      const authorConditions = authors.map((a) => eq(books.author, a!));
+      const genreConditions = genres.map((g) => eq(books.genre, g!));
+      const allConditions = [...authorConditions, ...genreConditions];
+
+      const candidates = await ctx.db
+        .select()
+        .from(books)
+        .where(sql`(${sql.join(allConditions, sql` OR `)})`)
+        .limit(50);
+
+      // 4. Filter out started books, score and attach reason
+      const authorsSet = new Set(authors);
+      const genresSet = new Set(genres);
+
+      const scored = candidates
+        .filter((b) => !startedIds.has(b.id))
+        .map((b) => {
+          const isAuthorMatch = b.author && authorsSet.has(b.author);
+          const isGenreMatch = b.genre && genresSet.has(b.genre);
+          const priority = isAuthorMatch ? 1 : 2;
+          const reason = isAuthorMatch
+            ? `More by ${b.author}`
+            : `${b.genre} in your library`;
+          return { ...b, reason, priority };
+        });
+
+      // 5. Shuffle within each priority tier
+      const tier1 = scored.filter((b) => b.priority === 1).sort(() => Math.random() - 0.5);
+      const tier2 = scored.filter((b) => b.priority === 2).sort(() => Math.random() - 0.5);
+      let combined = [...tier1, ...tier2];
+
+      // 6. Backfill with random unread books if there are no matches at all
+      if (combined.length === 0) {
+        const usedIds = new Set([...startedIds, ...combined.map((b) => b.id)]);
+        const fillers = await ctx.db
+          .select()
+          .from(books)
+          .limit(input.limit - combined.length + 10);
+        const available = fillers
+          .filter((b) => !usedIds.has(b.id))
+          .sort(() => Math.random() - 0.5)
+          .slice(0, input.limit - combined.length)
+          .map((b) => ({ ...b, reason: "", priority: 3 as const }));
+        combined = [...combined, ...available];
+      }
+
+      // 7. Limit and strip internal fields
+      const result = combined.slice(0, input.limit);
+      return result.map(({ priority, ...rest }) => rest);
+    }),
 
   search: protectedProcedure.input(searchInput).query(async ({ ctx, input }) => {
     const { query, genre, author, format, page = 1, limit = 50 } = input;

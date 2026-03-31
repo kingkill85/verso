@@ -275,6 +275,115 @@ describe("books router", () => {
     });
   });
 
+  describe("recommended", () => {
+    it("returns empty array when no reading history exists", async () => {
+      await insertBook({ genre: "Sci-Fi" });
+      const result = await authedCaller.books.recommended({});
+      expect(result).toHaveLength(0);
+    });
+
+    it("recommends unread books by same author as currently reading", async () => {
+      const reading = await insertBook({ title: "Dune", author: "Frank Herbert", genre: "Sci-Fi" });
+      const unread = await insertBook({ title: "Children of Dune", author: "Frank Herbert", genre: "Sci-Fi" });
+      await insertBook({ title: "1984", author: "George Orwell", genre: "Dystopian" });
+
+      await ctx.db.insert(readingProgress).values({
+        userId,
+        bookId: reading.id,
+        percentage: 40,
+        startedAt: new Date().toISOString(),
+        lastReadAt: new Date().toISOString(),
+      });
+
+      const result = await authedCaller.books.recommended({});
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe("Children of Dune");
+      expect(result[0].reason).toContain("Frank Herbert");
+    });
+
+    it("recommends unread books by same genre as finished books", async () => {
+      const finished = await insertBook({ title: "Dune", author: "Frank Herbert", genre: "Sci-Fi" });
+      const unread = await insertBook({ title: "Snow Crash", author: "Neal Stephenson", genre: "Sci-Fi" });
+      await insertBook({ title: "Pride and Prejudice", author: "Jane Austen", genre: "Romance" });
+
+      await ctx.db.insert(readingProgress).values({
+        userId,
+        bookId: finished.id,
+        percentage: 100,
+        startedAt: new Date().toISOString(),
+        finishedAt: new Date().toISOString(),
+        lastReadAt: new Date().toISOString(),
+      });
+
+      const result = await authedCaller.books.recommended({});
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe("Snow Crash");
+      expect(result[0].reason).toContain("Sci-Fi");
+    });
+
+    it("excludes books the user has already started", async () => {
+      const reading = await insertBook({ title: "Dune", author: "Frank Herbert", genre: "Sci-Fi" });
+      const alsoStarted = await insertBook({ title: "Children of Dune", author: "Frank Herbert", genre: "Sci-Fi" });
+
+      await ctx.db.insert(readingProgress).values([
+        {
+          userId,
+          bookId: reading.id,
+          percentage: 40,
+          startedAt: new Date().toISOString(),
+          lastReadAt: new Date().toISOString(),
+        },
+        {
+          userId,
+          bookId: alsoStarted.id,
+          percentage: 10,
+          startedAt: new Date().toISOString(),
+          lastReadAt: new Date().toISOString(),
+        },
+      ]);
+
+      const result = await authedCaller.books.recommended({});
+      expect(result).toHaveLength(0);
+    });
+
+    it("prioritises same-author over same-genre", async () => {
+      const reading = await insertBook({ title: "Dune", author: "Frank Herbert", genre: "Sci-Fi" });
+      const sameAuthor = await insertBook({ title: "Children of Dune", author: "Frank Herbert", genre: "Sci-Fi" });
+      const sameGenre = await insertBook({ title: "Snow Crash", author: "Neal Stephenson", genre: "Sci-Fi" });
+
+      await ctx.db.insert(readingProgress).values({
+        userId,
+        bookId: reading.id,
+        percentage: 40,
+        startedAt: new Date().toISOString(),
+        lastReadAt: new Date().toISOString(),
+      });
+
+      const result = await authedCaller.books.recommended({ limit: 2 });
+      expect(result.length).toBeLessThanOrEqual(2);
+      expect(result[0].title).toBe("Children of Dune");
+    });
+
+    it("respects the limit parameter", async () => {
+      const reading = await insertBook({ title: "Dune", author: "Frank Herbert", genre: "Sci-Fi" });
+
+      for (let i = 0; i < 5; i++) {
+        await insertBook({ title: `Sci-Fi Book ${i}`, author: `Author ${i}`, genre: "Sci-Fi" });
+      }
+
+      await ctx.db.insert(readingProgress).values({
+        userId,
+        bookId: reading.id,
+        percentage: 40,
+        startedAt: new Date().toISOString(),
+        lastReadAt: new Date().toISOString(),
+      });
+
+      const result = await authedCaller.books.recommended({ limit: 3 });
+      expect(result.length).toBeLessThanOrEqual(3);
+    });
+  });
+
   describe("currentlyReading", () => {
     it("returns empty when no books are in progress", async () => {
       await insertBook({ title: "Idle Book" });
