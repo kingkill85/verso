@@ -8,23 +8,6 @@ export const Route = createFileRoute("/_app/admin/logs")({
   component: AdminLogsPage,
 });
 
-const TYPE_OPTIONS = [
-  { value: "", label: "All Events" },
-  { value: "sync.push", label: "Sync Push" },
-  { value: "sync.pull", label: "Sync Pull" },
-  { value: "upload", label: "Upload" },
-  { value: "import", label: "Import" },
-  { value: "export", label: "Export" },
-  { value: "metadata.apply", label: "Metadata" },
-];
-
-const LEVEL_OPTIONS = [
-  { value: "", label: "All Levels" },
-  { value: "info", label: "Info" },
-  { value: "warn", label: "Warning" },
-  { value: "error", label: "Error" },
-];
-
 const TYPE_COLORS: Record<string, string> = {
   "sync.push": "#3b82f6",
   "sync.pull": "#6366f1",
@@ -134,9 +117,13 @@ function AdminLogsPage() {
           className="px-3 py-1.5 rounded-md text-sm"
           style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", color: "var(--text)", border: "1px solid var(--border)" }}
         >
-          {TYPE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
+          <option value="">{t("admin.allEvents")}</option>
+          <option value="sync.push">{t("admin.syncPush")}</option>
+          <option value="sync.pull">{t("admin.syncPull")}</option>
+          <option value="upload">{t("admin.upload")}</option>
+          <option value="import">{t("admin.import")}</option>
+          <option value="export">{t("admin.export")}</option>
+          <option value="metadata.apply">{t("admin.metadata")}</option>
         </select>
         <select
           value={levelFilter}
@@ -144,9 +131,10 @@ function AdminLogsPage() {
           className="px-3 py-1.5 rounded-md text-sm"
           style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", color: "var(--text)", border: "1px solid var(--border)" }}
         >
-          {LEVEL_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
+          <option value="">{t("admin.allLevels")}</option>
+          <option value="info">{t("admin.info")}</option>
+          <option value="warn">{t("admin.warning")}</option>
+          <option value="error">{t("admin.error")}</option>
         </select>
       </div>
 
@@ -154,7 +142,7 @@ function AdminLogsPage() {
       <div className="space-y-1">
         {entries.length === 0 && (
           <p className="text-sm py-8 text-center" style={{ color: "var(--text-faint)" }}>
-            No log entries found.
+            {t("admin.noLogs")}
           </p>
         )}
         {entries.map((entry: any) => (
@@ -209,7 +197,7 @@ function AdminLogsPage() {
             className="px-4 py-2 rounded-md text-sm"
             style={{ backgroundColor: "var(--card)", color: "var(--text-dim)", border: "1px solid var(--border)" }}
           >
-            Load more
+            {t("admin.loadMore")}
           </button>
         </div>
       )}
@@ -220,7 +208,7 @@ function AdminLogsPage() {
             className="text-xs"
             style={{ color: "var(--text-faint)" }}
           >
-            Back to newest
+            {t("admin.backToNewest")}
           </button>
         </div>
       )}

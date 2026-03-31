@@ -202,6 +202,17 @@ export function registerImportRoutes(
             });
 
             sendEvent({ type: "progress", id, title, status: "done" });
+            logActivity(db, {
+              type: "import",
+              userId: user.sub,
+              bookId,
+              bookTitle: metadata.title || title,
+              details: {
+                source: "opds",
+                fileName: title,
+                fileFormat: outputExt,
+              },
+            });
             completed++;
           } finally {
             // Clean up temp files
