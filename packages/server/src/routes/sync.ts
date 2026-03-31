@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { eq, and } from "drizzle-orm";
 import {
-  devices, books, pageStats, readingSessions, readingProgress, annotations,
+  devices, books, bookHashes, pageStats, readingSessions, readingProgress, annotations,
   koinsightDeviceInput, koinsightImportInput,
 } from "@verso/shared";
 import { createAppPasswordAuthHook } from "../middleware/app-password-auth.js";
@@ -89,7 +89,15 @@ export function registerSyncRoutes(
     // Build MD5 → bookId map
     const md5ToBookId = new Map<string, string>();
     for (const b of importBooks) {
-      const matched = await db.select({ id: books.id }).from(books).where(eq(books.md5Hash, b.md5)).get();
+      let matched = await db.select({ id: books.id }).from(books).where(eq(books.md5Hash, b.md5)).get();
+      if (!matched) {
+        const hashEntry = await db
+          .select({ bookId: bookHashes.bookId })
+          .from(bookHashes)
+          .where(eq(bookHashes.md5Hash, b.md5))
+          .get();
+        if (hashEntry) matched = { id: hashEntry.bookId };
+      }
       if (matched) {
         md5ToBookId.set(b.md5, matched.id);
       }

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { eq, and } from "drizzle-orm";
 import { createKosyncAuthHook } from "../middleware/kosync-auth.js";
-import { books, devices, readingProgress, kosyncProgress, kosyncProgressPushInput } from "@verso/shared";
+import { books, devices, readingProgress, kosyncProgress, kosyncProgressPushInput, bookHashes } from "@verso/shared";
 import type { AppDatabase } from "../db/client.js";
 import type { Config } from "../config.js";
 import type { StorageService } from "../services/storage.js";
@@ -47,11 +47,23 @@ export function registerKosyncRoutes(
     }
 
     // Try to match book by MD5
-    const matchedBook = await db
+    let matchedBook = await db
       .select({ id: books.id })
       .from(books)
       .where(eq(books.md5Hash, document))
       .get();
+
+    // Fallback: check hash history for books that changed after metadata edits
+    if (!matchedBook) {
+      const hashEntry = await db
+        .select({ bookId: bookHashes.bookId })
+        .from(bookHashes)
+        .where(eq(bookHashes.md5Hash, document))
+        .get();
+      if (hashEntry) {
+        matchedBook = { id: hashEntry.bookId };
+      }
+    }
 
     if (matchedBook) {
       const existing = await db
@@ -155,11 +167,23 @@ export function registerKosyncRoutes(
       const userId = req.user!.sub;
 
       // First check readingProgress via books.md5Hash
-      const matchedBook = await db
+      let matchedBook = await db
         .select({ id: books.id })
         .from(books)
         .where(eq(books.md5Hash, document))
         .get();
+
+      // Fallback: check hash history for books that changed after metadata edits
+      if (!matchedBook) {
+        const hashEntry = await db
+          .select({ bookId: bookHashes.bookId })
+          .from(bookHashes)
+          .where(eq(bookHashes.md5Hash, document))
+          .get();
+        if (hashEntry) {
+          matchedBook = { id: hashEntry.bookId };
+        }
+      }
 
       if (matchedBook) {
         const progress = await db
