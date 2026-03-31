@@ -56,15 +56,20 @@ export async function buildApp(config: Config, externalDb?: AppDatabase) {
 
   const storage = new StorageService(config);
 
-  // One-time migration: create author records for existing books
+  // Migrate books that don't have author links yet
   if (!externalDb) {
-    const { bookAuthors, books } = await import("@verso/shared");
-    const hasLinks = db.select().from(bookAuthors).limit(1).all().length > 0;
-    const hasBooks = db.select().from(books).limit(1).all().length > 0;
-    if (!hasLinks && hasBooks) {
-      console.log("Migrating existing books to author records...");
+    const { bookAuthors, books: booksTable } = await import("@verso/shared");
+    const unlinkedBooks = db
+      .select({ id: booksTable.id })
+      .from(booksTable)
+      .leftJoin(bookAuthors, sql`${bookAuthors.bookId} = ${booksTable.id}`)
+      .where(sql`${bookAuthors.bookId} IS NULL`)
+      .limit(1)
+      .all();
+    if (unlinkedBooks.length > 0) {
+      console.log("Migrating books without author links...");
       migrateExistingAuthors(db, storage)
-        .then((count) => console.log(`Author migration complete: ${count} authors created`))
+        .then((count) => console.log(`Author migration complete: ${count} authors enriched`))
         .catch((err) => console.error("Author migration failed:", err));
     }
   }

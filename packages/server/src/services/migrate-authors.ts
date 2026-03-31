@@ -1,17 +1,22 @@
-import { books } from "@verso/shared";
+import { sql } from "drizzle-orm";
+import { books, bookAuthors } from "@verso/shared";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { syncBookAuthors } from "./sync-book-authors.js";
 import { enrichAuthor } from "./enrich-author.js";
 
 /**
- * One-time migration: scan all books, create author records, and link them.
- * Call this on server startup if bookAuthors table is empty.
+ * Migration: create author records for books that don't have author links yet.
+ * Safe to call on every startup — only processes unlinked books.
  */
 export async function migrateExistingAuthors(
   db: BetterSQLite3Database<any>,
   storage: { put: (path: string, data: Buffer) => Promise<void> },
 ): Promise<number> {
-  const allBooks = await db.select({ id: books.id, author: books.author }).from(books);
+  const allBooks = await db
+    .select({ id: books.id, author: books.author })
+    .from(books)
+    .leftJoin(bookAuthors, sql`${bookAuthors.bookId} = ${books.id}`)
+    .where(sql`${bookAuthors.bookId} IS NULL`);
 
   let authorCount = 0;
   const enriched = new Set<string>();
