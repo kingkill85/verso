@@ -6,25 +6,26 @@ import { BookGrid } from "@/components/books/book-grid";
 import { FilterChips } from "@/components/shelves/filter-chips";
 
 export const Route = createFileRoute("/_app/search")({
-  validateSearch: (search: Record<string, unknown>): { q: string } => ({
+  validateSearch: (search: Record<string, unknown>): { q: string; genre?: string } => ({
     q: typeof search.q === "string" ? search.q : "",
+    genre: typeof search.genre === "string" ? search.genre : undefined,
   }),
   component: SearchPage,
 });
 
 function SearchPage() {
   const { t } = useTranslation();
-  const { q } = Route.useSearch();
-  const [selectedGenreSlug, setSelectedGenreSlug] = useState<string | null>(null);
+  const { q, genre } = Route.useSearch();
+  const [selectedGenreSlug, setSelectedGenreSlug] = useState<string | null>(genre ?? null);
   const [selectedFormat, setSelectedFormat] = useState<string | null>(null);
 
   const searchQuery = trpc.books.search.useQuery(
     {
-      query: q,
+      query: q || undefined,
       genreSlug: selectedGenreSlug ?? undefined,
       format: (selectedFormat?.toLowerCase() as "epub" | "pdf" | "mobi") ?? undefined,
     },
-    { enabled: q.length > 0 },
+    { enabled: q.length > 0 || !!selectedGenreSlug },
   );
 
   const books = searchQuery.data?.books ?? [];
@@ -59,7 +60,7 @@ function SearchPage() {
     return Array.from(set).sort();
   }, [books]);
 
-  if (!q) {
+  if (!q && !selectedGenreSlug) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center" style={{ color: "var(--text-dim)" }}>
         <p className="font-display text-lg">{t("search.searchLibrary")}</p>
@@ -77,7 +78,9 @@ function SearchPage() {
         <p className="text-sm mt-0.5" style={{ color: "var(--text-dim)" }}>
           {searchQuery.isLoading
             ? t("search.searching")
-            : t("search.resultsFor", { count: searchQuery.data?.total ?? 0, query: q })}
+            : q
+              ? t("search.resultsFor", { count: searchQuery.data?.total ?? 0, query: q })
+              : t("search.resultsCount", { count: searchQuery.data?.total ?? 0 })}
         </p>
       </div>
 

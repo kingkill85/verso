@@ -381,11 +381,14 @@ export const booksRouter = router({
     const { query, genreSlug, author, format, page = 1, limit = 50 } = input;
     const offset = (page - 1) * limit;
 
-    // Build dynamic WHERE conditions using Drizzle sql template chunks
-    const conditions = [
-      sql`books_fts MATCH ${escapeFts5(query)}`,
-    ];
+    const useFts = !!query;
 
+    // Build dynamic WHERE conditions
+    const conditions: ReturnType<typeof sql>[] = [];
+
+    if (useFts) {
+      conditions.push(sql`books_fts MATCH ${escapeFts5(query)}`);
+    }
     if (genreSlug) {
       conditions.push(
         sql`b.id IN (SELECT bg.book_id FROM book_genres bg JOIN genres g ON g.id = bg.genre_id WHERE g.slug = ${genreSlug})`
@@ -398,23 +401,46 @@ export const booksRouter = router({
       conditions.push(sql`b.file_format = ${format}`);
     }
 
+    if (conditions.length === 0) {
+      return { books: [], total: 0, page };
+    }
+
     const whereClause = sql.join(conditions, sql` AND `);
 
-    const countRow = ctx.db.get<{ total: number }>(sql`
-      SELECT count(*) AS total
-      FROM books_fts
-      JOIN books b ON b.rowid = books_fts.rowid
-      WHERE ${whereClause}
-    `);
+    let countRow: { total: number } | undefined;
+    let rows: any[];
 
-    const rows = ctx.db.all<any>(sql`
-      SELECT b.*, bm25(books_fts, 10, 5, 1) AS rank
-      FROM books_fts
-      JOIN books b ON b.rowid = books_fts.rowid
-      WHERE ${whereClause}
-      ORDER BY rank
-      LIMIT ${limit} OFFSET ${offset}
-    `);
+    if (useFts) {
+      countRow = ctx.db.get<{ total: number }>(sql`
+        SELECT count(*) AS total
+        FROM books_fts
+        JOIN books b ON b.rowid = books_fts.rowid
+        WHERE ${whereClause}
+      `);
+
+      rows = ctx.db.all<any>(sql`
+        SELECT b.*, bm25(books_fts, 10, 5, 1) AS rank
+        FROM books_fts
+        JOIN books b ON b.rowid = books_fts.rowid
+        WHERE ${whereClause}
+        ORDER BY rank
+        LIMIT ${limit} OFFSET ${offset}
+      `);
+    } else {
+      countRow = ctx.db.get<{ total: number }>(sql`
+        SELECT count(*) AS total
+        FROM books b
+        WHERE ${whereClause}
+      `);
+
+      rows = ctx.db.all<any>(sql`
+        SELECT b.*
+        FROM books b
+        WHERE ${whereClause}
+        ORDER BY b.title
+        LIMIT ${limit} OFFSET ${offset}
+      `);
+    }
 
     // Map snake_case columns to camelCase to match Drizzle schema
     const bookResults = rows.map((row) => ({

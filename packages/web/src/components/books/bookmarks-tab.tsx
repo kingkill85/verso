@@ -1,19 +1,14 @@
 import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
+import { formatDate } from "@/lib/format-date";
 
 interface BookmarksTabProps {
   bookId: string;
 }
 
 export function BookmarksTab({ bookId }: BookmarksTabProps) {
+  const { i18n } = useTranslation();
   const bookmarksQuery = trpc.annotations.listBookmarks.useQuery({ bookId });
   const utils = trpc.useUtils();
   const deleteBookmark = trpc.annotations.deleteBookmark.useMutation({
@@ -56,7 +51,7 @@ export function BookmarksTab({ bookId }: BookmarksTabProps) {
               {bm.chapter ?? "Unknown Chapter"}
             </p>
             <p className="text-xs mt-1" style={{ color: "var(--text-faint)" }}>
-              {bm.content ? `${bm.content}%` : ""}{bm.content && " · "}{formatDate(bm.createdAt)}
+              {bm.content ? `${bm.content}%` : ""}{bm.content && " · "}{formatDate(bm.createdAt, i18n.language, true)}
             </p>
           </Link>
           <button

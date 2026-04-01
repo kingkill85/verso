@@ -4,6 +4,7 @@ import type { TocItem } from "@/hooks/use-reader";
 import type { Annotation } from "@verso/shared";
 import { BookCover } from "@/components/books/book-cover";
 import { XIcon } from "@/components/icons";
+import { formatDateCompact } from "@/lib/format-date";
 
 type ReaderSidebarProps = {
   open: boolean;
@@ -33,12 +34,6 @@ const COLOR_MAP: Record<string, string> = {
   pink: "#ec4899",
 };
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-}
 
 export function ReaderSidebar({
   open,
@@ -200,7 +195,7 @@ function BookmarksTab({
   onNavigate: (cfi: string) => void;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   if (bookmarks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4">
@@ -226,7 +221,7 @@ function BookmarksTab({
               {bm.chapter ?? t("reader.unknownChapter")}
             </p>
             <p className="text-[11px] mt-0.5" style={{ color: "var(--text-faint)" }}>
-              {bm.content ? `${bm.content}%` : ""}{bm.content && " · "}{formatDate(bm.createdAt)}
+              {bm.content ? `${bm.content}%` : ""}{bm.content && " · "}{formatDateCompact(bm.createdAt, i18n.language)}
             </p>
           </div>
           <button
@@ -253,7 +248,7 @@ function AnnotationsTab({
   onNavigate: (cfi: string) => void;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   if (annotations.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4">
@@ -305,7 +300,7 @@ function AnnotationsTab({
                     </p>
                   )}
                   <p className="text-[11px] mt-1" style={{ color: "var(--text-faint)" }}>
-                    {formatDate(ann.createdAt)}
+                    {formatDateCompact(ann.createdAt, i18n.language)}
                   </p>
                 </div>
                 <button
