@@ -63,7 +63,17 @@ export class CfiConverter {
       throw new Error(`CFI spine index ${cfiSpineIndex} does not match converter spine index ${this.spineIndex}`);
     }
 
-    const contentPath = spineMatch[2];
+    // Range CFIs have format: /parent,/start,/end — resolve parent+end as the position
+    let contentPath = spineMatch[2];
+    const commaIdx = contentPath.indexOf(",");
+    if (commaIdx !== -1) {
+      const parent = contentPath.slice(0, commaIdx);
+      const rest = contentPath.slice(commaIdx + 1);
+      const lastComma = rest.lastIndexOf(",");
+      const end = lastComma !== -1 ? rest.slice(lastComma + 1) : rest;
+      contentPath = parent + end;
+    }
+
     const { steps, textOffset } = this.parseCfiPath(contentPath);
     const element = this.resolveElementFromCfiSteps(steps);
     if (!element) throw new Error(`Element not found for CFI: ${cfi}`);
