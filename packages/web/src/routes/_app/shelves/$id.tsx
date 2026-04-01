@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
 import { BookGrid } from "@/components/books/book-grid";
+import { BackButton } from "@/components/back-button";
 import { BookCard } from "@/components/books/book-card";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { MoreHorizontalIcon, XIcon, renderShelfIcon, translateShelfName } from "@/components/icons";
@@ -77,16 +78,7 @@ function ShelfDetailPage() {
 
   return (
     <div className="animate-in fade-in">
-      <button
-        onClick={() => window.history.back()}
-        className="inline-flex items-center text-sm mb-6 transition-colors hover:opacity-80"
-        style={{ color: "var(--text-dim)" }}
-      >
-        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        {t("common.back")}
-      </button>
+      <BackButton />
 
       <div className="mb-6">
         <div className="flex items-center gap-3">

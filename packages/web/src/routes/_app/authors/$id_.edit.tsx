@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate, useBlocker } from "@tanstack/react-router
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
 import { useAuth } from "@/hooks/use-auth";
+import { BackButton } from "@/components/back-button";
 import { getAccessToken } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/authors/$id_/edit")({
@@ -188,12 +189,7 @@ function AuthorEditPage() {
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in">
       <div className="flex items-center justify-between mb-6">
-        <button onClick={() => window.history.back()} className="inline-flex items-center text-sm transition-colors hover:opacity-80" style={{ color: "var(--text-dim)" }}>
-          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          {t("edit.backTo", { name: author.name })}
-        </button>
+        <BackButton label={t("edit.backTo", { name: author.name })} />
         <button
           onClick={handleSave}
           disabled={!isDirty || saving}

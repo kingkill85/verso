@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
 import { useAuth } from "@/hooks/use-auth";
 import { BookCard } from "@/components/books/book-card";
+import { BackButton } from "@/components/back-button";
 
 export const Route = createFileRoute("/_app/authors/$id")({
   component: AuthorDetailPage,
@@ -65,6 +66,8 @@ function AuthorDetailPage() {
 
   return (
     <div>
+      <BackButton />
+
       {/* Author header */}
       <div className="flex gap-4 md:gap-6 mb-6 md:mb-8">
         <div

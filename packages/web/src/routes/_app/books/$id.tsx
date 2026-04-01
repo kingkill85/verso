@@ -8,6 +8,7 @@ import { AnnotationsTab } from "@/components/books/annotations-tab";
 import { BookmarksTab } from "@/components/books/bookmarks-tab";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { getAccessToken } from "@/lib/auth";
+import { BackButton } from "@/components/back-button";
 import { useAuth } from "@/hooks/use-auth";
 import { MoreHorizontalIcon } from "@/components/icons";
 
@@ -94,27 +95,7 @@ function BookDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in">
-      {/* Back link */}
-      <button
-        onClick={() => window.history.back()}
-        className="inline-flex items-center text-sm mb-4 transition-colors hover:opacity-80"
-        style={{ color: "var(--text-dim)" }}
-      >
-        <svg
-          className="w-4 h-4 mr-1"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 19l-7-7 7-7"
-          />
-        </svg>
-        {t("book.back")}
-      </button>
+      <BackButton />
 
       {/* Hero section — always side by side */}
       <div
