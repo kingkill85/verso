@@ -208,14 +208,23 @@ export function registerSyncRoutes(
         .get();
 
       if (existingProgress) {
+        // Only update position if the incoming data is newer than what's stored
+        const lastStatTime = new Date(lastStat.start_time * 1000);
+        const storedTime = existingProgress.lastReadAt ? new Date(existingProgress.lastReadAt) : new Date(0);
+        const isNewer = lastStatTime > storedTime;
+
         await db.update(readingProgress).set({
-          percentage,
-          currentPage: lastStat.page,
-          totalPages: lastStat.total_pages,
+          // Always update time spent (additive stat)
           timeSpentMinutes: Math.ceil(totalTime / 60),
-          lastReadAt: now,
-          deviceId: device_id,
-          finishedAt: existingProgress.finishedAt ?? (percentage >= 98 ? now : null),
+          // Only update position if KOReader data is newer
+          ...(isNewer ? {
+            percentage,
+            currentPage: lastStat.page,
+            totalPages: lastStat.total_pages,
+            lastReadAt: now,
+            deviceId: device_id,
+            finishedAt: existingProgress.finishedAt ?? (percentage >= 98 ? now : null),
+          } : {}),
         }).where(eq(readingProgress.id, existingProgress.id));
       } else {
         await db.insert(readingProgress).values({

@@ -167,14 +167,18 @@ describe("progress router", () => {
   });
 
   describe("reset", () => {
-    it("deletes reading progress", async () => {
-      await authedCaller.progress.sync({ bookId, percentage: 50 });
+    it("zeroes out progress but keeps the record", async () => {
+      await authedCaller.progress.sync({ bookId, percentage: 50, cfiPosition: "epubcfi(/6/4!/4/2)" });
 
       const result = await authedCaller.progress.reset({ bookId });
       expect(result.success).toBe(true);
 
       const progress = await authedCaller.progress.get({ bookId });
-      expect(progress).toBeNull();
+      expect(progress).not.toBeNull();
+      expect(progress!.percentage).toBe(0);
+      expect(progress!.cfiPosition).toBeNull();
+      expect(progress!.kosyncProgress).toBeNull();
+      expect(progress!.finishedAt).toBeNull();
     });
 
     it("succeeds even if no progress exists", async () => {

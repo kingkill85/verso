@@ -79,11 +79,6 @@ export const progressRouter = router({
     }
 
     if (existing) {
-      // Only update if this sync is newer than what's stored
-      if (existing.lastReadAt && new Date(existing.lastReadAt) > new Date(now)) {
-        return existing;
-      }
-
       // Try to convert CFI → XPointer for KOReader
       let convertedXPointer: string | undefined;
       if (input.cfiPosition) {
@@ -173,14 +168,28 @@ export const progressRouter = router({
   }),
 
   reset: protectedProcedure.input(progressGetInput).mutation(async ({ ctx, input }) => {
-    await ctx.db
-      .delete(readingProgress)
-      .where(
-        and(
-          eq(readingProgress.bookId, input.bookId),
-          eq(readingProgress.userId, ctx.user.sub),
-        ),
-      );
+    const now = new Date().toISOString();
+    const existing = await ctx.db.query.readingProgress.findFirst({
+      where: and(
+        eq(readingProgress.bookId, input.bookId),
+        eq(readingProgress.userId, ctx.user.sub),
+      ),
+    });
+
+    if (existing) {
+      await ctx.db
+        .update(readingProgress)
+        .set({
+          percentage: 0,
+          cfiPosition: null,
+          kosyncProgress: null,
+          currentPage: null,
+          finishedAt: null,
+          lastReadAt: now,
+        })
+        .where(eq(readingProgress.id, existing.id));
+    }
+
     return { success: true };
   }),
 });
