@@ -10,6 +10,7 @@ import { appPasswordRouter } from "./routers/app-password.js";
 import { adminRouter } from "./routers/admin.js";
 import { kindleRouter } from "./routers/kindle.js";
 import { authorsRouter } from "./routers/authors.js";
+import { genresRouter } from "./routers/genres.js";
 
 export const appRouter = router({
   auth: authRouter,
@@ -23,6 +24,7 @@ export const appRouter = router({
   admin: adminRouter,
   kindle: kindleRouter,
   authors: authorsRouter,
+  genres: genresRouter,
 });
 
 export type AppRouter = typeof appRouter;
