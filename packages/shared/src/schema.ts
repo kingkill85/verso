@@ -32,7 +32,6 @@ export const books = sqliteTable("books", {
   language: text("language", { length: 10 }),
   description: text("description"),
   genre: text("genre", { length: 100 }),
-  tags: text("tags"),
   coverPath: text("cover_path"),
   filePath: text("file_path").notNull(),
   fileFormat: text("file_format", { length: 10 }).notNull(),

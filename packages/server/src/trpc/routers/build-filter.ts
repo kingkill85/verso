@@ -41,28 +41,6 @@ function buildCondition(cond: SmartFilterCondition) {
     }
   }
 
-  // Tags require special handling — stored as JSON array
-  if (field === "tags") {
-    const strVal = String(value);
-    switch (op) {
-      case "eq":
-      case "contains":
-        return sql`EXISTS (SELECT 1 FROM json_each(${books.tags}) WHERE value = ${strVal})`;
-      case "neq":
-        return sql`NOT EXISTS (SELECT 1 FROM json_each(${books.tags}) WHERE value = ${strVal})`;
-      case "in":
-        if (Array.isArray(value)) {
-          const conditions = value.map(
-            (v) => sql`EXISTS (SELECT 1 FROM json_each(${books.tags}) WHERE value = ${v})`
-          );
-          return or(...conditions);
-        }
-        return sql`1=0`;
-      default:
-        return sql`1=0`;
-    }
-  }
-
   const column = columnMap[field as keyof typeof columnMap];
   if (!column) return sql`1=0`;
 

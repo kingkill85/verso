@@ -18,7 +18,6 @@ export type ParsedMetadata = {
   description?: string;
   genre?: string;
   pageCount?: number;
-  tags?: string[];
   series?: string;
   seriesIndex?: number;
   coverDataUrl?: string;
@@ -112,8 +111,8 @@ export async function extractMetadata(filePath: string): Promise<ParsedMetadata>
   if (kv["Comments"]) meta.description = stripHtml(kv["Comments"]);
 
   if (kv["Tags"]) {
-    meta.tags = kv["Tags"].split(",").map((t) => t.trim()).filter(Boolean);
-    if (meta.tags.length > 0) meta.genre = meta.tags[0];
+    const tags = kv["Tags"].split(",").map((t: string) => t.trim()).filter(Boolean);
+    if (tags.length > 0) meta.genre = tags[0];
   }
 
   if (kv["Series"]) {
@@ -175,8 +174,8 @@ function parseFetchBlocks(output: string): ParsedMetadata[] {
     if (kv["Comments"]) meta.description = stripHtml(kv["Comments"]);
 
     if (kv["Tags"]) {
-      meta.tags = kv["Tags"].split(",").map((t) => t.trim()).filter(Boolean);
-      if (meta.tags.length > 0) meta.genre = meta.tags[0];
+      const tags = kv["Tags"].split(",").map((t: string) => t.trim()).filter(Boolean);
+      if (tags.length > 0) meta.genre = tags[0];
     }
 
     if (kv["Series"]) {
@@ -252,7 +251,6 @@ export async function writeMetadata(filePath: string, metadata: {
   genre?: string | null;
   series?: string | null;
   seriesIndex?: number | null;
-  tags?: string[];
 }): Promise<void> {
   const args: string[] = [filePath];
 
@@ -266,15 +264,8 @@ export async function writeMetadata(filePath: string, metadata: {
     args.push("--series", metadata.series);
     if (metadata.seriesIndex != null) args.push("--index", String(metadata.seriesIndex));
   }
-  if (metadata.tags && metadata.tags.length > 0) {
-    args.push("--tags", metadata.tags.join(","));
-  }
   if (metadata.genre) {
-    // Add genre as a tag if not already in tags
-    const existingTags = args.indexOf("--tags");
-    if (existingTags === -1) {
-      args.push("--tags", metadata.genre);
-    }
+    args.push("--tags", metadata.genre);
   }
 
   if (args.length > 1) {

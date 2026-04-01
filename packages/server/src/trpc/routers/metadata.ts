@@ -70,7 +70,7 @@ export const metadataRouter = router({
         publisher: meta.publisher,
         year: meta.year,
         description: meta.description,
-        genres: meta.tags ?? (meta.genre ? [meta.genre] : []),
+        genres: meta.genre ? [meta.genre] : [],
         language: meta.language,
         pageCount: meta.pageCount,
         series: meta.series,

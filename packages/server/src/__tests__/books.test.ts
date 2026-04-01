@@ -143,15 +143,6 @@ describe("books router", () => {
       expect(updated.metadataLocked).toBe(true);
     });
 
-    it("updates tags as JSON", async () => {
-      const inserted = await insertBook();
-      const updated = await authedCaller.books.update({
-        id: inserted.id,
-        tags: ["fiction", "sci-fi"],
-      });
-      expect(JSON.parse(updated.tags!)).toEqual(["fiction", "sci-fi"]);
-    });
-
     it("throws NOT_FOUND for missing book", async () => {
       await expect(
         authedCaller.books.update({ id: crypto.randomUUID(), title: "X" })

@@ -152,7 +152,6 @@ export function registerUploadRoute(
             language: metadata.language,
             description: metadata.description,
             genre: metadata.genre,
-            tags: metadata.tags ? JSON.stringify(metadata.tags) : null,
             coverPath: coverPath || null,
             filePath,
             fileFormat: outputFormat,

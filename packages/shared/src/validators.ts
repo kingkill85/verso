@@ -44,7 +44,6 @@ export const bookUpdateInput = z.object({
   language: z.string().max(10).nullable().optional(),
   description: z.string().nullable().optional(),
   genreIds: z.array(z.string().uuid()).optional(),
-  tags: z.array(z.string()).optional(),
   series: z.string().max(255).nullable().optional(),
   seriesIndex: z.number().nullable().optional(),
   pageCount: z.number().int().positive().nullable().optional(),
