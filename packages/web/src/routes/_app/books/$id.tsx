@@ -11,7 +11,7 @@ import { getAccessToken } from "@/lib/auth";
 import { BackButton } from "@/components/back-button";
 import { formatDate } from "@/lib/format-date";
 import { useAuth } from "@/hooks/use-auth";
-import { Download, Pencil, CheckCircle, RotateCcw, Trash2, Tablet } from "lucide-react";
+import { Download, Pencil, CheckCircle, RotateCcw, Trash2, Tablet, Check } from "lucide-react";
 
 export const Route = createFileRoute("/_app/books/$id")({
   component: BookDetailPage,
@@ -95,7 +95,7 @@ function BookDetailPage() {
         <div className="flex gap-4 md:gap-6">
           {/* Cover + Read button */}
           <div className="shrink-0 flex flex-col items-stretch gap-2">
-            <div className="block md:hidden">
+            <div className="relative block md:hidden">
               <BookCover
                 bookId={book.id}
                 title={book.title}
@@ -104,8 +104,13 @@ function BookDetailPage() {
                 updatedAt={book.updatedAt}
                 size="lg"
               />
+              {progressQuery.data?.finishedAt && (
+                <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.7)" }}>
+                  <Check size={12} strokeWidth={3} color="white" />
+                </div>
+              )}
             </div>
-            <div className="hidden md:block">
+            <div className="relative hidden md:block">
               <BookCover
                 bookId={book.id}
                 title={book.title}
@@ -114,6 +119,11 @@ function BookDetailPage() {
                 updatedAt={book.updatedAt}
                 size="xl"
               />
+              {progressQuery.data?.finishedAt && (
+                <div className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.7)" }}>
+                  <Check size={14} style={{ color: "rgba(255,255,255,0.85)" }} />
+                </div>
+              )}
             </div>
             {(book.fileFormat === "epub" || book.fileFormat === "pdf") && (
               <Link
