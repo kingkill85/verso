@@ -127,6 +127,13 @@
       "when": 1775051219250,
       "tag": "0017_watery_amphibian",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1775081078559,
+      "tag": "0018_giant_rockslide",
+      "breakpoints": true
     }
   ]
 }
