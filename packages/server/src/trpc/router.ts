@@ -12,6 +12,7 @@ import { kindleRouter } from "./routers/kindle.js";
 import { authorsRouter } from "./routers/authors.js";
 import { genresRouter } from "./routers/genres.js";
 import { publishersRouter } from "./routers/publishers.js";
+import { seriesRouter } from "./routers/series.js";
 
 export const appRouter = router({
   auth: authRouter,
@@ -27,6 +28,7 @@ export const appRouter = router({
   authors: authorsRouter,
   genres: genresRouter,
   publishers: publishersRouter,
+  series: seriesRouter,
 });
 
 export type AppRouter = typeof appRouter;
