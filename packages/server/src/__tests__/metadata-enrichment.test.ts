@@ -373,7 +373,7 @@ describe("parseGoodreadsBookPage", () => {
     const book = parseGoodreadsBookPage(html, BOOK_URL);
 
     expect(book).not.toBeNull();
-    expect(book!.genre).toBe("Crime");
+    expect(book!.genres).toEqual(["Crime", "Thriller"]);
   });
 
   it("returns null when no JSON-LD script tag is present", () => {

@@ -1,5 +1,7 @@
 import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
+import { formatDate } from "@/lib/format-date";
 import type { Annotation } from "@verso/shared";
 
 const COLOR_MAP: Record<string, string> = {
@@ -9,20 +11,13 @@ const COLOR_MAP: Record<string, string> = {
   pink: "#ec4899",
 };
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
 interface AnnotationsTabProps {
   bookId: string;
 }
 
 export function AnnotationsTab({ bookId }: AnnotationsTabProps) {
   const annotationsQuery = trpc.annotations.list.useQuery({ bookId });
+  const { i18n } = useTranslation();
   const utils = trpc.useUtils();
   const deleteAnnotation = trpc.annotations.delete.useMutation({
     onSuccess: () => utils.annotations.list.invalidate({ bookId }),
@@ -105,7 +100,7 @@ export function AnnotationsTab({ bookId }: AnnotationsTabProps) {
                     )}
 
                     <p className="text-xs mt-2" style={{ color: "var(--text-faint)" }}>
-                      {formatDate(ann.createdAt)}
+                      {formatDate(ann.createdAt, i18n.language, true)}
                     </p>
                   </div>
 

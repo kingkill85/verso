@@ -3,6 +3,7 @@ import { books, bookAuthors } from "@verso/shared";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { syncBookAuthors } from "./sync-book-authors.js";
 import { enrichAuthor } from "./enrich-author.js";
+import { enrichAuthorV2 } from "./enrich-author-v2.js";
 
 /**
  * Migration: create author records for books that don't have author links yet.
@@ -37,4 +38,29 @@ export async function migrateExistingAuthors(
   }
 
   return enriched.size;
+}
+
+/**
+ * Migration: move existing authors.description values into the authorDescriptions table.
+ * Safe to call on every startup — uses INSERT OR IGNORE and handles missing column gracefully.
+ */
+export function migrateAuthorDescriptions(
+  db: BetterSQLite3Database<any>,
+): number {
+  try {
+    const result = db.run(sql`
+      INSERT OR IGNORE INTO author_descriptions (author_id, locale, description, manually_edited)
+      SELECT id, 'en', description, 0
+      FROM authors
+      WHERE description IS NOT NULL
+        AND description != ''
+        AND id NOT IN (
+          SELECT author_id FROM author_descriptions WHERE locale = 'en'
+        )
+    `);
+    return result.changes;
+  } catch {
+    // Column may already be dropped — that's fine
+    return 0;
+  }
 }

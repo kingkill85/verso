@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createTestContext } from "../test-utils.js";
-import { books } from "@verso/shared";
+import { books, genres, bookGenres } from "@verso/shared";
+import { eq } from "drizzle-orm";
 
 describe("books.search (FTS5)", () => {
   let ctx: Awaited<ReturnType<typeof createTestContext>>;
@@ -74,11 +75,20 @@ describe("books.search (FTS5)", () => {
   });
 
   it("filters by genre", async () => {
-    await insertBook({ title: "Sci-Fi Novel", genre: "Science Fiction" });
-    await insertBook({ title: "Sci-Fi Guide", genre: "Reference" });
-    const result = await authedCaller.books.search({ query: "Sci-Fi", genre: "Science Fiction" });
+    const scifiBook = await insertBook({ title: "Sci-Fi Novel" });
+    const refBook = await insertBook({ title: "Sci-Fi Guide" });
+
+    // Insert genres and link them
+    const [scifi] = await ctx.db.insert(genres).values({ slug: "science-fiction", name: "Science Fiction", isDefault: true }).returning();
+    const [ref] = await ctx.db.insert(genres).values({ slug: "reference", name: "Reference", isDefault: true }).returning();
+    await ctx.db.insert(bookGenres).values([
+      { bookId: scifiBook.id, genreId: scifi.id },
+      { bookId: refBook.id, genreId: ref.id },
+    ]);
+
+    const result = await authedCaller.books.search({ query: "Sci-Fi", genreSlug: "science-fiction" });
     expect(result.books).toHaveLength(1);
-    expect(result.books[0].genre).toBe("Science Fiction");
+    expect(result.books[0].title).toBe("Sci-Fi Novel");
   });
 
   it("filters by format", async () => {

@@ -1,15 +1,18 @@
 import { TRPCError } from "@trpc/server";
-import { eq, sql, desc, like } from "drizzle-orm";
+import { eq, sql, desc, like, and } from "drizzle-orm";
 import {
   authors,
   bookAuthors,
   books,
+  authorDescriptions,
   authorListInput,
   authorByIdInput,
   authorRefreshInput,
+  authorUpdateInput,
+  authorUpdateDescriptionInput,
 } from "@verso/shared";
-import { router, protectedProcedure } from "../index.js";
-import { enrichAuthor } from "../../services/enrich-author.js";
+import { router, protectedProcedure, adminProcedure } from "../index.js";
+import { enrichAuthorV2 } from "../../services/enrich-author-v2.js";
 
 export const authorsRouter = router({
   list: protectedProcedure.input(authorListInput).query(async ({ ctx, input }) => {
@@ -40,9 +43,20 @@ export const authorsRouter = router({
       throw new TRPCError({ code: "NOT_FOUND", message: "Author not found" });
     }
 
-    // If no metadata yet, try enriching in background
-    if (!author.description && !author.openLibraryKey) {
-      enrichAuthor(ctx.db, author.id, author.name, ctx.storage).catch(() => {});
+    // Fetch localized descriptions
+    const descriptions = ctx.db
+      .select({
+        locale: authorDescriptions.locale,
+        description: authorDescriptions.description,
+        manuallyEdited: authorDescriptions.manuallyEdited,
+      })
+      .from(authorDescriptions)
+      .where(eq(authorDescriptions.authorId, input.id))
+      .all();
+
+    // If no descriptions yet, try enriching in background
+    if (descriptions.length === 0 && !author.openLibraryKey) {
+      enrichAuthorV2(ctx.db, author.id, author.name, ctx.storage).catch(() => {});
     }
 
     const authorBooks = await ctx.db
@@ -59,17 +73,76 @@ export const authorsRouter = router({
       .where(eq(bookAuthors.authorId, input.id))
       .orderBy(books.year, books.title);
 
-    return { ...author, books: authorBooks };
+    return { ...author, descriptions, books: authorBooks };
   }),
 
-  refreshMetadata: protectedProcedure.input(authorRefreshInput).mutation(async ({ ctx, input }) => {
+  update: adminProcedure.input(authorUpdateInput).mutation(async ({ ctx, input }) => {
     const author = await ctx.db.select().from(authors).where(eq(authors.id, input.id)).get();
 
     if (!author) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Author not found" });
     }
 
-    await enrichAuthor(ctx.db, author.id, author.name, ctx.storage);
+    const updates: Record<string, any> = { updatedAt: new Date().toISOString() };
+    if (input.name) updates.name = input.name;
+
+    await ctx.db.update(authors).set(updates).where(eq(authors.id, input.id));
+
+    return ctx.db.select().from(authors).where(eq(authors.id, input.id)).get()!;
+  }),
+
+  updateDescription: adminProcedure.input(authorUpdateDescriptionInput).mutation(async ({ ctx, input }) => {
+    const author = await ctx.db.select().from(authors).where(eq(authors.id, input.authorId)).get();
+
+    if (!author) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Author not found" });
+    }
+
+    const existing = ctx.db
+      .select()
+      .from(authorDescriptions)
+      .where(
+        and(
+          eq(authorDescriptions.authorId, input.authorId),
+          eq(authorDescriptions.locale, input.locale),
+        )
+      )
+      .get();
+
+    if (existing) {
+      ctx.db
+        .update(authorDescriptions)
+        .set({ description: input.description, manuallyEdited: true })
+        .where(
+          and(
+            eq(authorDescriptions.authorId, input.authorId),
+            eq(authorDescriptions.locale, input.locale),
+          )
+        )
+        .run();
+    } else {
+      ctx.db
+        .insert(authorDescriptions)
+        .values({
+          authorId: input.authorId,
+          locale: input.locale,
+          description: input.description,
+          manuallyEdited: true,
+        })
+        .run();
+    }
+
+    return { success: true };
+  }),
+
+  refreshMetadata: adminProcedure.input(authorRefreshInput).mutation(async ({ ctx, input }) => {
+    const author = await ctx.db.select().from(authors).where(eq(authors.id, input.id)).get();
+
+    if (!author) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Author not found" });
+    }
+
+    await enrichAuthorV2(ctx.db, author.id, author.name, ctx.storage);
 
     const updated = await ctx.db.select().from(authors).where(eq(authors.id, input.id)).get();
 

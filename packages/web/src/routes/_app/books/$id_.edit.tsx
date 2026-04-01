@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
 import { BookCover } from "@/components/books/book-cover";
 import { getAccessToken } from "@/lib/auth";
+import { BackButton } from "@/components/back-button";
 
 export const Route = createFileRoute("/_app/books/$id_/edit")({
   component: BookEditPage,
@@ -13,7 +14,7 @@ const FIELDS: { key: string; labelKey: string; type: "text" | "number" | "textar
   { key: "title", labelKey: "edit.field.title", type: "text", group: "basic" },
   // author is handled separately as a multi-pick component
   { key: "description", labelKey: "edit.field.description", type: "textarea", group: "basic" },
-  { key: "genre", labelKey: "edit.field.genre", type: "text", group: "classification" },
+  // genre is handled separately as a multi-pick component
   { key: "language", labelKey: "edit.field.language", type: "text", group: "classification" },
   { key: "series", labelKey: "edit.field.series", type: "text", half: true, group: "classification" },
   { key: "seriesIndex", labelKey: "edit.field.seriesIndex", type: "number", half: true, group: "classification" },
@@ -65,6 +66,10 @@ function BookEditPage() {
   const [initialAuthorTags, setInitialAuthorTags] = useState<string[]>([]);
   const authorsQuery = trpc.authors.list.useQuery({});
 
+  // Genre multi-pick state
+  const [selectedGenres, setSelectedGenres] = useState<{ id: string; slug: string; name: string }[]>([]);
+  const [initialGenreIds, setInitialGenreIds] = useState<string[]>([]);
+
   // Initialize form from book data ONCE, merge metadata selections on top
   useEffect(() => {
     if (!bookQuery.data || initialized) return;
@@ -80,6 +85,11 @@ function BookEditPage() {
     setAuthorTags(tags);
     setInitialAuthorTags(tags);
 
+    // Initialize genres from book data
+    const bookGenres = (bookQuery.data as any).genres ?? [];
+    setSelectedGenres(bookGenres);
+    setInitialGenreIds(bookGenres.map((g: any) => g.id));
+
     setInitialValues(v);
     setValues(metadataApply ? { ...v, ...metadataApply.fields } : v);
     setInitialized(true);
@@ -88,8 +98,11 @@ function BookEditPage() {
   const isDirty = useMemo(() => {
     if (coverUrl) return true;
     if (authorTags.join(", ") !== initialAuthorTags.join(", ")) return true;
+    const currentGenreIds = selectedGenres.map((g) => g.id).sort().join(",");
+    const origGenreIds = [...initialGenreIds].sort().join(",");
+    if (currentGenreIds !== origGenreIds) return true;
     return Object.keys(values).some((k) => values[k] !== initialValues[k]);
-  }, [values, initialValues, coverUrl, authorTags, initialAuthorTags]);
+  }, [values, initialValues, coverUrl, authorTags, initialAuthorTags, selectedGenres, initialGenreIds]);
 
   useEffect(() => {
     if (!isDirty || saving) return;
@@ -132,6 +145,8 @@ function BookEditPage() {
     if (authorStr !== (bookQuery.data.author ?? "")) {
       fields.author = authorStr || null;
     }
+    // Include genre IDs
+    fields.genreIds = selectedGenres.map((g) => g.id);
     if (coverUrl) fields.coverUrl = coverUrl;
     updateMutation.mutate(fields as any);
   };
@@ -160,12 +175,7 @@ function BookEditPage() {
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in">
       <div className="flex items-center justify-between mb-6">
-        <button onClick={() => window.history.back()} className="inline-flex items-center text-sm transition-colors hover:opacity-80" style={{ color: "var(--text-dim)" }}>
-          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          {t("edit.backTo", { name: book.title })}
-        </button>
+        <BackButton label={t("edit.backTo", { name: book.title })} />
         <div className="flex gap-3">
           <Link to="/books/$id/metadata" params={{ id }}
             className="px-5 py-2 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
@@ -214,6 +224,13 @@ function BookEditPage() {
                       tags={authorTags}
                       onChange={setAuthorTags}
                       suggestions={authorsQuery.data?.map((a) => a.name) ?? []}
+                      t={t}
+                    />
+                  )}
+                  {group.id === "classification" && (
+                    <GenreMultiPick
+                      selectedGenres={selectedGenres}
+                      onChange={setSelectedGenres}
                       t={t}
                     />
                   )}
@@ -361,6 +378,156 @@ function renderField(field: typeof FIELDS[number], values: Record<string, string
           className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
           style={{ backgroundColor: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }}
         />
+      )}
+    </div>
+  );
+}
+
+function GenreMultiPick({ selectedGenres, onChange, t }: {
+  selectedGenres: { id: string; slug: string; name: string }[];
+  onChange: (genres: { id: string; slug: string; name: string }[]) => void;
+  t: (key: string, opts?: any) => string;
+}) {
+  const [input, setInput] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const genresQuery = trpc.genres.list.useQuery({});
+  const createGenreMutation = trpc.genres.create.useMutation();
+  const allGenres = genresQuery.data ?? [];
+
+  const displayName = (genre: { slug: string; name: string; isDefault?: boolean }) => {
+    if (genre.isDefault) {
+      const translated = t(`genre.${genre.slug}`);
+      return translated !== `genre.${genre.slug}` ? translated : genre.name;
+    }
+    return genre.name;
+  };
+
+  const filtered = input.trim()
+    ? allGenres.filter(
+        (g) =>
+          (g.name.toLowerCase().includes(input.toLowerCase()) ||
+           displayName(g).toLowerCase().includes(input.toLowerCase())) &&
+          !selectedGenres.some((s) => s.id === g.id)
+      )
+    : [];
+
+  const addGenre = (genre: { id: string; slug: string; name: string }) => {
+    if (selectedGenres.some((s) => s.id === genre.id)) return;
+    onChange([...selectedGenres, genre]);
+    setInput("");
+    setShowSuggestions(false);
+    inputRef.current?.focus();
+  };
+
+  const removeGenre = (index: number) => {
+    onChange(selectedGenres.filter((_, i) => i !== index));
+  };
+
+  const handleCreateCustom = async () => {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    const created = await createGenreMutation.mutateAsync({ name: trimmed });
+    addGenre({ id: created.id, slug: created.slug, name: created.name });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (filtered.length > 0) {
+        addGenre(filtered[0]);
+      } else if (input.trim()) {
+        handleCreateCustom();
+      }
+    } else if (e.key === "Backspace" && !input && selectedGenres.length > 0) {
+      removeGenre(selectedGenres.length - 1);
+    }
+  };
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const showCreateOption = input.trim() && filtered.length === 0;
+
+  return (
+    <div ref={containerRef}>
+      <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-dim)" }}>
+        {t("edit.field.genre")}
+      </label>
+      <div
+        className="flex flex-wrap gap-1.5 rounded-lg border px-2 py-1.5 min-h-[38px] cursor-text"
+        style={{ backgroundColor: "var(--bg)", borderColor: "var(--border)" }}
+        onClick={() => inputRef.current?.focus()}
+      >
+        {selectedGenres.map((genre, i) => (
+          <span
+            key={genre.id}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium"
+            style={{ backgroundColor: "var(--card)", color: "var(--text)" }}
+          >
+            {displayName({ ...genre, isDefault: allGenres.find((g) => g.id === genre.id)?.isDefault ?? false })}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); removeGenre(i); }}
+              className="ml-0.5 hover:opacity-70"
+              style={{ color: "var(--text-faint)" }}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <input
+          ref={inputRef}
+          type="text"
+          value={input}
+          onChange={(e) => { setInput(e.target.value); setShowSuggestions(true); }}
+          onFocus={() => setShowSuggestions(true)}
+          onKeyDown={handleKeyDown}
+          placeholder={selectedGenres.length === 0 ? t("edit.field.genre") : ""}
+          className="flex-1 min-w-[100px] bg-transparent outline-none text-sm py-0.5"
+          style={{ color: "var(--text)" }}
+        />
+      </div>
+      {showSuggestions && (filtered.length > 0 || showCreateOption) && (
+        <div
+          className="mt-1 rounded-lg border shadow-lg overflow-hidden max-h-40 overflow-y-auto"
+          style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
+        >
+          {filtered.slice(0, 8).map((genre) => (
+            <button
+              key={genre.id}
+              type="button"
+              onClick={() => addGenre(genre)}
+              className="w-full text-left px-3 py-2 text-sm hover:opacity-80 transition-colors"
+              style={{ color: "var(--text)" }}
+              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "var(--bg)")}
+              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+            >
+              {displayName(genre)}
+            </button>
+          ))}
+          {showCreateOption && (
+            <button
+              type="button"
+              onClick={handleCreateCustom}
+              className="w-full text-left px-3 py-2 text-sm hover:opacity-80 transition-colors italic"
+              style={{ color: "var(--text-dim)" }}
+              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "var(--bg)")}
+              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+            >
+              {t("genre.addCustom", { name: input.trim() })}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

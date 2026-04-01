@@ -9,7 +9,6 @@ function escapeLike(str: string): string {
 const columnMap = {
   title: books.title,
   author: books.author,
-  genre: books.genre,
   year: books.year,
   language: books.language,
   fileFormat: books.fileFormat,
@@ -18,6 +17,29 @@ const columnMap = {
 
 function buildCondition(cond: SmartFilterCondition) {
   const { field, op, value } = cond;
+
+  // Genre requires special handling — stored in book_genres join table, matched by slug
+  if (field === "genre") {
+    const strVal = String(value);
+    switch (op) {
+      case "eq":
+        return sql`EXISTS (SELECT 1 FROM book_genres bg JOIN genres g ON g.id = bg.genre_id WHERE bg.book_id = ${books.id} AND g.slug = ${strVal})`;
+      case "neq":
+        return sql`NOT EXISTS (SELECT 1 FROM book_genres bg JOIN genres g ON g.id = bg.genre_id WHERE bg.book_id = ${books.id} AND g.slug = ${strVal})`;
+      case "contains":
+        return sql`EXISTS (SELECT 1 FROM book_genres bg JOIN genres g ON g.id = bg.genre_id WHERE bg.book_id = ${books.id} AND g.name LIKE ${"%" + strVal + "%"})`;
+      case "in":
+        if (Array.isArray(value)) {
+          const conditions = value.map(
+            (v) => sql`EXISTS (SELECT 1 FROM book_genres bg JOIN genres g ON g.id = bg.genre_id WHERE bg.book_id = ${books.id} AND g.slug = ${v})`
+          );
+          return or(...conditions);
+        }
+        return sql`1=0`;
+      default:
+        return sql`1=0`;
+    }
+  }
 
   // Tags require special handling — stored as JSON array
   if (field === "tags") {

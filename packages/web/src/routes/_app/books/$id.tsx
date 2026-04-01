@@ -8,8 +8,10 @@ import { AnnotationsTab } from "@/components/books/annotations-tab";
 import { BookmarksTab } from "@/components/books/bookmarks-tab";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { getAccessToken } from "@/lib/auth";
+import { BackButton } from "@/components/back-button";
+import { formatDate } from "@/lib/format-date";
 import { useAuth } from "@/hooks/use-auth";
-import { MoreHorizontalIcon } from "@/components/icons";
+import { Download, Pencil, CheckCircle, RotateCcw, Trash2, Tablet } from "lucide-react";
 
 export const Route = createFileRoute("/_app/books/$id")({
   component: BookDetailPage,
@@ -21,16 +23,9 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
 
 function BookDetailPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const utils = trpc.useUtils();
@@ -59,52 +54,24 @@ function BookDetailPage() {
     setConfirmDelete(true);
   };
 
-  if (bookQuery.isLoading) {
-    return (
-      <div
-        className="flex items-center justify-center py-20"
-        style={{ color: "var(--text-dim)" }}
-      >
-        <p className="text-sm">{t("book.loading")}</p>
-      </div>
-    );
-  }
-
-  if (bookQuery.error || !bookQuery.data) {
-    // Only show "not found" for actual NOT_FOUND errors, not transient network issues
-    const isNotFound = bookQuery.error?.data?.code === "NOT_FOUND";
-    if (!isNotFound && bookQuery.error) {
+  if (!bookQuery.data) {
+    if (bookQuery.isLoading || bookQuery.isFetching) {
       return (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <p className="text-sm" style={{ color: "var(--text-dim)" }}>{t("book.loading")}</p>
+        <div className="flex items-center justify-center py-20" style={{ color: "var(--text-dim)" }}>
+          <p className="text-sm">{t("book.loading")}</p>
         </div>
       );
     }
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <p
-          className="font-display text-lg"
-          style={{ color: "var(--text)" }}
-        >
-          {t("book.notFound")}
-        </p>
-        <button
-          onClick={() => window.history.back()}
-          className="text-sm mt-2"
-          style={{ color: "var(--warm)" }}
-        >
-          {t("book.back")}
-        </button>
+        <p className="font-display text-lg" style={{ color: "var(--text)" }}>{t("book.notFound")}</p>
+        <BackButton className="mt-2" />
       </div>
     );
   }
 
   const book = bookQuery.data;
-  const tags: string[] = [];
-  if (book.genre) tags.push(book.genre);
-  if (book.year) tags.push(String(book.year));
-  if (book.pageCount) tags.push(t("book.pages", { count: book.pageCount }));
-  tags.push(book.fileFormat.toUpperCase());
+  const genreChips: { id: string; slug: string; name: string }[] = (book as any).genres ?? [];
 
   const details = [
     { label: t("detail.publisher"), value: book.publisher },
@@ -113,32 +80,12 @@ function BookDetailPage() {
     { label: t("detail.isbn"), value: book.isbn },
     { label: t("detail.format"), value: book.fileFormat.toUpperCase() },
     { label: t("detail.fileSize"), value: formatFileSize(book.fileSize) },
-    { label: t("detail.added"), value: formatDate(book.createdAt) },
+    { label: t("detail.added"), value: formatDate(book.createdAt, i18n.language) },
   ].filter((d) => d.value);
 
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in">
-      {/* Back link */}
-      <button
-        onClick={() => window.history.back()}
-        className="inline-flex items-center text-sm mb-4 transition-colors hover:opacity-80"
-        style={{ color: "var(--text-dim)" }}
-      >
-        <svg
-          className="w-4 h-4 mr-1"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 19l-7-7 7-7"
-          />
-        </svg>
-        {t("book.back")}
-      </button>
+      <BackButton />
 
       {/* Hero section — always side by side */}
       <div
@@ -146,152 +93,140 @@ function BookDetailPage() {
         style={{ backgroundColor: "var(--card)" }}
       >
         <div className="flex gap-4 md:gap-6">
-          {/* Cover — lg on mobile, xl on desktop */}
-          <div className="shrink-0 block md:hidden">
-            <BookCover
-              bookId={book.id}
-              title={book.title}
-              author={book.author}
-              coverPath={book.coverPath}
-              updatedAt={book.updatedAt}
-              size="lg"
-            />
-          </div>
-          <div className="shrink-0 hidden md:block">
-            <BookCover
-              bookId={book.id}
-              title={book.title}
-              author={book.author}
-              coverPath={book.coverPath}
-              updatedAt={book.updatedAt}
-              size="xl"
-            />
+          {/* Cover + Read button */}
+          <div className="shrink-0 flex flex-col items-stretch gap-2">
+            <div className="block md:hidden">
+              <BookCover
+                bookId={book.id}
+                title={book.title}
+                author={book.author}
+                coverPath={book.coverPath}
+                updatedAt={book.updatedAt}
+                size="lg"
+              />
+            </div>
+            <div className="hidden md:block">
+              <BookCover
+                bookId={book.id}
+                title={book.title}
+                author={book.author}
+                coverPath={book.coverPath}
+                updatedAt={book.updatedAt}
+                size="xl"
+              />
+            </div>
+            {(book.fileFormat === "epub" || book.fileFormat === "pdf") && (
+              <Link
+                to="/books/$id/read"
+                params={{ id }}
+                search={{ cfi: undefined }}
+                className="inline-flex items-center justify-center px-5 py-2 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
+                style={{ backgroundColor: "var(--warm)" }}
+              >
+                {progressQuery.data?.finishedAt
+                  ? t("book.readAgain")
+                  : progressQuery.data?.percentage
+                    ? t("book.continueReading", { percent: Math.round(progressQuery.data.percentage) })
+                    : t("book.startReading")}
+              </Link>
+            )}
           </div>
 
           {/* Info */}
           <div className="flex-1 min-w-0">
-            <h1
-              className="font-display text-lg md:text-2xl font-bold leading-tight"
-              style={{ color: "var(--text)" }}
-            >
-              {book.title}
-            </h1>
-            <p
-              className="font-display italic text-sm md:text-base mt-0.5"
-              style={{ color: "var(--text-dim)" }}
-            >
-              {book.author.split(",").map((name, i, arr) => {
-                const trimmed = name.trim();
-                const match = authorsQuery.data?.find(
-                  (a) => a.name.toLowerCase() === trimmed.toLowerCase()
-                );
-                return (
-                  <span key={trimmed}>
-                    {match ? (
-                      <Link
-                        to="/authors/$id"
-                        params={{ id: match.id }}
-                        className="hover:underline"
-                        style={{ color: "var(--warm)" }}
-                      >
-                        {trimmed}
-                      </Link>
-                    ) : (
-                      trimmed
-                    )}
-                    {i < arr.length - 1 && ", "}
-                  </span>
-                );
-              })}
-            </p>
-            {book.series && (
-              <p
-                className="text-xs mt-0.5"
-                style={{ color: "var(--text-faint)" }}
-              >
-                Book {book.seriesIndex || "?"} of {book.series}
-              </p>
-            )}
+            <div className="flex justify-between items-start gap-2">
+              <div className="min-w-0">
+                <h1
+                  className="font-display text-lg md:text-2xl font-bold leading-tight"
+                  style={{ color: "var(--text)" }}
+                >
+                  {book.title}
+                </h1>
+                <p
+                  className="font-display italic text-sm md:text-base mt-0.5"
+                  style={{ color: "var(--text-dim)" }}
+                >
+                  {book.author.split(",").map((name, i, arr) => {
+                    const trimmed = name.trim();
+                    const match = authorsQuery.data?.find(
+                      (a) => a.name.toLowerCase() === trimmed.toLowerCase()
+                    );
+                    return (
+                      <span key={trimmed}>
+                        {match ? (
+                          <Link
+                            to="/authors/$id"
+                            params={{ id: match.id }}
+                            className="hover:underline"
+                            style={{ color: "var(--warm)" }}
+                          >
+                            {trimmed}
+                          </Link>
+                        ) : (
+                          trimmed
+                        )}
+                        {i < arr.length - 1 && ", "}
+                      </span>
+                    );
+                  })}
+                </p>
+                {book.series && (
+                  <p
+                    className="text-xs mt-0.5"
+                    style={{ color: "var(--text-faint)" }}
+                  >
+                    Book {book.seriesIndex || "?"} of {book.series}
+                  </p>
+                )}
+              </div>
+              {/* Icon actions — top right */}
+              <div className="flex gap-1 shrink-0">
+                <AddToShelfMenu bookId={id} compact />
+                <BookActionButtons
+                  bookId={id}
+                  bookTitle={book.title}
+                  fileFormat={book.fileFormat}
+                  hasProgress={!!progressQuery.data && progressQuery.data.percentage > 0}
+                  isFinished={!!progressQuery.data?.finishedAt}
+                  onDelete={handleDelete}
+                  isDeleting={deleteMutation.isPending}
+                  isAdmin={user?.role === "admin"}
+                />
+              </div>
+            </div>
 
-            {/* Tags */}
-            {tags.length > 0 && (
+            {/* Genres */}
+            {genreChips.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-2 py-0.5 rounded-full text-[11px] font-medium"
+                {genreChips.map((genre) => (
+                  <Link
+                    key={genre.id}
+                    to="/search"
+                    search={{ q: "", genre: genre.slug }}
+                    className="px-2 py-0.5 rounded-full text-[11px] font-medium hover:opacity-80 transition-opacity"
                     style={{
                       backgroundColor: "var(--bg)",
                       color: "var(--text-dim)",
                     }}
                   >
-                    {tag}
-                  </span>
+                    {t(`genre.${genre.slug}`) !== `genre.${genre.slug}` ? t(`genre.${genre.slug}`) : genre.name}
+                  </Link>
                 ))}
               </div>
             )}
 
-            {/* Actions — hidden on mobile, shown on md+ */}
-            <div className="hidden md:flex flex-wrap items-center gap-2 mt-4">
-              {(book.fileFormat === "epub" || book.fileFormat === "pdf") && (
-                <Link
-                  to="/books/$id/read"
-                  params={{ id }}
-                  search={{ cfi: undefined }}
-                  className="inline-flex items-center px-5 py-2 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
-                  style={{ backgroundColor: "var(--warm)" }}
-                >
-                  {progressQuery.data?.finishedAt
-                    ? t("book.readAgain")
-                    : progressQuery.data?.percentage
-                      ? t("book.continueReading", { percent: Math.round(progressQuery.data.percentage) })
-                      : t("book.startReading")}
-                </Link>
-              )}
-              <AddToShelfMenu bookId={id} />
-              <OverflowMenu
-                bookId={id}
-                bookTitle={book.title}
-                fileFormat={book.fileFormat}
-                hasProgress={!!progressQuery.data && progressQuery.data.percentage > 0}
-                isFinished={!!progressQuery.data?.finishedAt}
-                onDelete={handleDelete}
-                isDeleting={deleteMutation.isPending}
-                isAdmin={user?.role === "admin"}
-              />
-            </div>
+            {/* Description */}
+            {book.description && (
+              <p
+                className="font-display italic leading-relaxed text-sm mt-3"
+                style={{ color: "var(--text-dim)" }}
+              >
+                {book.description}
+              </p>
+            )}
           </div>
         </div>
-      </div>
 
-      {/* Mobile actions — below hero card */}
-      <div className="flex md:hidden flex-wrap items-center gap-2 mb-4">
-        {(book.fileFormat === "epub" || book.fileFormat === "pdf") && (
-          <Link
-            to="/books/$id/read"
-            params={{ id }}
-            search={{ cfi: undefined }}
-            className="inline-flex items-center px-5 py-2 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
-            style={{ backgroundColor: "var(--warm)" }}
-          >
-            {progressQuery.data?.finishedAt
-              ? t("book.readAgain")
-              : progressQuery.data?.percentage
-                ? t("book.continueReading", { percent: Math.round(progressQuery.data.percentage) })
-                : t("book.startReading")}
-          </Link>
-        )}
-        <AddToShelfMenu bookId={id} />
-        <OverflowMenu
-          bookId={id}
-          bookTitle={book.title}
-          fileFormat={book.fileFormat}
-          hasProgress={!!progressQuery.data && progressQuery.data.percentage > 0}
-          isFinished={!!progressQuery.data?.finishedAt}
-          onDelete={handleDelete}
-          isDeleting={deleteMutation.isPending}
-          isAdmin={user?.role === "admin"}
-        />
       </div>
 
       {/* Progress section */}
@@ -320,24 +255,6 @@ function BookDetailPage() {
                 : ""}
             </p>
           </div>
-        </div>
-      )}
-
-      {/* Description */}
-      {book.description && (
-        <div className="mb-5">
-          <h2
-            className="font-display text-sm font-semibold mb-2"
-            style={{ color: "var(--text)" }}
-          >
-            {t("book.description")}
-          </h2>
-          <p
-            className="font-display italic leading-relaxed text-sm whitespace-pre-line"
-            style={{ color: "var(--text-dim)" }}
-          >
-            {book.description}
-          </p>
         </div>
       )}
 
@@ -429,7 +346,27 @@ function BookDetailPage() {
   );
 }
 
-function OverflowMenu({
+function ActionButton({ onClick, title, icon, color, disabled }: {
+  onClick: () => void;
+  title: string;
+  icon: React.ReactNode;
+  color?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className="p-2.5 rounded-full border transition-colors hover:opacity-80 disabled:opacity-50"
+      style={{ borderColor: "var(--border)", color: color ?? "var(--text-dim)" }}
+    >
+      {icon}
+    </button>
+  );
+}
+
+function BookActionButtons({
   bookId,
   bookTitle,
   fileFormat,
@@ -449,9 +386,7 @@ function OverflowMenu({
   isAdmin?: boolean;
 }) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils();
 
   const invalidateProgress = () => {
@@ -475,7 +410,6 @@ function OverflowMenu({
   const sendToKindleMut = trpc.kindle.sendBook.useMutation({
     onSuccess: () => {
       setKindleStatus("sent");
-      setOpen(false);
       setTimeout(() => setKindleStatus("idle"), 3000);
     },
     onError: () => {
@@ -484,119 +418,85 @@ function OverflowMenu({
     },
   });
 
-  useEffect(() => {
-    if (!open) return;
-    const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
+  const handleDownload = async () => {
+    const token = getAccessToken();
+    const res = await fetch(`/api/books/${bookId}/file?t=${Date.now()}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      cache: "no-store",
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${bookTitle}.${fileFormat}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <div className="relative" ref={menuRef}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="px-3 py-2.5 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
-        style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
-      >
-        <MoreHorizontalIcon size={20} />
-      </button>
-      {open && (
-        <div
-          className="absolute top-full mt-1 right-0 rounded-xl py-1 min-w-[160px] shadow-lg z-10"
-          style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)" }}
+    <>
+      <ActionButton
+        onClick={handleDownload}
+        title={t("book.download")}
+        icon={<Download size={16} />}
+      />
+      {kindleSettings.data && (
+        <div className="relative">
+          <ActionButton
+            onClick={() => { setKindleStatus("sending"); sendToKindleMut.mutate({ bookId }); }}
+            title={t("kindle.sendToKindle")}
+            icon={<Tablet size={16} />}
+            disabled={sendToKindleMut.isPending}
+          />
+          {kindleStatus === "sent" && (
+            <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg text-[10px] whitespace-nowrap"
+              style={{ backgroundColor: "rgba(74,138,90,0.15)", color: "var(--green)" }}>
+              {t("kindle.sent")}
+            </div>
+          )}
+          {kindleStatus === "error" && (
+            <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg text-[10px] whitespace-nowrap"
+              style={{ backgroundColor: "rgba(220,38,38,0.1)", color: "#ef4444" }}>
+              {t("kindle.sendFailed")}
+            </div>
+          )}
+        </div>
+      )}
+      {isAdmin && (
+        <Link
+          to="/books/$id/edit"
+          params={{ id: bookId }}
+          title={t("book.edit")}
+          className="p-2.5 rounded-full border transition-colors hover:opacity-80"
+          style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
         >
-          <button
-            onClick={async () => {
-              const token = getAccessToken();
-              const res = await fetch(`/api/books/${bookId}/file?t=${Date.now()}`, {
-                headers: token ? { Authorization: `Bearer ${token}` } : {},
-                cache: "no-store",
-              });
-              if (!res.ok) return;
-              const blob = await res.blob();
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = `${bookTitle}.${fileFormat}`;
-              a.click();
-              URL.revokeObjectURL(url);
-              setOpen(false);
-            }}
-            className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
-            style={{ color: "var(--text)" }}
-          >
-            {t("book.download")}
-          </button>
-          {kindleSettings.data && (
-            <button
-              onClick={() => {
-                setKindleStatus("sending");
-                sendToKindleMut.mutate({ bookId });
-              }}
-              disabled={sendToKindleMut.isPending}
-              className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
-              style={{ color: "var(--text)" }}
-            >
-              {sendToKindleMut.isPending ? t("kindle.sending") : t("kindle.sendToKindle")}
-            </button>
-          )}
-          {isAdmin && (
-            <Link
-              to="/books/$id/edit"
-              params={{ id: bookId }}
-              className="block px-4 py-2 text-sm hover:opacity-80"
-              style={{ color: "var(--text)" }}
-              onClick={() => setOpen(false)}
-            >
-              {t("book.edit")}
-            </Link>
-          )}
-          {!isFinished && (
-            <button
-              onClick={() => { finishMutation.mutate({ bookId }); setOpen(false); }}
-              className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
-              style={{ color: "var(--green)" }}
-            >
-              {t("book.markFinished")}
-            </button>
-          )}
-          {hasProgress && (
-            <button
-              onClick={() => {
-                setOpen(false);
-                setConfirmReset(true);
-              }}
-              className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
-              style={{ color: "var(--text-dim)" }}
-            >
-              {t("book.resetProgress")}
-            </button>
-          )}
-          {isAdmin && (
-            <button
-              onClick={() => { onDelete(); setOpen(false); }}
-              disabled={isDeleting}
-              className="w-full text-left px-4 py-2 text-sm hover:opacity-80"
-              style={{ color: "#ef4444" }}
-            >
-              {isDeleting ? t("book.deleting") : t("book.delete")}
-            </button>
-          )}
-        </div>
+          <Pencil size={16} />
+        </Link>
       )}
-      {kindleStatus === "sent" && (
-        <div className="absolute top-full mt-2 right-0 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap"
-          style={{ backgroundColor: "rgba(74,138,90,0.15)", color: "var(--green)" }}>
-          {t("kindle.sent")}
-        </div>
+      {!isFinished && (
+        <ActionButton
+          onClick={() => finishMutation.mutate({ bookId })}
+          title={t("book.markFinished")}
+          icon={<CheckCircle size={16} />}
+          color="var(--green)"
+        />
       )}
-      {kindleStatus === "error" && (
-        <div className="absolute top-full mt-2 right-0 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap"
-          style={{ backgroundColor: "rgba(220,38,38,0.1)", color: "#ef4444" }}>
-          {t("kindle.sendFailed")}
-        </div>
+      {hasProgress && (
+        <ActionButton
+          onClick={() => setConfirmReset(true)}
+          title={t("book.resetProgress")}
+          icon={<RotateCcw size={16} />}
+        />
+      )}
+      {isAdmin && (
+        <ActionButton
+          onClick={onDelete}
+          title={t("book.delete")}
+          icon={<Trash2 size={16} />}
+          color="#ef4444"
+          disabled={isDeleting}
+        />
       )}
       <ConfirmDialog
         open={confirmReset}
@@ -610,6 +510,6 @@ function OverflowMenu({
         }}
         onCancel={() => setConfirmReset(false)}
       />
-    </div>
+    </>
   );
 }

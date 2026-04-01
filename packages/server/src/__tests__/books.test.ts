@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createTestContext } from "../test-utils.js";
-import { books, readingProgress } from "@verso/shared";
+import { books, readingProgress, genres, bookGenres } from "@verso/shared";
+import { eq } from "drizzle-orm";
 
 describe("books router", () => {
   let ctx: Awaited<ReturnType<typeof createTestContext>>;
@@ -35,6 +36,18 @@ describe("books router", () => {
     };
     await ctx.db.insert(books).values({ ...defaults, ...overrides });
     return { ...defaults, ...overrides };
+  }
+
+  async function linkGenre(bookId: string, slug: string, name: string) {
+    const existing = await ctx.db.select().from(genres).where(eq(genres.slug, slug)).get();
+    let genreId: string;
+    if (existing) {
+      genreId = existing.id;
+    } else {
+      const [created] = await ctx.db.insert(genres).values({ slug, name, isDefault: true }).returning();
+      genreId = created.id;
+    }
+    await ctx.db.insert(bookGenres).values({ bookId, genreId }).onConflictDoNothing();
   }
 
   describe("list", () => {
@@ -277,15 +290,19 @@ describe("books router", () => {
 
   describe("recommended", () => {
     it("returns empty array when no reading history exists", async () => {
-      await insertBook({ genre: "Sci-Fi" });
+      const book = await insertBook({});
+      await linkGenre(book.id, "sci-fi", "Sci-Fi");
       const result = await authedCaller.books.recommended({});
       expect(result).toHaveLength(0);
     });
 
     it("recommends unread books by same author as currently reading", async () => {
-      const reading = await insertBook({ title: "Dune", author: "Frank Herbert", genre: "Sci-Fi" });
-      const unread = await insertBook({ title: "Children of Dune", author: "Frank Herbert", genre: "Sci-Fi" });
-      await insertBook({ title: "1984", author: "George Orwell", genre: "Dystopian" });
+      const reading = await insertBook({ title: "Dune", author: "Frank Herbert" });
+      await linkGenre(reading.id, "sci-fi", "Sci-Fi");
+      const unread = await insertBook({ title: "Children of Dune", author: "Frank Herbert" });
+      await linkGenre(unread.id, "sci-fi", "Sci-Fi");
+      const other = await insertBook({ title: "1984", author: "George Orwell" });
+      await linkGenre(other.id, "dystopian", "Dystopian");
 
       await ctx.db.insert(readingProgress).values({
         userId,
@@ -308,9 +325,12 @@ describe("books router", () => {
     });
 
     it("recommends unread books by same genre as finished books", async () => {
-      const finished = await insertBook({ title: "Dune", author: "Frank Herbert", genre: "Sci-Fi" });
-      const unread = await insertBook({ title: "Snow Crash", author: "Neal Stephenson", genre: "Sci-Fi" });
-      await insertBook({ title: "Pride and Prejudice", author: "Jane Austen", genre: "Romance" });
+      const finished = await insertBook({ title: "Dune", author: "Frank Herbert" });
+      await linkGenre(finished.id, "sci-fi", "Sci-Fi");
+      const unread = await insertBook({ title: "Snow Crash", author: "Neal Stephenson" });
+      await linkGenre(unread.id, "sci-fi", "Sci-Fi");
+      const other = await insertBook({ title: "Pride and Prejudice", author: "Jane Austen" });
+      await linkGenre(other.id, "romance", "Romance");
 
       await ctx.db.insert(readingProgress).values({
         userId,
@@ -329,8 +349,10 @@ describe("books router", () => {
     });
 
     it("excludes books the user has already started", async () => {
-      const reading = await insertBook({ title: "Dune", author: "Frank Herbert", genre: "Sci-Fi" });
-      const alsoStarted = await insertBook({ title: "Children of Dune", author: "Frank Herbert", genre: "Sci-Fi" });
+      const reading = await insertBook({ title: "Dune", author: "Frank Herbert" });
+      await linkGenre(reading.id, "sci-fi", "Sci-Fi");
+      const alsoStarted = await insertBook({ title: "Children of Dune", author: "Frank Herbert" });
+      await linkGenre(alsoStarted.id, "sci-fi", "Sci-Fi");
 
       await ctx.db.insert(readingProgress).values([
         {
@@ -354,9 +376,12 @@ describe("books router", () => {
     });
 
     it("prioritises same-author over same-genre", async () => {
-      const reading = await insertBook({ title: "Dune", author: "Frank Herbert", genre: "Sci-Fi" });
-      const sameAuthor = await insertBook({ title: "Children of Dune", author: "Frank Herbert", genre: "Sci-Fi" });
-      const sameGenre = await insertBook({ title: "Snow Crash", author: "Neal Stephenson", genre: "Sci-Fi" });
+      const reading = await insertBook({ title: "Dune", author: "Frank Herbert" });
+      await linkGenre(reading.id, "sci-fi", "Sci-Fi");
+      const sameAuthor = await insertBook({ title: "Children of Dune", author: "Frank Herbert" });
+      await linkGenre(sameAuthor.id, "sci-fi", "Sci-Fi");
+      const sameGenre = await insertBook({ title: "Snow Crash", author: "Neal Stephenson" });
+      await linkGenre(sameGenre.id, "sci-fi", "Sci-Fi");
 
       await ctx.db.insert(readingProgress).values({
         userId,
@@ -372,10 +397,12 @@ describe("books router", () => {
     });
 
     it("respects the limit parameter", async () => {
-      const reading = await insertBook({ title: "Dune", author: "Frank Herbert", genre: "Sci-Fi" });
+      const reading = await insertBook({ title: "Dune", author: "Frank Herbert" });
+      await linkGenre(reading.id, "sci-fi", "Sci-Fi");
 
       for (let i = 0; i < 5; i++) {
-        await insertBook({ title: `Sci-Fi Book ${i}`, author: `Author ${i}`, genre: "Sci-Fi" });
+        const b = await insertBook({ title: `Sci-Fi Book ${i}`, author: `Author ${i}` });
+        await linkGenre(b.id, "sci-fi", "Sci-Fi");
       }
 
       await ctx.db.insert(readingProgress).values({

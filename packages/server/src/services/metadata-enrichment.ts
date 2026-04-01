@@ -191,7 +191,7 @@ export async function searchGoogleBooks(
         publisher: info.publisher,
         year,
         description: info.description,
-        genre: info.categories?.[0],
+        genres: info.categories ?? [],
         language: info.language,
         pageCount: info.pageCount,
         coverUrl,
@@ -251,7 +251,7 @@ export async function searchOpenLibrary(
         isbn: extractedIsbn,
         publisher: doc.publisher?.[0],
         year: doc.first_publish_year,
-        genre: doc.subject?.[0],
+        genres: (doc.subject ?? []).slice(0, 5),
         language: doc.language?.[0],
         pageCount: doc.number_of_pages_median,
         coverUrl,
@@ -592,8 +592,6 @@ export function parseGoodreadsBookPage(html: string, url: string): ExternalBook 
         })
         .filter(Boolean)
     : [];
-  const genre = genres[0];
-
   // Extract sourceId from URL
   const idMatch = url.match(/\/book\/show\/(\d+)/);
   const sourceId = idMatch ? idMatch[1] : url;
@@ -606,7 +604,7 @@ export function parseGoodreadsBookPage(html: string, url: string): ExternalBook 
     isbn: ld.isbn,
     year,
     description,
-    genre,
+    genres,
     language: ld.inLanguage,
     pageCount: ld.numberOfPages ? parseInt(ld.numberOfPages, 10) : undefined,
     coverUrl: ld.image,

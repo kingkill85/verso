@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { BookCard } from "./book-card";
 
 type BookGridBook = {
@@ -12,16 +13,16 @@ type BookGridProps = {
 };
 
 export function BookGrid({ books }: BookGridProps) {
+  const { t } = useTranslation();
+
   if (books.length === 0) {
     return (
       <div
         className="flex flex-col items-center justify-center py-20 text-center"
         style={{ color: "var(--text-dim)" }}
       >
-        <p className="font-display text-lg">No books yet</p>
-        <p className="text-sm mt-1">
-          Upload some books to get started
-        </p>
+        <p className="font-display text-lg">{t("library.noBooksYet")}</p>
+        <p className="text-sm mt-1">{t("library.uploadToStart")}</p>
       </div>
     );
   }

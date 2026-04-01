@@ -33,7 +33,6 @@ export async function enrichAuthor(
     await db
       .update(authors)
       .set({
-        description: meta.description,
         birthDate: meta.birthDate,
         openLibraryKey: olKey,
         imagePath,

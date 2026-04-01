@@ -12,7 +12,7 @@ export const metadataApplyFields = z.object({
   title: z.string().min(1).max(500).nullable().optional(),
   author: z.string().min(1).max(500).nullable().optional(),
   description: z.string().nullable().optional(),
-  genre: z.string().max(100).nullable().optional(),
+  genreIds: z.array(z.string().uuid()).optional(),
   publisher: z.string().max(255).nullable().optional(),
   year: z.number().int().nullable().optional(),
   isbn: z.string().max(20).nullable().optional(),

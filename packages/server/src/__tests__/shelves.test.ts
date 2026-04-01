@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { eq } from "drizzle-orm";
 import { createTestContext } from "../test-utils.js";
-import { books, shelfBooks } from "@verso/shared";
+import { books, shelfBooks, genres, bookGenres } from "@verso/shared";
 
 describe("shelves router", () => {
   let ctx: Awaited<ReturnType<typeof createTestContext>>;
@@ -35,6 +35,18 @@ describe("shelves router", () => {
     };
     await ctx.db.insert(books).values({ ...defaults, ...overrides });
     return { ...defaults, ...overrides };
+  }
+
+  async function linkGenre(bookId: string, slug: string, name: string) {
+    const existing = await ctx.db.select().from(genres).where(eq(genres.slug, slug)).get();
+    let genreId: string;
+    if (existing) {
+      genreId = existing.id;
+    } else {
+      const [created] = await ctx.db.insert(genres).values({ slug, name, isDefault: true }).returning();
+      genreId = created.id;
+    }
+    await ctx.db.insert(bookGenres).values({ bookId, genreId }).onConflictDoNothing();
   }
 
   describe("default shelves", () => {
@@ -79,7 +91,7 @@ describe("shelves router", () => {
         isSmart: true,
         smartFilter: {
           operator: "AND",
-          conditions: [{ field: "genre", op: "eq", value: "Science Fiction" }],
+          conditions: [{ field: "genre", op: "eq", value: "science-fiction" }],
         },
       });
       expect(shelf.isSmart).toBe(true);
@@ -113,15 +125,17 @@ describe("shelves router", () => {
     });
 
     it("returns a smart shelf with filtered books", async () => {
-      await insertBook({ title: "Sci-Fi Book", genre: "Science Fiction" });
-      await insertBook({ title: "Romance Book", genre: "Romance" });
+      const scifiBook = await insertBook({ title: "Sci-Fi Book" });
+      await linkGenre(scifiBook.id, "science-fiction", "Science Fiction");
+      const romanceBook = await insertBook({ title: "Romance Book" });
+      await linkGenre(romanceBook.id, "romance", "Romance");
 
       const shelf = await authedCaller.shelves.create({
         name: "Sci-Fi",
         isSmart: true,
         smartFilter: {
           operator: "AND",
-          conditions: [{ field: "genre", op: "eq", value: "Science Fiction" }],
+          conditions: [{ field: "genre", op: "eq", value: "science-fiction" }],
         },
       });
 
@@ -259,7 +273,7 @@ describe("shelves router", () => {
         isSmart: true,
         smartFilter: {
           operator: "AND",
-          conditions: [{ field: "genre", op: "eq", value: "Fiction" }],
+          conditions: [{ field: "genre", op: "eq", value: "fiction" }],
         },
       });
       const book = await insertBook({ title: "Book" });

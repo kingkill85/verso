@@ -35,7 +35,7 @@ export type ExternalBook = {
   publisher?: string;
   year?: number;
   description?: string;
-  genre?: string;
+  genres?: string[];
   language?: string;
   pageCount?: number;
   coverUrl?: string;

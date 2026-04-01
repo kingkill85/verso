@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { eq, and, or, desc, asc, sql, isNull, isNotNull } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
-import { books, readingProgress, bookListInput, bookByIdInput, bookUpdateInput, bookDeleteInput, searchInput } from "@verso/shared";
+import { books, readingProgress, bookGenres, genres, bookListInput, bookByIdInput, bookUpdateInput, bookDeleteInput, searchInput } from "@verso/shared";
 import { router, protectedProcedure, adminProcedure } from "../index.js";
 import { writeMetadata, writeCover, getFileHash } from "../../services/calibre.js";
 import { syncBookAuthors } from "../../services/sync-book-authors.js";
@@ -28,7 +28,7 @@ function escapeFts5(query: string): string {
 
 export const booksRouter = router({
   list: protectedProcedure.input(bookListInput).query(async ({ ctx, input }) => {
-    const { sort, page, limit, search, genre, author, format } = input;
+    const { sort, page, limit, search, genreSlug, author, format } = input;
     const offset = (page - 1) * limit;
 
     const conditions: SQL[] = [];
@@ -36,7 +36,11 @@ export const booksRouter = router({
       const term = "%" + escapeLike(search) + "%";
       conditions.push(sql`(${books.title} LIKE ${term} ESCAPE '\\' OR ${books.author} LIKE ${term} ESCAPE '\\')`);
     }
-    if (genre) conditions.push(eq(books.genre, genre));
+    if (genreSlug) {
+      conditions.push(
+        sql`${books.id} IN (SELECT bg.book_id FROM book_genres bg JOIN genres g ON g.id = bg.genre_id WHERE g.slug = ${genreSlug})`
+      );
+    }
     if (author) conditions.push(sql`${books.author} LIKE ${"%" + escapeLike(author) + "%"} ESCAPE '\\'`);
     if (format) conditions.push(eq(books.fileFormat, format));
 
@@ -53,7 +57,33 @@ export const booksRouter = router({
       ctx.db.select({ total: sql<number>`count(*)` }).from(books).where(where),
     ]);
 
-    return { books: bookList, total: countResult[0].total, page };
+    // Fetch genres for each book
+    const bookIds = bookList.map((b) => b.id);
+    const genreRows = bookIds.length > 0
+      ? await ctx.db
+          .select({
+            bookId: bookGenres.bookId,
+            genreId: genres.id,
+            slug: genres.slug,
+            name: genres.name,
+          })
+          .from(bookGenres)
+          .innerJoin(genres, eq(genres.id, bookGenres.genreId))
+          .where(sql`${bookGenres.bookId} IN (${sql.join(bookIds.map(id => sql`${id}`), sql`, `)})`)
+      : [];
+
+    const genresByBook = new Map<string, { id: string; slug: string; name: string }[]>();
+    for (const row of genreRows) {
+      const list = genresByBook.get(row.bookId) ?? [];
+      list.push({ id: row.genreId, slug: row.slug, name: row.name });
+      genresByBook.set(row.bookId, list);
+    }
+
+    return {
+      books: bookList.map((b) => ({ ...b, genres: genresByBook.get(b.id) ?? [] })),
+      total: countResult[0].total,
+      page,
+    };
   }),
 
   byId: protectedProcedure.input(bookByIdInput).query(async ({ ctx, input }) => {
@@ -61,11 +91,18 @@ export const booksRouter = router({
       where: eq(books.id, input.id),
     });
     if (!book) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
-    return book;
+
+    const bookGenreRows = await ctx.db
+      .select({ id: genres.id, slug: genres.slug, name: genres.name })
+      .from(bookGenres)
+      .innerJoin(genres, eq(genres.id, bookGenres.genreId))
+      .where(eq(bookGenres.bookId, input.id));
+
+    return { ...book, genres: bookGenreRows };
   }),
 
   update: adminProcedure.input(bookUpdateInput).mutation(async ({ ctx, input }) => {
-    const { id, tags, coverUrl, ...fields } = input;
+    const { id, tags, coverUrl, genreIds, ...fields } = input;
     const existing = await ctx.db.query.books.findFirst({
       where: eq(books.id, id),
     });
@@ -100,6 +137,16 @@ export const booksRouter = router({
     const finalAuthor = fields.author ?? existing.author;
     if (finalAuthor) {
       await syncBookAuthors(ctx.db, id, finalAuthor);
+    }
+
+    // Sync genre associations
+    if (genreIds !== undefined) {
+      await ctx.db.delete(bookGenres).where(eq(bookGenres.bookId, id));
+      if (genreIds.length > 0) {
+        await ctx.db.insert(bookGenres).values(
+          genreIds.map((genreId) => ({ bookId: id, genreId }))
+        );
+      }
     }
 
     // EPUB write-back (non-fatal)
@@ -210,12 +257,9 @@ export const booksRouter = router({
   recommended: protectedProcedure
     .input(z.object({ limit: z.number().min(1).max(20).default(8) }).default({}))
     .query(async ({ ctx, input }) => {
-      // 1. Get genres and authors from books the user has read or is reading
-      const activeBooks = await ctx.db
-        .select({
-          author: books.author,
-          genre: books.genre,
-        })
+      // 1. Get authors from books the user has read or is reading
+      const activeBookRows = await ctx.db
+        .select({ bookId: books.id, author: books.author })
         .from(readingProgress)
         .innerJoin(books, eq(books.id, readingProgress.bookId))
         .where(
@@ -225,12 +269,21 @@ export const booksRouter = router({
           )
         );
 
-      if (activeBooks.length === 0) return [];
+      if (activeBookRows.length === 0) return [];
 
-      const authors = [...new Set(activeBooks.map((b) => b.author).filter(Boolean))];
-      const genres = [...new Set(activeBooks.map((b) => b.genre).filter(Boolean))];
+      const activeBookIds = activeBookRows.map((b) => b.bookId);
+      const authorsList = [...new Set(activeBookRows.map((b) => b.author).filter(Boolean))];
 
-      if (authors.length === 0 && genres.length === 0) return [];
+      // Get genre IDs from active books via book_genres join
+      const activeGenreRows = activeBookIds.length > 0
+        ? await ctx.db
+            .select({ genreId: bookGenres.genreId })
+            .from(bookGenres)
+            .where(sql`${bookGenres.bookId} IN (${sql.join(activeBookIds.map(id => sql`${id}`), sql`, `)})`)
+        : [];
+      const genreIds = [...new Set(activeGenreRows.map((r) => r.genreId))];
+
+      if (authorsList.length === 0 && genreIds.length === 0) return [];
 
       // 2. Get IDs of books the user has already started (to exclude)
       const startedRows = await ctx.db
@@ -245,9 +298,11 @@ export const booksRouter = router({
       const startedIds = new Set(startedRows.map((r) => r.bookId));
 
       // 3. Find candidate books matching author or genre
-      const authorConditions = authors.map((a) => eq(books.author, a!));
-      const genreConditions = genres.map((g) => eq(books.genre, g!));
-      const allConditions = [...authorConditions, ...genreConditions];
+      const authorConditions = authorsList.map((a) => eq(books.author, a!));
+      const genreCondition = genreIds.length > 0
+        ? [sql`${books.id} IN (SELECT bg.book_id FROM book_genres bg WHERE bg.genre_id IN (${sql.join(genreIds.map(id => sql`${id}`), sql`, `)}))`]
+        : [];
+      const allConditions = [...authorConditions, ...genreCondition];
 
       const candidates = await ctx.db
         .select()
@@ -256,18 +311,44 @@ export const booksRouter = router({
         .limit(50);
 
       // 4. Filter out started books, score and attach reason
-      const authorsSet = new Set(authors);
-      const genresSet = new Set(genres);
+      const authorsSet = new Set(authorsList);
+
+      // Fetch genres for candidate books to determine match reasons
+      const candidateIds = candidates.filter((c) => !startedIds.has(c.id)).map((c) => c.id);
+      const candidateGenreRows = candidateIds.length > 0
+        ? await ctx.db
+            .select({ bookId: bookGenres.bookId, genreId: bookGenres.genreId })
+            .from(bookGenres)
+            .where(sql`${bookGenres.bookId} IN (${sql.join(candidateIds.map(id => sql`${id}`), sql`, `)})`)
+        : [];
+      const candidateGenreMap = new Map<string, Set<string>>();
+      for (const row of candidateGenreRows) {
+        const set = candidateGenreMap.get(row.bookId) ?? new Set();
+        set.add(row.genreId);
+        candidateGenreMap.set(row.bookId, set);
+      }
+
+      const genreIdSet = new Set(genreIds);
+      // Fetch genre names for reason text
+      const genreNameRows = genreIds.length > 0
+        ? await ctx.db.select({ id: genres.id, name: genres.name }).from(genres)
+            .where(sql`${genres.id} IN (${sql.join(genreIds.map(id => sql`${id}`), sql`, `)})`)
+        : [];
+      const genreNameMap = new Map(genreNameRows.map((r) => [r.id, r.name]));
 
       const scored = candidates
         .filter((b) => !startedIds.has(b.id))
         .map((b) => {
           const isAuthorMatch = b.author && authorsSet.has(b.author);
-          const isGenreMatch = b.genre && genresSet.has(b.genre);
+          const bookGenreIdSet = candidateGenreMap.get(b.id) ?? new Set();
+          const matchedGenreId = [...bookGenreIdSet].find((gid) => genreIdSet.has(gid));
+          const isGenreMatch = !!matchedGenreId;
           const priority = isAuthorMatch ? 1 : 2;
           const reason = isAuthorMatch
             ? `More by ${b.author}`
-            : `${b.genre} in your library`;
+            : isGenreMatch
+              ? `${genreNameMap.get(matchedGenreId!) ?? "Genre"} in your library`
+              : "Recommended";
           return { ...b, reason, priority };
         });
 
@@ -297,16 +378,21 @@ export const booksRouter = router({
     }),
 
   search: protectedProcedure.input(searchInput).query(async ({ ctx, input }) => {
-    const { query, genre, author, format, page = 1, limit = 50 } = input;
+    const { query, genreSlug, author, format, page = 1, limit = 50 } = input;
     const offset = (page - 1) * limit;
 
-    // Build dynamic WHERE conditions using Drizzle sql template chunks
-    const conditions = [
-      sql`books_fts MATCH ${escapeFts5(query)}`,
-    ];
+    const useFts = !!query;
 
-    if (genre) {
-      conditions.push(sql`b.genre = ${genre}`);
+    // Build dynamic WHERE conditions
+    const conditions: ReturnType<typeof sql>[] = [];
+
+    if (useFts) {
+      conditions.push(sql`books_fts MATCH ${escapeFts5(query)}`);
+    }
+    if (genreSlug) {
+      conditions.push(
+        sql`b.id IN (SELECT bg.book_id FROM book_genres bg JOIN genres g ON g.id = bg.genre_id WHERE g.slug = ${genreSlug})`
+      );
     }
     if (author) {
       conditions.push(sql`b.author LIKE ${"%" + escapeLike(author) + "%"} ESCAPE '\\'`);
@@ -315,23 +401,46 @@ export const booksRouter = router({
       conditions.push(sql`b.file_format = ${format}`);
     }
 
+    if (conditions.length === 0) {
+      return { books: [], total: 0, page };
+    }
+
     const whereClause = sql.join(conditions, sql` AND `);
 
-    const countRow = ctx.db.get<{ total: number }>(sql`
-      SELECT count(*) AS total
-      FROM books_fts
-      JOIN books b ON b.rowid = books_fts.rowid
-      WHERE ${whereClause}
-    `);
+    let countRow: { total: number } | undefined;
+    let rows: any[];
 
-    const rows = ctx.db.all<any>(sql`
-      SELECT b.*, bm25(books_fts, 10, 5, 1) AS rank
-      FROM books_fts
-      JOIN books b ON b.rowid = books_fts.rowid
-      WHERE ${whereClause}
-      ORDER BY rank
-      LIMIT ${limit} OFFSET ${offset}
-    `);
+    if (useFts) {
+      countRow = ctx.db.get<{ total: number }>(sql`
+        SELECT count(*) AS total
+        FROM books_fts
+        JOIN books b ON b.rowid = books_fts.rowid
+        WHERE ${whereClause}
+      `);
+
+      rows = ctx.db.all<any>(sql`
+        SELECT b.*, bm25(books_fts, 10, 5, 1) AS rank
+        FROM books_fts
+        JOIN books b ON b.rowid = books_fts.rowid
+        WHERE ${whereClause}
+        ORDER BY rank
+        LIMIT ${limit} OFFSET ${offset}
+      `);
+    } else {
+      countRow = ctx.db.get<{ total: number }>(sql`
+        SELECT count(*) AS total
+        FROM books b
+        WHERE ${whereClause}
+      `);
+
+      rows = ctx.db.all<any>(sql`
+        SELECT b.*
+        FROM books b
+        WHERE ${whereClause}
+        ORDER BY b.title
+        LIMIT ${limit} OFFSET ${offset}
+      `);
+    }
 
     // Map snake_case columns to camelCase to match Drizzle schema
     const bookResults = rows.map((row) => ({

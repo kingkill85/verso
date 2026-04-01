@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
 
@@ -39,16 +40,16 @@ export function ReadingStatsCard() {
   return (
     <div className="mb-6 md:mb-8">
       <div className="rounded-xl p-4 md:p-5" style={{ backgroundColor: "var(--card)" }}>
-        <div className="flex justify-around items-center text-center">
+        <div className="flex items-center text-center">
           {items.map((item, i) => (
-            <div key={item.label} className="flex items-center">
+            <Fragment key={item.label}>
               {i > 0 && (
                 <div
-                  className="w-px h-8 mx-3 md:mx-5 shrink-0"
+                  className="w-px h-8 shrink-0"
                   style={{ backgroundColor: "var(--border)" }}
                 />
               )}
-              <div>
+              <div className="flex-1 min-w-0">
                 <div
                   className="text-xl md:text-2xl font-bold"
                   style={{ color: "var(--warm)" }}
@@ -62,7 +63,7 @@ export function ReadingStatsCard() {
                   {item.label}
                 </div>
               </div>
-            </div>
+            </Fragment>
           ))}
         </div>
       </div>

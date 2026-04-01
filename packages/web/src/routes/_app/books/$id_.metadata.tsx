@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
 import { BookCover } from "@/components/books/book-cover";
+import { BackButton } from "@/components/back-button";
 import { SourceBadge } from "@/components/metadata/source-badge";
 import type { ExternalBook } from "@verso/shared";
 
@@ -12,13 +13,12 @@ export const Route = createFileRoute("/_app/books/$id_/metadata")({
   component: BookMetadataPage,
 });
 
-type FieldKey = "title" | "author" | "description" | "genre" | "publisher" | "year" | "isbn" | "language" | "pageCount" | "series" | "seriesIndex";
+type FieldKey = "title" | "author" | "description" | "publisher" | "year" | "isbn" | "language" | "pageCount" | "series" | "seriesIndex";
 
 const DIFF_FIELDS: { key: FieldKey; labelKey: string }[] = [
   { key: "title", labelKey: "edit.field.title" },
   { key: "author", labelKey: "edit.field.author" },
   { key: "description", labelKey: "edit.field.description" },
-  { key: "genre", labelKey: "edit.field.genre" },
   { key: "publisher", labelKey: "edit.field.publisher" },
   { key: "year", labelKey: "edit.field.year" },
   { key: "isbn", labelKey: "edit.field.isbn" },
@@ -157,12 +157,7 @@ function BookMetadataPage() {
 
   return (
     <div className="max-w-3xl mx-auto animate-in fade-in">
-      <button onClick={() => window.history.back()} className="inline-flex items-center text-sm mb-6 transition-colors hover:opacity-80" style={{ color: "var(--text-dim)" }}>
-        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        {t("common.back")}
-      </button>
+      <BackButton />
 
       <h1 className="font-display text-xl font-bold mb-6" style={{ color: "var(--text)" }}>{t("metadata.findMetadata")}</h1>
 

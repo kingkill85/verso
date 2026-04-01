@@ -60,10 +60,10 @@ export const authors = sqliteTable("authors", {
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   name: text("name", { length: 500 }).notNull(),
-  description: text("description"),
   imagePath: text("image_path"),
   openLibraryKey: text("open_library_key"),
   birthDate: text("birth_date"),
+  deathDate: text("death_date"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -71,6 +71,17 @@ export const authors = sqliteTable("authors", {
     .notNull()
     .default(sql`(datetime('now'))`),
 });
+
+export const authorDescriptions = sqliteTable("author_descriptions", {
+  authorId: text("author_id")
+    .notNull()
+    .references(() => authors.id, { onDelete: "cascade" }),
+  locale: text("locale", { length: 10 }).notNull(),
+  description: text("description").notNull(),
+  manuallyEdited: integer("manually_edited", { mode: "boolean" }).notNull().default(false),
+}, (table) => [
+  primaryKey({ columns: [table.authorId, table.locale] }),
+]);
 
 export const bookAuthors = sqliteTable("book_authors", {
   bookId: text("book_id")
@@ -82,6 +93,30 @@ export const bookAuthors = sqliteTable("book_authors", {
   position: integer("position").notNull().default(0),
 }, (table) => [
   primaryKey({ columns: [table.bookId, table.authorId] }),
+]);
+
+export const genres = sqliteTable("genres", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  slug: text("slug", { length: 100 }).notNull().unique(),
+  name: text("name", { length: 200 }).notNull(),
+  isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false),
+  createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+export const bookGenres = sqliteTable("book_genres", {
+  bookId: text("book_id")
+    .notNull()
+    .references(() => books.id, { onDelete: "cascade" }),
+  genreId: text("genre_id")
+    .notNull()
+    .references(() => genres.id, { onDelete: "cascade" }),
+}, (table) => [
+  primaryKey({ columns: [table.bookId, table.genreId] }),
 ]);
 
 export const sessions = sqliteTable("sessions", {

@@ -1,0 +1,1 @@
+ALTER TABLE `authors` ADD `death_date` text;
