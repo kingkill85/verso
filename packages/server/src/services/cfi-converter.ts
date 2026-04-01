@@ -112,21 +112,8 @@ export class CfiConverter {
     if (!elementPath || elementPath === "") return body;
 
     const segments = elementPath.split("/").filter(Boolean);
-    const lastSegment = segments[segments.length - 1];
 
-    // KOReader uses global element indexing for the last indexed segment
-    const withIndex = lastSegment.match(XPOINTER_SEGMENT_WITH_INDEX_PATTERN);
-    if (withIndex) {
-      const tagName = withIndex[1];
-      const index = parseInt(withIndex[2]) - 1;
-      const allElements = body.getElementsByTagName(tagName);
-      if (index < allElements.length) {
-        return allElements[index] as Element;
-      }
-      throw new Error(`Element index ${index} out of bounds for tag ${tagName} (found ${allElements.length})`);
-    }
-
-    // Non-indexed: hierarchical traversal
+    // Hierarchical traversal — walk each segment relative to its parent
     let current: Element = body;
     for (const segment of segments) {
       const segWith = segment.match(XPOINTER_SEGMENT_WITH_INDEX_PATTERN);
