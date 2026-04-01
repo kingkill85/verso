@@ -21,6 +21,7 @@ import { logActivity } from "../services/activity-log.js";
 import { saveHash } from "../services/hash-history.js";
 import { syncBookAuthors } from "../services/sync-book-authors.js";
 import { syncBookPublisher } from "../services/sync-book-publisher.js";
+import { syncBookSeries } from "../services/sync-book-series.js";
 import { enrichAuthor } from "../services/enrich-author.js";
 import { normalizeLanguage } from "@verso/shared";
 
@@ -181,6 +182,11 @@ export function registerUploadRoute(
         // Sync publisher record
         if (metadata.publisher) {
           await syncBookPublisher(db, bookId, metadata.publisher);
+        }
+
+        // Sync series record
+        if (metadata.series) {
+          await syncBookSeries(db, bookId, metadata.series);
         }
 
         // Save hash of stored/converted file

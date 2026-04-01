@@ -6,6 +6,7 @@ import { books, readingProgress, bookGenres, genres, bookListInput, bookByIdInpu
 import { router, protectedProcedure, adminProcedure } from "../index.js";
 import { syncBookAuthors } from "../../services/sync-book-authors.js";
 import { syncBookPublisher } from "../../services/sync-book-publisher.js";
+import { syncBookSeries } from "../../services/sync-book-series.js";
 import { epubWriteback } from "../../services/epub-writeback.js";
 import { normalizeLanguage } from "@verso/shared";
 import { writeFile, unlink } from "node:fs/promises";
@@ -30,7 +31,7 @@ function escapeFts5(query: string): string {
 
 export const booksRouter = router({
   list: protectedProcedure.input(bookListInput).query(async ({ ctx, input }) => {
-    const { sort, page, limit, search, genreSlug, author, format } = input;
+    const { sort, page, limit, search, genreSlug, author, format, series } = input;
     const offset = (page - 1) * limit;
 
     const conditions: SQL[] = [];
@@ -45,14 +46,17 @@ export const booksRouter = router({
     }
     if (author) conditions.push(sql`${books.author} LIKE ${"%" + escapeLike(author) + "%"} ESCAPE '\\'`);
     if (format) conditions.push(eq(books.fileFormat, format));
+    if (series) conditions.push(eq(books.series, series));
 
     const where = and(...conditions);
 
-    const orderBy = {
-      title: asc(books.title),
-      author: asc(books.author),
-      recent: desc(books.createdAt),
-    }[sort || "recent"];
+    const orderBy = series
+      ? asc(books.seriesIndex)
+      : {
+          title: asc(books.title),
+          author: asc(books.author),
+          recent: desc(books.createdAt),
+        }[sort || "recent"];
 
     const [bookList, countResult] = await Promise.all([
       ctx.db.select().from(books).where(where).orderBy(orderBy).limit(limit).offset(offset),
@@ -148,6 +152,10 @@ export const booksRouter = router({
     // Sync publisher record
     const finalPublisher = fields.publisher !== undefined ? fields.publisher : existing.publisher;
     await syncBookPublisher(ctx.db, id, finalPublisher ?? null);
+
+    // Sync series record
+    const finalSeries = fields.series !== undefined ? fields.series : existing.series;
+    await syncBookSeries(ctx.db, id, finalSeries ?? null);
 
     // Sync genre associations
     if (genreIds !== undefined) {

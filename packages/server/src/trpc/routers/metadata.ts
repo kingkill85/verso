@@ -6,6 +6,7 @@ import { router, protectedProcedure, adminProcedure } from "../index.js";
 import { searchExternalMetadata, scoreMatch } from "../../services/metadata-enrichment.js";
 import { searchMetadata as calibreSearchMetadata } from "../../services/calibre.js";
 import { syncBookPublisher } from "../../services/sync-book-publisher.js";
+import { syncBookSeries } from "../../services/sync-book-series.js";
 import { normalizeLanguage } from "@verso/shared";
 import sharp from "sharp";
 import { logActivity } from "../../services/activity-log.js";
@@ -196,6 +197,11 @@ export const metadataRouter = router({
     // Sync publisher record
     if (metadataFields.publisher !== undefined) {
       await syncBookPublisher(ctx.db, input.bookId, metadataFields.publisher ?? null);
+    }
+
+    // Sync series record
+    if (metadataFields.series !== undefined) {
+      await syncBookSeries(ctx.db, input.bookId, metadataFields.series ?? null);
     }
 
     logActivity(ctx.db, {
