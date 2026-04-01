@@ -9,6 +9,7 @@ function escapeLike(str: string): string {
 const columnMap = {
   title: books.title,
   author: books.author,
+  publisher: books.publisher,
   year: books.year,
   language: books.language,
   fileFormat: books.fileFormat,
