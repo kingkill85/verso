@@ -2,6 +2,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { readingProgress, readingSessions, progressGetInput, progressSyncInput, books } from "@verso/shared";
 import { router, protectedProcedure } from "../index.js";
 import { convertPosition } from "../../services/epub-position.js";
+import { logActivity } from "../../services/activity-log.js";
 
 const SESSION_GAP_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -90,6 +91,21 @@ export const progressRouter = router({
         }
       }
 
+      const bookRecord = await ctx.db.select({ title: books.title }).from(books).where(eq(books.id, input.bookId)).get();
+      logActivity(ctx.db, {
+        type: "progress.sync",
+        userId: ctx.user.sub,
+        bookId: input.bookId,
+        bookTitle: bookRecord?.title ?? "Unknown",
+        details: {
+          action: "updated",
+          cfi: input.cfiPosition ?? null,
+          convertedXPointer: convertedXPointer ?? null,
+          previousCfi: existing.cfiPosition ?? null,
+          previousXPointer: existing.kosyncProgress ?? null,
+        },
+      });
+
       const [updated] = await ctx.db
         .update(readingProgress)
         .set({
@@ -116,6 +132,19 @@ export const progressRouter = router({
         } catch { /* conversion failed */ }
       }
     }
+
+    const bookRecord2 = await ctx.db.select({ title: books.title }).from(books).where(eq(books.id, input.bookId)).get();
+    logActivity(ctx.db, {
+      type: "progress.sync",
+      userId: ctx.user.sub,
+      bookId: input.bookId,
+      bookTitle: bookRecord2?.title ?? "Unknown",
+      details: {
+        action: "created",
+        cfi: input.cfiPosition ?? null,
+        convertedXPointer: convertedXPointer ?? null,
+      },
+    });
 
     const [created] = await ctx.db
       .insert(readingProgress)
@@ -177,6 +206,19 @@ export const progressRouter = router({
     });
 
     if (existing) {
+      const bookRecord = await ctx.db.select({ title: books.title }).from(books).where(eq(books.id, input.bookId)).get();
+      logActivity(ctx.db, {
+        type: "progress.reset",
+        userId: ctx.user.sub,
+        bookId: input.bookId,
+        bookTitle: bookRecord?.title ?? "Unknown",
+        details: {
+          previousCfi: existing.cfiPosition ?? null,
+          previousXPointer: existing.kosyncProgress ?? null,
+          previousLastReadAt: existing.lastReadAt,
+        },
+      });
+
       await ctx.db
         .update(readingProgress)
         .set({

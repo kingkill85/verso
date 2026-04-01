@@ -8,6 +8,7 @@ import { createAppPasswordAuthHook } from "../middleware/app-password-auth.js";
 import type { AppDatabase } from "../db/client.js";
 import type { Config } from "../config.js";
 import type { StorageService } from "../services/storage.js";
+import { logActivity } from "../services/activity-log.js";
 
 const MIN_VERSION = [0, 3, 0];
 
@@ -207,11 +208,34 @@ export function registerSyncRoutes(
         .where(and(eq(readingProgress.userId, userId), eq(readingProgress.bookId, bookId)))
         .get();
 
+      // Look up book title for logging
+      const bookRecord = await db.select({ title: books.title }).from(books).where(eq(books.id, bookId)).get();
+      const bookTitle = bookRecord?.title ?? md5;
+
       if (existingProgress) {
         // Only update position if the incoming data is newer than what's stored
         const lastStatTime = new Date(lastStat.start_time * 1000);
         const storedTime = existingProgress.lastReadAt ? new Date(existingProgress.lastReadAt) : new Date(0);
         const isNewer = lastStatTime > storedTime;
+
+        logActivity(db, {
+          type: "sync.import.progress",
+          userId,
+          bookId,
+          bookTitle,
+          level: isNewer ? "info" : "warn",
+          details: {
+            action: isNewer ? "updated" : "skipped_stale",
+            incomingPercentage: percentage,
+            incomingPage: lastStat.page,
+            incomingTotalPages: lastStat.total_pages,
+            incomingLastStatTime: lastStatTime.toISOString(),
+            storedPercentage: existingProgress.percentage,
+            storedLastReadAt: existingProgress.lastReadAt,
+            storedCfi: existingProgress.cfiPosition ?? null,
+            storedKosync: existingProgress.kosyncProgress ?? null,
+          },
+        });
 
         await db.update(readingProgress).set({
           // Always update time spent (additive stat)
@@ -227,6 +251,20 @@ export function registerSyncRoutes(
           } : {}),
         }).where(eq(readingProgress.id, existingProgress.id));
       } else {
+        logActivity(db, {
+          type: "sync.import.progress",
+          userId,
+          bookId,
+          bookTitle,
+          details: {
+            action: "created",
+            percentage,
+            page: lastStat.page,
+            totalPages: lastStat.total_pages,
+            lastStatTime: new Date(lastStat.start_time * 1000).toISOString(),
+          },
+        });
+
         await db.insert(readingProgress).values({
           userId, bookId, percentage,
           currentPage: lastStat.page,

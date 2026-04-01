@@ -119,9 +119,8 @@ export function registerKosyncRoutes(
           device,
           md5: document,
           matched: true,
-          percentage: Math.round(percentage * 100),
           xpointer: progress,
-          xpointerToCfi: convertedCfi ? "ok" : "failed",
+          convertedCfi: convertedCfi ?? null,
           ...(conversionError ? { conversionError } : {}),
         },
         ...(conversionError ? { level: "warn" as const } : {}),
@@ -205,7 +204,9 @@ export function registerKosyncRoutes(
             details: {
               md5: document,
               matched: true,
-              percentage: Math.round(progress.percentage),
+              cfi: progress.cfiPosition ?? null,
+              xpointer: progress.kosyncProgress ?? null,
+              lastReadAt: progress.lastReadAt,
             },
           });
 
