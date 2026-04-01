@@ -4,8 +4,8 @@ import { eq, and, or, desc, asc, sql, gt, isNull, isNotNull } from "drizzle-orm"
 import type { SQL } from "drizzle-orm";
 import { books, readingProgress, bookGenres, genres, bookListInput, bookByIdInput, bookUpdateInput, bookDeleteInput, searchInput } from "@verso/shared";
 import { router, protectedProcedure, adminProcedure } from "../index.js";
-import { writeMetadata, writeCover, getFileHash } from "../../services/calibre.js";
 import { syncBookAuthors } from "../../services/sync-book-authors.js";
+import { epubWriteback } from "../../services/epub-writeback.js";
 import { writeFile, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -150,25 +150,27 @@ export const booksRouter = router({
 
     // EPUB write-back (non-fatal)
     if (existing.fileFormat === "epub") {
-      try {
-        const filePath = ctx.storage.fullPath(existing.filePath);
-        const { coverUrl: _, ...metaFields } = input;
-        await writeMetadata(filePath, metaFields);
+      const { coverUrl: _, ...metaFields } = input;
+      // If cover was updated, write temp file for embedding
+      let tempCoverPath: string | null = null;
+      if (coverImageBuffer) {
+        tempCoverPath = path.join(tmpdir(), `verso-cover-${id}-${Date.now()}.jpg`);
+        await writeFile(tempCoverPath, coverImageBuffer);
+      }
 
-        if (coverImageBuffer) {
-          const tempCoverPath = path.join(tmpdir(), `verso-cover-${id}-${Date.now()}.jpg`);
-          await writeFile(tempCoverPath, coverImageBuffer);
-          try {
-            await writeCover(filePath, tempCoverPath);
-          } finally {
-            await unlink(tempCoverPath).catch(() => {});
-          }
-        }
+      await epubWriteback({
+        db: ctx.db,
+        bookId: id,
+        filePath: ctx.storage.fullPath(existing.filePath),
+        oldMd5: existing.md5Hash,
+        bookTitle: book.title ?? existing.title,
+        userId: ctx.user.sub,
+        metadata: metaFields,
+        coverPath: tempCoverPath,
+      });
 
-        const newHash = await getFileHash(filePath);
-        await ctx.db.update(books).set({ fileHash: newHash }).where(eq(books.id, id));
-      } catch (err) {
-        console.error("EPUB write-back failed:", err);
+      if (tempCoverPath) {
+        await unlink(tempCoverPath).catch(() => {});
       }
     }
 

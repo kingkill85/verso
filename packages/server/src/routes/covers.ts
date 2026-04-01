@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { eq } from "drizzle-orm";
 import { books } from "@verso/shared";
 import { verifyAccessToken } from "../services/jwt.js";
-import { writeCover, getFileHash } from "../services/calibre.js";
+import { epubWriteback } from "../services/epub-writeback.js";
 import { writeFile, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -66,20 +66,19 @@ export function registerCoversRoute(app: FastifyInstance, db: AppDatabase, stora
 
     // Embed cover in EPUB too
     if (book.fileFormat === "epub") {
-      try {
-        const filePath = storage.fullPath(book.filePath);
-        const tempCoverPath = path.join(tmpdir(), `verso-cover-${bookId}-${Date.now()}.jpg`);
-        await writeFile(tempCoverPath, processed);
-        try {
-          await writeCover(filePath, tempCoverPath);
-          const newHash = await getFileHash(filePath);
-          await db.update(books).set({ fileHash: newHash }).where(eq(books.id, bookId));
-        } finally {
-          await unlink(tempCoverPath).catch(() => {});
-        }
-      } catch (err) {
-        console.error("Failed to embed cover in EPUB:", err);
-      }
+      const tempCoverPath = path.join(tmpdir(), `verso-cover-${bookId}-${Date.now()}.jpg`);
+      await writeFile(tempCoverPath, processed);
+
+      await epubWriteback({
+        db,
+        bookId,
+        filePath: storage.fullPath(book.filePath),
+        oldMd5: book.md5Hash,
+        bookTitle: book.title,
+        coverPath: tempCoverPath,
+      });
+
+      await unlink(tempCoverPath).catch(() => {});
     }
 
     return { success: true, coverPath };

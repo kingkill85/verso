@@ -4,12 +4,10 @@ import { books, bookGenres, metadataCache, metadataSearchInput, metadataApplyInp
 import type { ExternalBook } from "@verso/shared";
 import { router, protectedProcedure, adminProcedure } from "../index.js";
 import { searchExternalMetadata, scoreMatch } from "../../services/metadata-enrichment.js";
-import { searchMetadata as calibreSearchMetadata, writeMetadata, writeCover, getFileHash } from "../../services/calibre.js";
+import { searchMetadata as calibreSearchMetadata } from "../../services/calibre.js";
 import sharp from "sharp";
 import { logActivity } from "../../services/activity-log.js";
-import { saveHash } from "../../services/hash-history.js";
-import { partialMd5 } from "../../services/partial-md5.js";
-import { readFile } from "node:fs/promises";
+import { epubWriteback } from "../../services/epub-writeback.js";
 
 const CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
@@ -201,66 +199,16 @@ export const metadataRouter = router({
 
     // EPUB write-back (non-fatal)
     if (book.fileFormat === "epub") {
-      try {
-        const filePath = ctx.storage.fullPath(book.filePath);
-        await writeMetadata(filePath, metadataFields);
-
-        // Write cover into EPUB if it was updated
-        if (coverUrl && updateData.coverPath) {
-          const coverFilePath = ctx.storage.fullPath(updateData.coverPath);
-          await writeCover(filePath, coverFilePath);
-        }
-
-        // Save old MD5 to hash history before updating
-        if (book.md5Hash) {
-          saveHash(ctx.db, input.bookId, book.md5Hash, book.title);
-        }
-
-        // Update file hashes after modification
-        logActivity(ctx.db, {
-          type: "metadata.writeback",
-          userId: ctx.user.sub,
-          bookId: input.bookId,
-          bookTitle: updated.title ?? book.title,
-          details: { step: "hashing", oldMd5: book.md5Hash },
-        });
-
-        const newFileHash = await getFileHash(filePath);
-        const newFileBuffer = await readFile(filePath);
-        const newMd5Hash = partialMd5(newFileBuffer);
-
-        // Save new MD5 to hash history too
-        saveHash(ctx.db, input.bookId, newMd5Hash, updated.title ?? book.title);
-
-        await ctx.db
-          .update(books)
-          .set({ fileHash: newFileHash, md5Hash: newMd5Hash })
-          .where(eq(books.id, input.bookId));
-
-        logActivity(ctx.db, {
-          type: "metadata.writeback",
-          userId: ctx.user.sub,
-          bookId: input.bookId,
-          bookTitle: updated.title ?? book.title,
-          details: {
-            step: "complete",
-            oldMd5: book.md5Hash,
-            newMd5: newMd5Hash,
-          },
-        });
-      } catch (err: any) {
-        logActivity(ctx.db, {
-          type: "metadata.writeback",
-          userId: ctx.user.sub,
-          bookId: input.bookId,
-          bookTitle: updated.title ?? book.title,
-          level: "error",
-          details: {
-            error: err?.message ?? String(err),
-            oldMd5: book.md5Hash,
-          },
-        });
-      }
+      await epubWriteback({
+        db: ctx.db,
+        bookId: input.bookId,
+        filePath: ctx.storage.fullPath(book.filePath),
+        oldMd5: book.md5Hash,
+        bookTitle: updated.title ?? book.title,
+        userId: ctx.user.sub,
+        metadata: metadataFields,
+        coverPath: coverUrl && updateData.coverPath ? ctx.storage.fullPath(updateData.coverPath) : null,
+      });
     }
 
     return updated;
