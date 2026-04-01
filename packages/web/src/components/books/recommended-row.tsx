@@ -3,6 +3,19 @@ import { useTranslation } from "react-i18next";
 import { BookCover } from "./book-cover";
 import { trpc } from "@/trpc";
 
+function translateReason(reason: string, t: (key: string, opts?: any) => string): string {
+  if (reason.startsWith("author:")) {
+    return t("home.moreByAuthor", { author: reason.slice(7) });
+  }
+  if (reason.startsWith("genre:")) {
+    const genre = reason.slice(6);
+    const translated = t(`genre.${genre.toLowerCase().replace(/ /g, "-")}`);
+    const name = translated.startsWith("genre.") ? genre : translated;
+    return t("home.genreInLibrary", { genre: name });
+  }
+  return t("home.recommended");
+}
+
 export function RecommendedRow() {
   const { t } = useTranslation();
   const query = trpc.books.recommended.useQuery({});
@@ -51,7 +64,7 @@ export function RecommendedRow() {
               </p>
               {book.reason && (
                 <p className="text-[9px] mt-0.5 italic line-clamp-1" style={{ color: "var(--text-faint)" }}>
-                  {book.reason}
+                  {translateReason(book.reason, t)}
                 </p>
               )}
             </div>
@@ -93,7 +106,7 @@ export function RecommendedRow() {
                   className="text-[10px] mt-0.5 italic line-clamp-1"
                   style={{ color: "var(--text-faint)" }}
                 >
-                  {book.reason}
+                  {translateReason(book.reason, t)}
                 </p>
               )}
             </div>

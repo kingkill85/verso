@@ -102,14 +102,13 @@ export const booksRouter = router({
   }),
 
   update: adminProcedure.input(bookUpdateInput).mutation(async ({ ctx, input }) => {
-    const { id, tags, coverUrl, genreIds, ...fields } = input;
+    const { id, coverUrl, genreIds, ...fields } = input;
     const existing = await ctx.db.query.books.findFirst({
       where: eq(books.id, id),
     });
     if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
 
     const updateData: Record<string, any> = { ...fields, ...timestamp(), metadataLocked: true };
-    if (tags !== undefined) updateData.tags = JSON.stringify(tags);
 
     // Handle cover URL — fetch and store
     let coverImageBuffer: Buffer | undefined;
@@ -153,7 +152,7 @@ export const booksRouter = router({
     if (existing.fileFormat === "epub") {
       try {
         const filePath = ctx.storage.fullPath(existing.filePath);
-        const { coverUrl: _, tags: __, ...metaFields } = input;
+        const { coverUrl: _, ...metaFields } = input;
         await writeMetadata(filePath, metaFields);
 
         if (coverImageBuffer) {
@@ -345,10 +344,10 @@ export const booksRouter = router({
           const isGenreMatch = !!matchedGenreId;
           const priority = isAuthorMatch ? 1 : 2;
           const reason = isAuthorMatch
-            ? `More by ${b.author}`
+            ? `author:${b.author}`
             : isGenreMatch
-              ? `${genreNameMap.get(matchedGenreId!) ?? "Genre"} in your library`
-              : "Recommended";
+              ? `genre:${genreNameMap.get(matchedGenreId!) ?? ""}`
+              : "recommended";
           return { ...b, reason, priority };
         });
 
@@ -458,7 +457,6 @@ export const booksRouter = router({
       fileFormat: row.file_format,
       fileSize: row.file_size,
       pageCount: row.page_count,
-      tags: row.tags,
       addedBy: row.added_by,
       metadataLocked: row.metadata_locked,
       createdAt: row.created_at,

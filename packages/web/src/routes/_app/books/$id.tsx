@@ -185,7 +185,7 @@ function BookDetailPage() {
                     className="text-xs mt-0.5"
                     style={{ color: "var(--text-faint)" }}
                   >
-                    Book {book.seriesIndex || "?"} of {book.series}
+                    {t("book.seriesInfo", { index: book.seriesIndex || "?", series: book.series })}
                   </p>
                 )}
               </div>
