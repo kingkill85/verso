@@ -11,6 +11,7 @@ import { adminRouter } from "./routers/admin.js";
 import { kindleRouter } from "./routers/kindle.js";
 import { authorsRouter } from "./routers/authors.js";
 import { genresRouter } from "./routers/genres.js";
+import { publishersRouter } from "./routers/publishers.js";
 
 export const appRouter = router({
   auth: authRouter,
@@ -25,6 +26,7 @@ export const appRouter = router({
   kindle: kindleRouter,
   authors: authorsRouter,
   genres: genresRouter,
+  publishers: publishersRouter,
 });
 
 export type AppRouter = typeof appRouter;
