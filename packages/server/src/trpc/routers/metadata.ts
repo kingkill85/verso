@@ -228,8 +228,29 @@ export const metadataRouter = router({
           .update(books)
           .set({ fileHash: newFileHash, md5Hash: newMd5Hash })
           .where(eq(books.id, input.bookId));
-      } catch (err) {
-        console.error(`Failed to write metadata back to EPUB for book ${input.bookId}:`, err);
+
+        logActivity(ctx.db, {
+          type: "metadata.writeback",
+          userId: ctx.user.sub,
+          bookId: input.bookId,
+          bookTitle: updated.title ?? book.title,
+          details: {
+            oldMd5: book.md5Hash,
+            newMd5: newMd5Hash,
+          },
+        });
+      } catch (err: any) {
+        logActivity(ctx.db, {
+          type: "metadata.writeback",
+          userId: ctx.user.sub,
+          bookId: input.bookId,
+          bookTitle: updated.title ?? book.title,
+          level: "error",
+          details: {
+            error: err?.message ?? String(err),
+            oldMd5: book.md5Hash,
+          },
+        });
       }
     }
 
