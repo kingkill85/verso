@@ -12,3 +12,4 @@ export * from "./koinsight-validators.js";
 export * from "./kindle-validators.js";
 export * from "./author-validators.js";
 export * from "./genre-validators.js";
+export * from "./language.js";
