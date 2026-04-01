@@ -20,7 +20,9 @@ import sharp from "sharp";
 import { logActivity } from "../services/activity-log.js";
 import { saveHash } from "../services/hash-history.js";
 import { syncBookAuthors } from "../services/sync-book-authors.js";
+import { syncBookPublisher } from "../services/sync-book-publisher.js";
 import { enrichAuthor } from "../services/enrich-author.js";
+import { normalizeLanguage } from "@verso/shared";
 
 const EBOOK_FORMATS = ["epub", "mobi", "azw", "azw3", "fb2", "cbz", "cbr"];
 const DOCUMENT_FORMATS = ["docx", "rtf"];
@@ -140,6 +142,10 @@ export function registerUploadRoute(
           // Cover extraction/processing failed — continue without cover
         }
 
+        if (metadata.language) {
+          metadata.language = normalizeLanguage(metadata.language);
+        }
+
         const [book] = await db
           .insert(books)
           .values({
@@ -170,6 +176,11 @@ export function registerUploadRoute(
         const syncedAuthors = await syncBookAuthors(db, bookId, metadata.author);
         for (const a of syncedAuthors) {
           if (a.isNew) enrichAuthor(db, a.id, a.name, storage).catch(() => {});
+        }
+
+        // Sync publisher record
+        if (metadata.publisher) {
+          await syncBookPublisher(db, bookId, metadata.publisher);
         }
 
         // Save hash of stored/converted file

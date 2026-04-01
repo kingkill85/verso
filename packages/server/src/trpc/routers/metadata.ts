@@ -5,6 +5,8 @@ import type { ExternalBook } from "@verso/shared";
 import { router, protectedProcedure, adminProcedure } from "../index.js";
 import { searchExternalMetadata, scoreMatch } from "../../services/metadata-enrichment.js";
 import { searchMetadata as calibreSearchMetadata } from "../../services/calibre.js";
+import { syncBookPublisher } from "../../services/sync-book-publisher.js";
+import { normalizeLanguage } from "@verso/shared";
 import sharp from "sharp";
 import { logActivity } from "../../services/activity-log.js";
 import { epubWriteback } from "../../services/epub-writeback.js";
@@ -147,6 +149,11 @@ export const metadataRouter = router({
       updateData.metadataSource = input.source;
     }
 
+    // Normalize language to ISO 639-1
+    if (updateData.language && typeof updateData.language === "string") {
+      updateData.language = normalizeLanguage(updateData.language);
+    }
+
     // Handle cover image download and processing
     if (coverUrl) {
       try {
@@ -184,6 +191,11 @@ export const metadataRouter = router({
           genreIds.map((genreId) => ({ bookId: input.bookId, genreId }))
         );
       }
+    }
+
+    // Sync publisher record
+    if (metadataFields.publisher !== undefined) {
+      await syncBookPublisher(ctx.db, input.bookId, metadataFields.publisher ?? null);
     }
 
     logActivity(ctx.db, {

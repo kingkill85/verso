@@ -5,7 +5,9 @@ import type { SQL } from "drizzle-orm";
 import { books, readingProgress, bookGenres, genres, bookListInput, bookByIdInput, bookUpdateInput, bookDeleteInput, searchInput } from "@verso/shared";
 import { router, protectedProcedure, adminProcedure } from "../index.js";
 import { syncBookAuthors } from "../../services/sync-book-authors.js";
+import { syncBookPublisher } from "../../services/sync-book-publisher.js";
 import { epubWriteback } from "../../services/epub-writeback.js";
+import { normalizeLanguage } from "@verso/shared";
 import { writeFile, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -110,6 +112,11 @@ export const booksRouter = router({
 
     const updateData: Record<string, any> = { ...fields, ...timestamp(), metadataLocked: true };
 
+    // Normalize language to ISO 639-1
+    if (updateData.language && typeof updateData.language === "string") {
+      updateData.language = normalizeLanguage(updateData.language);
+    }
+
     // Handle cover URL — fetch and store
     let coverImageBuffer: Buffer | undefined;
     if (coverUrl) {
@@ -137,6 +144,10 @@ export const booksRouter = router({
     if (finalAuthor) {
       await syncBookAuthors(ctx.db, id, finalAuthor);
     }
+
+    // Sync publisher record
+    const finalPublisher = fields.publisher !== undefined ? fields.publisher : existing.publisher;
+    await syncBookPublisher(ctx.db, id, finalPublisher ?? null);
 
     // Sync genre associations
     if (genreIds !== undefined) {
