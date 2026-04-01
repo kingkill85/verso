@@ -60,7 +60,7 @@ export const shelfBookInput = z.object({
 // Search input
 export const searchInput = z.object({
   query: z.string().min(1),
-  genre: z.string().optional(),
+  genreSlug: z.string().optional(),
   author: z.string().optional(),
   format: z.enum(["epub", "pdf", "mobi"]).optional(),
   page: z.number().int().min(1).optional().default(1),

@@ -11,3 +11,4 @@ export * from "./kosync-validators.js";
 export * from "./koinsight-validators.js";
 export * from "./kindle-validators.js";
 export * from "./author-validators.js";
+export * from "./genre-validators.js";

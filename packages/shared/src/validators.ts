@@ -19,7 +19,7 @@ export const refreshInput = z.object({
 // Books
 export const bookListInput = z.object({
   search: z.string().optional(),
-  genre: z.string().optional(),
+  genreSlug: z.string().optional(),
   author: z.string().optional(),
   format: z.enum(["epub", "pdf", "mobi"]).optional(),
   sort: z
@@ -43,7 +43,7 @@ export const bookUpdateInput = z.object({
   year: z.number().int().nullable().optional(),
   language: z.string().max(10).nullable().optional(),
   description: z.string().nullable().optional(),
-  genre: z.string().max(100).nullable().optional(),
+  genreIds: z.array(z.string().uuid()).optional(),
   tags: z.array(z.string()).optional(),
   series: z.string().max(255).nullable().optional(),
   seriesIndex: z.number().nullable().optional(),
