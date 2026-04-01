@@ -79,6 +79,11 @@ export const progressRouter = router({
     }
 
     if (existing) {
+      // Only update if this sync is newer than what's stored
+      if (existing.lastReadAt && new Date(existing.lastReadAt) > new Date(now)) {
+        return existing;
+      }
+
       // Try to convert CFI → XPointer for KOReader
       let convertedXPointer: string | undefined;
       if (input.cfiPosition) {

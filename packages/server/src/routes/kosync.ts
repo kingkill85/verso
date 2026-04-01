@@ -89,6 +89,11 @@ export function registerKosyncRoutes(
       }
 
       if (existing) {
+        // Only update if this push is newer than what's stored
+        if (existing.lastReadAt && new Date(existing.lastReadAt) > new Date(now)) {
+          return reply.send({ document, timestamp });
+        }
+
         await db.update(readingProgress).set({
           percentage: percentage * 100,
           kosyncProgress: progress,
