@@ -134,6 +134,13 @@
       "when": 1775081078559,
       "tag": "0018_giant_rockslide",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1775084597472,
+      "tag": "0019_calm_daimon_hellstrom",
+      "breakpoints": true
     }
   ]
 }
