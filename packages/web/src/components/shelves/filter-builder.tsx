@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+import { trpc } from "@/trpc";
 import type { SmartFilter, SmartFilterCondition } from "@verso/shared";
 
 type FilterBuilderProps = {
@@ -29,6 +31,8 @@ const OPS: { value: SmartFilterCondition["op"]; label: string }[] = [
 const defaultCondition: SmartFilterCondition = { field: "title", op: "contains", value: "" };
 
 export function FilterBuilder({ filter, onChange }: FilterBuilderProps) {
+  const { t } = useTranslation();
+  const genresQuery = trpc.genres.list.useQuery({});
   const updateCondition = (index: number, patch: Partial<SmartFilterCondition>) => {
     const next = [...filter.conditions];
     next[index] = { ...next[index], ...patch };
@@ -88,14 +92,30 @@ export function FilterBuilder({ filter, onChange }: FilterBuilderProps) {
             ))}
           </select>
 
-          <input
-            type="text"
-            value={String(cond.value)}
-            onChange={(e) => updateCondition(i, { value: e.target.value })}
-            placeholder="value"
-            className="flex-1 rounded-lg border px-2 py-1.5 text-xs outline-none"
-            style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", color: "var(--text)" }}
-          />
+          {cond.field === "genre" ? (
+            <select
+              value={String(cond.value)}
+              onChange={(e) => updateCondition(i, { value: e.target.value })}
+              className="flex-1 rounded-lg border px-2 py-1.5 text-xs outline-none"
+              style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", color: "var(--text)" }}
+            >
+              <option value="">{t("genre.genres")}</option>
+              {(genresQuery.data ?? []).map((g) => (
+                <option key={g.slug} value={g.slug}>
+                  {g.isDefault ? (t(`genre.${g.slug}`) !== `genre.${g.slug}` ? t(`genre.${g.slug}`) : g.name) : g.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              value={String(cond.value)}
+              onChange={(e) => updateCondition(i, { value: e.target.value })}
+              placeholder="value"
+              className="flex-1 rounded-lg border px-2 py-1.5 text-xs outline-none"
+              style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", color: "var(--text)" }}
+            />
+          )}
 
           <button
             type="button"

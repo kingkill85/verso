@@ -76,11 +76,11 @@ function BookDetailPage() {
   }
 
   const book = bookQuery.data;
-  const tags: string[] = [];
-  if (book.genre) tags.push(book.genre);
-  if (book.year) tags.push(String(book.year));
-  if (book.pageCount) tags.push(t("book.pages", { count: book.pageCount }));
-  tags.push(book.fileFormat.toUpperCase());
+  const genreChips: { id: string; slug: string; name: string }[] = (book as any).genres ?? [];
+  const metaTags: string[] = [];
+  if (book.year) metaTags.push(String(book.year));
+  if (book.pageCount) metaTags.push(t("book.pages", { count: book.pageCount }));
+  metaTags.push(book.fileFormat.toUpperCase());
 
   const details = [
     { label: t("detail.publisher"), value: book.publisher },
@@ -189,10 +189,29 @@ function BookDetailPage() {
               </p>
             )}
 
-            {/* Tags */}
-            {tags.length > 0 && (
+            {/* Genres */}
+            {genreChips.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {tags.map((tag) => (
+                {genreChips.map((genre) => (
+                  <Link
+                    key={genre.id}
+                    to="/search"
+                    search={{ q: genre.name }}
+                    className="px-2 py-0.5 rounded-full text-[11px] font-medium hover:opacity-80 transition-opacity"
+                    style={{
+                      backgroundColor: "var(--bg)",
+                      color: "var(--text-dim)",
+                    }}
+                  >
+                    {t(`genre.${genre.slug}`) !== `genre.${genre.slug}` ? t(`genre.${genre.slug}`) : genre.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+            {/* Meta tags */}
+            {metaTags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {metaTags.map((tag) => (
                   <span
                     key={tag}
                     className="px-2 py-0.5 rounded-full text-[11px] font-medium"

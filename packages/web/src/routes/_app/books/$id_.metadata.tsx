@@ -12,13 +12,12 @@ export const Route = createFileRoute("/_app/books/$id_/metadata")({
   component: BookMetadataPage,
 });
 
-type FieldKey = "title" | "author" | "description" | "genre" | "publisher" | "year" | "isbn" | "language" | "pageCount" | "series" | "seriesIndex";
+type FieldKey = "title" | "author" | "description" | "publisher" | "year" | "isbn" | "language" | "pageCount" | "series" | "seriesIndex";
 
 const DIFF_FIELDS: { key: FieldKey; labelKey: string }[] = [
   { key: "title", labelKey: "edit.field.title" },
   { key: "author", labelKey: "edit.field.author" },
   { key: "description", labelKey: "edit.field.description" },
-  { key: "genre", labelKey: "edit.field.genre" },
   { key: "publisher", labelKey: "edit.field.publisher" },
   { key: "year", labelKey: "edit.field.year" },
   { key: "isbn", labelKey: "edit.field.isbn" },
