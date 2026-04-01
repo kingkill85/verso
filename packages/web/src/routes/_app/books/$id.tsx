@@ -185,7 +185,15 @@ function BookDetailPage() {
                     className="text-xs mt-0.5"
                     style={{ color: "var(--text-faint)" }}
                   >
-                    {t("book.seriesInfo", { index: book.seriesIndex || "?", series: book.series })}
+                    {t("book.seriesInfoPrefix", { index: book.seriesIndex || "?" })}{" "}
+                    <Link
+                      to="/search"
+                      search={{ q: "", series: book.series }}
+                      className="hover:opacity-80 transition-opacity underline"
+                      style={{ color: "var(--warm)" }}
+                    >
+                      {book.series}
+                    </Link>
                   </p>
                 )}
               </div>
