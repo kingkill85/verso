@@ -59,42 +59,18 @@ function BookDetailPage() {
     setConfirmDelete(true);
   };
 
-  if (bookQuery.isLoading) {
-    return (
-      <div
-        className="flex items-center justify-center py-20"
-        style={{ color: "var(--text-dim)" }}
-      >
-        <p className="text-sm">{t("book.loading")}</p>
-      </div>
-    );
-  }
-
-  if (bookQuery.error || !bookQuery.data) {
-    // Only show "not found" for actual NOT_FOUND errors, not transient network issues
-    const isNotFound = bookQuery.error?.data?.code === "NOT_FOUND";
-    if (!isNotFound && bookQuery.error) {
+  if (!bookQuery.data) {
+    if (bookQuery.isLoading || bookQuery.isFetching) {
       return (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <p className="text-sm" style={{ color: "var(--text-dim)" }}>{t("book.loading")}</p>
+        <div className="flex items-center justify-center py-20" style={{ color: "var(--text-dim)" }}>
+          <p className="text-sm">{t("book.loading")}</p>
         </div>
       );
     }
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <p
-          className="font-display text-lg"
-          style={{ color: "var(--text)" }}
-        >
-          {t("book.notFound")}
-        </p>
-        <button
-          onClick={() => window.history.back()}
-          className="text-sm mt-2"
-          style={{ color: "var(--warm)" }}
-        >
-          {t("book.back")}
-        </button>
+        <p className="font-display text-lg" style={{ color: "var(--text)" }}>{t("book.notFound")}</p>
+        <button onClick={() => window.history.back()} className="text-sm mt-2" style={{ color: "var(--warm)" }}>{t("book.back")}</button>
       </div>
     );
   }
