@@ -1,21 +1,37 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createTestContext } from "../test-utils.js";
-import { books, authors, bookAuthors } from "@verso/shared";
+import { books, authors, bookAuthors, authorDescriptions } from "@verso/shared";
+import { eq } from "drizzle-orm";
 
 describe("authors router", () => {
   let ctx: Awaited<ReturnType<typeof createTestContext>>;
   let authedCaller: ReturnType<typeof ctx.createAuthedCaller>;
+  let adminCaller: ReturnType<typeof ctx.createAuthedCaller>;
   let userId: string;
 
   beforeEach(async () => {
     ctx = await createTestContext();
+    // First user is admin
     const reg = await ctx.caller.auth.register({
-      email: "test@example.com",
+      email: "admin@example.com",
       password: "password123",
-      displayName: "Test User",
+      displayName: "Admin User",
     });
-    authedCaller = ctx.createAuthedCaller(reg.accessToken);
+    adminCaller = ctx.createAuthedCaller(reg.accessToken);
     userId = reg.user.id;
+
+    // Second user is regular
+    await adminCaller.admin.createUser({
+      email: "user@example.com",
+      password: "password123",
+      displayName: "Regular User",
+      role: "user",
+    });
+    const login = await ctx.caller.auth.login({
+      email: "user@example.com",
+      password: "password123",
+    });
+    authedCaller = ctx.createAuthedCaller(login.accessToken);
   });
 
   async function insertAuthorWithBooks(name: string, bookCount: number) {
@@ -85,18 +101,97 @@ describe("authors router", () => {
   });
 
   describe("byId", () => {
-    it("returns author with books", async () => {
+    it("returns author with books and descriptions", async () => {
       const author = await insertAuthorWithBooks("Frank Herbert", 2);
+      await ctx.db.insert(authorDescriptions).values([
+        { authorId: author.id, locale: "en", description: "English bio" },
+        { authorId: author.id, locale: "de", description: "German bio" },
+      ]);
 
       const result = await authedCaller.authors.byId({ id: author.id });
       expect(result.name).toBe("Frank Herbert");
       expect(result.books).toHaveLength(2);
+      expect(result.descriptions).toHaveLength(2);
+      expect(result.descriptions.find((d: any) => d.locale === "en")?.description).toBe("English bio");
     });
 
     it("throws NOT_FOUND for missing author", async () => {
       await expect(
         authedCaller.authors.byId({ id: crypto.randomUUID() })
       ).rejects.toThrow("Author not found");
+    });
+  });
+
+  describe("update (admin only)", () => {
+    it("updates author name", async () => {
+      const author = await insertAuthorWithBooks("Old Name", 1);
+      await adminCaller.authors.update({ id: author.id, name: "New Name" });
+
+      const updated = ctx.db.select().from(authors).where(eq(authors.id, author.id)).get();
+      expect(updated?.name).toBe("New Name");
+    });
+
+    it("rejects non-admin users", async () => {
+      const author = await insertAuthorWithBooks("Test", 1);
+      await expect(
+        authedCaller.authors.update({ id: author.id, name: "Nope" })
+      ).rejects.toThrow("Admin access required");
+    });
+  });
+
+  describe("updateDescription (admin only)", () => {
+    it("creates a new description with manuallyEdited=true", async () => {
+      const author = await insertAuthorWithBooks("Test Author", 1);
+      await adminCaller.authors.updateDescription({
+        authorId: author.id,
+        locale: "de",
+        description: "German bio written by admin",
+      });
+
+      const desc = ctx.db
+        .select()
+        .from(authorDescriptions)
+        .where(eq(authorDescriptions.authorId, author.id))
+        .all();
+      expect(desc).toHaveLength(1);
+      expect(desc[0].locale).toBe("de");
+      expect(desc[0].description).toBe("German bio written by admin");
+      expect(desc[0].manuallyEdited).toBe(true);
+    });
+
+    it("updates existing description and sets manuallyEdited=true", async () => {
+      const author = await insertAuthorWithBooks("Test Author", 1);
+      await ctx.db.insert(authorDescriptions).values({
+        authorId: author.id,
+        locale: "en",
+        description: "Auto bio",
+        manuallyEdited: false,
+      });
+
+      await adminCaller.authors.updateDescription({
+        authorId: author.id,
+        locale: "en",
+        description: "Admin bio",
+      });
+
+      const desc = ctx.db
+        .select()
+        .from(authorDescriptions)
+        .where(eq(authorDescriptions.authorId, author.id))
+        .all();
+      expect(desc[0].description).toBe("Admin bio");
+      expect(desc[0].manuallyEdited).toBe(true);
+    });
+
+    it("rejects non-admin users", async () => {
+      const author = await insertAuthorWithBooks("Test", 1);
+      await expect(
+        authedCaller.authors.updateDescription({
+          authorId: author.id,
+          locale: "en",
+          description: "Nope",
+        })
+      ).rejects.toThrow("Admin access required");
     });
   });
 });

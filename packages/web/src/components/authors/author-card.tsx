@@ -43,7 +43,7 @@ export function AuthorCard({ id, name, imagePath, bookCount }: AuthorCardProps) 
       >
         {imagePath ? (
           <img
-            src={`/api/storage/${imagePath}`}
+            src={`/api/authors/${id}/photo`}
             alt={name}
             className="w-full h-full object-cover"
             onError={(e) => {

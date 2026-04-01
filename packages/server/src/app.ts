@@ -17,13 +17,14 @@ import { StorageService } from "./services/storage.js";
 import { registerUploadRoute } from "./routes/upload.js";
 import { registerStreamRoute } from "./routes/stream.js";
 import { registerCoversRoute } from "./routes/covers.js";
+import { registerAuthorPhotosRoute } from "./routes/author-photos.js";
 import { registerImportRoutes } from "./routes/import.js";
 import { registerExportRoute } from "./routes/export.js";
 import { registerOpdsRoutes } from "./routes/opds.js";
 import { registerKosyncRoutes } from "./routes/kosync.js";
 import { registerSyncRoutes } from "./routes/sync.js";
 import { verifyCalibreInstalled } from "./services/calibre.js";
-import { migrateExistingAuthors } from "./services/migrate-authors.js";
+import { migrateExistingAuthors, migrateAuthorDescriptions } from "./services/migrate-authors.js";
 import { seedDefaultGenres, migrateExistingGenres } from "./services/seed-genres.js";
 import type { Config } from "./config.js";
 import type { AppDatabase } from "./db/client.js";
@@ -77,6 +78,12 @@ export async function buildApp(config: Config, externalDb?: AppDatabase) {
         .then((count) => console.log(`Author migration complete: ${count} authors enriched`))
         .catch((err) => console.error("Author migration failed:", err));
     }
+
+    // Migrate existing author descriptions to localized table
+    const descCount = migrateAuthorDescriptions(db);
+    if (descCount > 0) {
+      console.log(`Migrated ${descCount} author descriptions to localized table`);
+    }
   }
 
   await app.register(rateLimit, {
@@ -113,6 +120,7 @@ export async function buildApp(config: Config, externalDb?: AppDatabase) {
   registerUploadRoute(app, db, storage, config);
   registerStreamRoute(app, db, storage, config);
   registerCoversRoute(app, db, storage, config);
+  registerAuthorPhotosRoute(app, db, storage, config);
   registerImportRoutes(app, db, storage, config);
   registerExportRoute(app, db, storage, config);
   registerOpdsRoutes(app, db, config);

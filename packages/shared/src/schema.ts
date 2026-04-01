@@ -60,10 +60,10 @@ export const authors = sqliteTable("authors", {
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   name: text("name", { length: 500 }).notNull(),
-  description: text("description"),
   imagePath: text("image_path"),
   openLibraryKey: text("open_library_key"),
   birthDate: text("birth_date"),
+  deathDate: text("death_date"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -71,6 +71,17 @@ export const authors = sqliteTable("authors", {
     .notNull()
     .default(sql`(datetime('now'))`),
 });
+
+export const authorDescriptions = sqliteTable("author_descriptions", {
+  authorId: text("author_id")
+    .notNull()
+    .references(() => authors.id, { onDelete: "cascade" }),
+  locale: text("locale", { length: 10 }).notNull(),
+  description: text("description").notNull(),
+  manuallyEdited: integer("manually_edited", { mode: "boolean" }).notNull().default(false),
+}, (table) => [
+  primaryKey({ columns: [table.authorId, table.locale] }),
+]);
 
 export const bookAuthors = sqliteTable("book_authors", {
   bookId: text("book_id")
