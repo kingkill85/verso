@@ -20,6 +20,16 @@ export const users = sqliteTable("users", {
   appPasswordMd5: text("app_password_md5", { length: 32 }),
 });
 
+export const publishers = sqliteTable("publishers", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name", { length: 255 }).notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
 export const books = sqliteTable("books", {
   id: text("id")
     .primaryKey()
@@ -38,6 +48,7 @@ export const books = sqliteTable("books", {
   fileSize: integer("file_size").notNull(),
   fileHash: text("file_hash", { length: 64 }),
   md5Hash: text("md5_hash", { length: 32 }),
+  publisherId: text("publisher_id").references(() => publishers.id, { onDelete: "set null" }),
   pageCount: integer("page_count"),
   addedBy: text("added_by")
     .notNull()
