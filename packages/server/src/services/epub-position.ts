@@ -23,6 +23,11 @@ function getChapterRaw(epub: EPub, chapterId: string): Promise<string> {
 /**
  * Convert between KOReader XPointer and EPUB CFI formats.
  * Opens the EPUB, extracts the relevant spine HTML, parses it, runs conversion.
+ *
+ * For XPointer→CFI: KOReader's DocFragment numbering may be off by one
+ * (e.g. when Calibre adds a titlepage not counted by KOReader). If the
+ * XPointer path doesn't resolve at the computed spine index, we retry
+ * at spine index + 1.
  */
 export async function convertPosition(
   epubFilePath: string,
@@ -32,7 +37,26 @@ export async function convertPosition(
   const spineIndex = extractSpineIndex(position);
   const epub = await openEpub(epubFilePath);
 
-  // Get spine chapter ID at the given index
+  if (from === "xpointer") {
+    // Try computed spine index first, then +1 as fallback for off-by-one
+    for (const idx of [spineIndex, spineIndex + 1]) {
+      const spineItem = epub.flow[idx];
+      if (!spineItem?.id) continue;
+
+      const html = await getChapterRaw(epub, spineItem.id);
+      const { document } = parseHTML(html);
+      const converter = new CfiConverter(document, idx);
+
+      try {
+        return converter.xPointerToCfi(position);
+      } catch {
+        // Path didn't resolve at this spine index — try next
+      }
+    }
+    throw new Error(`XPointer path not found at spine ${spineIndex} or ${spineIndex + 1}`);
+  }
+
+  // CFI → XPointer: spine index is encoded in the CFI itself, no ambiguity
   const spineItem = epub.flow[spineIndex];
   if (!spineItem?.id) {
     throw new Error(`No spine item at index ${spineIndex}`);
@@ -41,10 +65,5 @@ export async function convertPosition(
   const html = await getChapterRaw(epub, spineItem.id);
   const { document } = parseHTML(html);
   const converter = new CfiConverter(document, spineIndex);
-
-  if (from === "xpointer") {
-    return converter.xPointerToCfi(position);
-  } else {
-    return converter.cfiToXPointer(position);
-  }
+  return converter.cfiToXPointer(position);
 }

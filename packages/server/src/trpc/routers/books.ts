@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { eq, and, or, desc, asc, sql, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, or, desc, asc, sql, gt, isNull, isNotNull } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { books, readingProgress, bookGenres, genres, bookListInput, bookByIdInput, bookUpdateInput, bookDeleteInput, searchInput } from "@verso/shared";
 import { router, protectedProcedure, adminProcedure } from "../index.js";
@@ -218,6 +218,11 @@ export const booksRouter = router({
           eq(readingProgress.userId, ctx.user.sub),
           isNotNull(readingProgress.startedAt),
           isNull(readingProgress.finishedAt),
+          or(
+            isNotNull(readingProgress.cfiPosition),
+            isNotNull(readingProgress.kosyncProgress),
+            gt(readingProgress.percentage, 0),
+          ),
         )
       )
       .orderBy(desc(readingProgress.lastReadAt));

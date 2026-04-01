@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { eq, and, sql, desc } from "drizzle-orm";
-import { isNotNull, isNull } from "drizzle-orm";
+import { isNotNull, isNull, gt, or } from "drizzle-orm";
 import {
   shelves,
   shelfBooks,
@@ -59,6 +59,11 @@ export const shelvesRouter = router({
                 eq(readingProgress.userId, ctx.user.sub),
                 isNotNull(readingProgress.startedAt),
                 isNull(readingProgress.finishedAt),
+                or(
+                  isNotNull(readingProgress.cfiPosition),
+                  isNotNull(readingProgress.kosyncProgress),
+                  gt(readingProgress.percentage, 0),
+                ),
               )
             )
             .get();
@@ -160,6 +165,11 @@ export const shelvesRouter = router({
               eq(readingProgress.userId, ctx.user.sub),
               isNotNull(readingProgress.startedAt),
               isNull(readingProgress.finishedAt),
+              or(
+                isNotNull(readingProgress.cfiPosition),
+                isNotNull(readingProgress.kosyncProgress),
+                gt(readingProgress.percentage, 0),
+              ),
             )
           )
           .orderBy(desc(readingProgress.lastReadAt));

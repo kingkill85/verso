@@ -90,10 +90,20 @@ export class CfiConverter {
     let textOffset: number | null = null;
     let elementPath = xpointer;
 
+    // Match /text().N format
     const textMatch = xpointer.match(XPOINTER_TEXT_OFFSET_PATTERN);
     if (textMatch) {
       textOffset = parseInt(textMatch[1]);
       elementPath = xpointer.replace(XPOINTER_TEXT_OFFSET_PATTERN, "");
+    }
+
+    // Match .N suffix on last segment (e.g. p[2].0) — KOReader shorthand for text offset
+    if (textOffset == null) {
+      const dotOffsetMatch = elementPath.match(/\.(\d+)$/);
+      if (dotOffsetMatch) {
+        textOffset = parseInt(dotOffsetMatch[1]);
+        elementPath = elementPath.replace(/\.\d+$/, "");
+      }
     }
 
     const element = this.resolveXPointerPath(elementPath);
