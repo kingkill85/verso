@@ -217,6 +217,14 @@ export const metadataRouter = router({
         }
 
         // Update file hashes after modification
+        logActivity(ctx.db, {
+          type: "metadata.writeback",
+          userId: ctx.user.sub,
+          bookId: input.bookId,
+          bookTitle: updated.title ?? book.title,
+          details: { step: "hashing", oldMd5: book.md5Hash },
+        });
+
         const newFileHash = await getFileHash(filePath);
         const newFileBuffer = await readFile(filePath);
         const newMd5Hash = partialMd5(newFileBuffer);
@@ -235,6 +243,7 @@ export const metadataRouter = router({
           bookId: input.bookId,
           bookTitle: updated.title ?? book.title,
           details: {
+            step: "complete",
             oldMd5: book.md5Hash,
             newMd5: newMd5Hash,
           },
