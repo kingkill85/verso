@@ -11,6 +11,7 @@ const FIELDS: { value: SmartFilterCondition["field"]; label: string }[] = [
   { value: "title", label: "Title" },
   { value: "author", label: "Author" },
   { value: "publisher", label: "Publisher" },
+  { value: "series", label: "Series" },
   { value: "genre", label: "Genre" },
   { value: "year", label: "Year" },
   { value: "language", label: "Language" },

@@ -6,16 +6,17 @@ import { BookGrid } from "@/components/books/book-grid";
 import { FilterChips } from "@/components/shelves/filter-chips";
 
 export const Route = createFileRoute("/_app/search")({
-  validateSearch: (search: Record<string, unknown>): { q: string; genre?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { q: string; genre?: string; series?: string } => ({
     q: typeof search.q === "string" ? search.q : "",
     genre: typeof search.genre === "string" ? search.genre : undefined,
+    series: typeof search.series === "string" ? search.series : undefined,
   }),
   component: SearchPage,
 });
 
 function SearchPage() {
   const { t } = useTranslation();
-  const { q, genre } = Route.useSearch();
+  const { q, genre, series } = Route.useSearch();
   const [selectedGenreSlug, setSelectedGenreSlug] = useState<string | null>(genre ?? null);
   const [selectedFormat, setSelectedFormat] = useState<string | null>(null);
 
@@ -28,7 +29,16 @@ function SearchPage() {
     { enabled: q.length > 0 || !!selectedGenreSlug },
   );
 
-  const books = searchQuery.data?.books ?? [];
+  const seriesQuery = trpc.books.list.useQuery(
+    { series: series, limit: 100 },
+    { enabled: !!series },
+  );
+
+  const books = series
+    ? seriesQuery.data?.books ?? []
+    : searchQuery.data?.books ?? [];
+
+  const isLoading = series ? seriesQuery.isLoading : searchQuery.isLoading;
 
   const genresQuery = trpc.genres.list.useQuery({});
   const genreOptions = useMemo(() => {
@@ -60,7 +70,7 @@ function SearchPage() {
     return Array.from(set).sort();
   }, [books]);
 
-  if (!q && !selectedGenreSlug) {
+  if (!q && !selectedGenreSlug && !series) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center" style={{ color: "var(--text-dim)" }}>
         <p className="font-display text-lg">{t("search.searchLibrary")}</p>
@@ -76,11 +86,13 @@ function SearchPage() {
           {t("search.results")}
         </h1>
         <p className="text-sm mt-0.5" style={{ color: "var(--text-dim)" }}>
-          {searchQuery.isLoading
+          {isLoading
             ? t("search.searching")
-            : q
-              ? t("search.resultsFor", { count: searchQuery.data?.total ?? 0, query: q })
-              : t("search.resultsCount", { count: searchQuery.data?.total ?? 0 })}
+            : series
+              ? t("search.seriesResults", { count: seriesQuery.data?.total ?? 0, series })
+              : q
+                ? t("search.resultsFor", { count: searchQuery.data?.total ?? 0, query: q })
+                : t("search.resultsCount", { count: searchQuery.data?.total ?? 0 })}
         </p>
       </div>
 
@@ -96,7 +108,7 @@ function SearchPage() {
         </div>
       )}
 
-      {searchQuery.isLoading ? (
+      {isLoading ? (
         <div className="flex items-center justify-center py-20" style={{ color: "var(--text-dim)" }}>
           <p className="text-sm">{t("search.searching")}</p>
         </div>

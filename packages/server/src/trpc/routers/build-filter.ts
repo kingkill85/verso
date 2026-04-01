@@ -10,6 +10,7 @@ const columnMap = {
   title: books.title,
   author: books.author,
   publisher: books.publisher,
+  series: books.series,
   year: books.year,
   language: books.language,
   fileFormat: books.fileFormat,
