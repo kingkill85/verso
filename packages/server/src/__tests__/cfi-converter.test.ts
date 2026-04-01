@@ -253,6 +253,16 @@ describe("CfiConverter", () => {
       const xp = converter.cfiToXPointer("epubcfi(/6/12!/4/2/2)");
       expect(xp).toBe("/body/DocFragment[6]/body/div/h1");
     });
+
+    it("resolves range CFI with odd text-node step (Heimatschutz web reader style)", () => {
+      // Real-world CFI: /4/2[id]/2,/34/1:810,/40/3:17
+      // After range resolution: /4/2/2/40/3:17
+      // The /3 is an odd step (text node reference) — must not be walked as an element
+      const converter = makeConverter(NESTED_DIV_HTML, 7);
+      const xp = converter.cfiToXPointer("epubcfi(/6/16!/4/2/2,/2/1:0,/4/3:17)");
+      expect(xp).toContain("/body/DocFragment[8]/body");
+      expect(xp).toContain("text().17");
+    });
   });
 
   // ─── Text offset handling across inline elements ─────────────

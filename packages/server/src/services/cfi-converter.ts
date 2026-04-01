@@ -209,6 +209,8 @@ export class CfiConverter {
     const contentSteps = steps.length > 0 ? steps.slice(1) : steps;
 
     for (const step of contentSteps) {
+      // Odd CFI steps reference text nodes, not elements — stop traversal here
+      if (step.index % 2 !== 0) break;
       const childIndex = (step.index / 2) - 1;
       const children = current.children;
       if (childIndex < 0 || childIndex >= children.length) {
