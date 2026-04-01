@@ -73,6 +73,9 @@ export function createTRPCClient() {
       httpBatchLink({
         url: "/trpc",
         maxURLLength: 2048,
+        fetch(url, options) {
+          return fetch(url, { ...options, cache: "no-store" });
+        },
         async headers() {
           const token = await ensureFreshToken();
           return token ? { Authorization: `Bearer ${token}` } : {};
