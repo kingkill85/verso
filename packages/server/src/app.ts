@@ -32,7 +32,7 @@ import type { AppDatabase } from "./db/client.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export async function buildApp(config: Config, externalDb?: AppDatabase) {
-  const app = Fastify({ logger: true, bodyLimit: 50 * 1024 * 1024 }); // 50MB for e-reader sync payloads
+  const app = Fastify({ logger: true, bodyLimit: 50 * 1024 * 1024, maxParamLength: 500 }); // 50MB for e-reader sync payloads, 500 for tRPC batch paths
 
   const db = externalDb ?? createDb(config);
   if (!externalDb) runMigrations(db);
