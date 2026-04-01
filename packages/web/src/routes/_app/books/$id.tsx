@@ -65,17 +65,13 @@ function BookDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <p className="font-display text-lg" style={{ color: "var(--text)" }}>{t("book.notFound")}</p>
-        <button onClick={() => window.history.back()} className="text-sm mt-2" style={{ color: "var(--warm)" }}>{t("book.back")}</button>
+        <BackButton className="mt-2" />
       </div>
     );
   }
 
   const book = bookQuery.data;
   const genreChips: { id: string; slug: string; name: string }[] = (book as any).genres ?? [];
-  const metaTags: string[] = [];
-  if (book.year) metaTags.push(String(book.year));
-  if (book.pageCount) metaTags.push(t("book.pages", { count: book.pageCount }));
-  metaTags.push(book.fileFormat.toUpperCase());
 
   const details = [
     { label: t("detail.publisher"), value: book.publisher },
@@ -97,72 +93,107 @@ function BookDetailPage() {
         style={{ backgroundColor: "var(--card)" }}
       >
         <div className="flex gap-4 md:gap-6">
-          {/* Cover — lg on mobile, xl on desktop */}
-          <div className="shrink-0 block md:hidden">
-            <BookCover
-              bookId={book.id}
-              title={book.title}
-              author={book.author}
-              coverPath={book.coverPath}
-              updatedAt={book.updatedAt}
-              size="lg"
-            />
-          </div>
-          <div className="shrink-0 hidden md:block">
-            <BookCover
-              bookId={book.id}
-              title={book.title}
-              author={book.author}
-              coverPath={book.coverPath}
-              updatedAt={book.updatedAt}
-              size="xl"
-            />
+          {/* Cover + Read button */}
+          <div className="shrink-0 flex flex-col items-stretch gap-2">
+            <div className="block md:hidden">
+              <BookCover
+                bookId={book.id}
+                title={book.title}
+                author={book.author}
+                coverPath={book.coverPath}
+                updatedAt={book.updatedAt}
+                size="lg"
+              />
+            </div>
+            <div className="hidden md:block">
+              <BookCover
+                bookId={book.id}
+                title={book.title}
+                author={book.author}
+                coverPath={book.coverPath}
+                updatedAt={book.updatedAt}
+                size="xl"
+              />
+            </div>
+            {(book.fileFormat === "epub" || book.fileFormat === "pdf") && (
+              <Link
+                to="/books/$id/read"
+                params={{ id }}
+                search={{ cfi: undefined }}
+                className="inline-flex items-center justify-center px-5 py-2 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
+                style={{ backgroundColor: "var(--warm)" }}
+              >
+                {progressQuery.data?.finishedAt
+                  ? t("book.readAgain")
+                  : progressQuery.data?.percentage
+                    ? t("book.continueReading", { percent: Math.round(progressQuery.data.percentage) })
+                    : t("book.startReading")}
+              </Link>
+            )}
           </div>
 
           {/* Info */}
           <div className="flex-1 min-w-0">
-            <h1
-              className="font-display text-lg md:text-2xl font-bold leading-tight"
-              style={{ color: "var(--text)" }}
-            >
-              {book.title}
-            </h1>
-            <p
-              className="font-display italic text-sm md:text-base mt-0.5"
-              style={{ color: "var(--text-dim)" }}
-            >
-              {book.author.split(",").map((name, i, arr) => {
-                const trimmed = name.trim();
-                const match = authorsQuery.data?.find(
-                  (a) => a.name.toLowerCase() === trimmed.toLowerCase()
-                );
-                return (
-                  <span key={trimmed}>
-                    {match ? (
-                      <Link
-                        to="/authors/$id"
-                        params={{ id: match.id }}
-                        className="hover:underline"
-                        style={{ color: "var(--warm)" }}
-                      >
-                        {trimmed}
-                      </Link>
-                    ) : (
-                      trimmed
-                    )}
-                    {i < arr.length - 1 && ", "}
-                  </span>
-                );
-              })}
-            </p>
-            {book.series && (
-              <p
-                className="text-xs mt-0.5"
-                style={{ color: "var(--text-faint)" }}
-              >
-                Book {book.seriesIndex || "?"} of {book.series}
-              </p>
-            )}
+            <div className="flex justify-between items-start gap-2">
+              <div className="min-w-0">
+                <h1
+                  className="font-display text-lg md:text-2xl font-bold leading-tight"
+                  style={{ color: "var(--text)" }}
+                >
+                  {book.title}
+                </h1>
+                <p
+                  className="font-display italic text-sm md:text-base mt-0.5"
+                  style={{ color: "var(--text-dim)" }}
+                >
+                  {book.author.split(",").map((name, i, arr) => {
+                    const trimmed = name.trim();
+                    const match = authorsQuery.data?.find(
+                      (a) => a.name.toLowerCase() === trimmed.toLowerCase()
+                    );
+                    return (
+                      <span key={trimmed}>
+                        {match ? (
+                          <Link
+                            to="/authors/$id"
+                            params={{ id: match.id }}
+                            className="hover:underline"
+                            style={{ color: "var(--warm)" }}
+                          >
+                            {trimmed}
+                          </Link>
+                        ) : (
+                          trimmed
+                        )}
+                        {i < arr.length - 1 && ", "}
+                      </span>
+                    );
+                  })}
+                </p>
+                {book.series && (
+                  <p
+                    className="text-xs mt-0.5"
+                    style={{ color: "var(--text-faint)" }}
+                  >
+                    Book {book.seriesIndex || "?"} of {book.series}
+                  </p>
+                )}
+              </div>
+              {/* Icon actions — top right */}
+              <div className="flex gap-1 shrink-0">
+                <AddToShelfMenu bookId={id} compact />
+                <BookActionButtons
+                  bookId={id}
+                  bookTitle={book.title}
+                  fileFormat={book.fileFormat}
+                  hasProgress={!!progressQuery.data && progressQuery.data.percentage > 0}
+                  isFinished={!!progressQuery.data?.finishedAt}
+                  onDelete={handleDelete}
+                  isDeleting={deleteMutation.isPending}
+                  isAdmin={user?.role === "admin"}
+                />
+              </div>
+            </div>
 
             {/* Genres */}
             {genreChips.length > 0 && (
@@ -183,55 +214,19 @@ function BookDetailPage() {
                 ))}
               </div>
             )}
-            {/* Meta tags */}
-            {metaTags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-1">
-                {metaTags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-2 py-0.5 rounded-full text-[11px] font-medium"
-                    style={{
-                      backgroundColor: "var(--bg)",
-                      color: "var(--text-dim)",
-                    }}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
 
-            {/* Actions */}
-            <div className="flex flex-wrap items-center gap-2 mt-4">
-              {(book.fileFormat === "epub" || book.fileFormat === "pdf") && (
-                <Link
-                  to="/books/$id/read"
-                  params={{ id }}
-                  search={{ cfi: undefined }}
-                  className="inline-flex items-center px-5 py-2 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
-                  style={{ backgroundColor: "var(--warm)" }}
-                >
-                  {progressQuery.data?.finishedAt
-                    ? t("book.readAgain")
-                    : progressQuery.data?.percentage
-                      ? t("book.continueReading", { percent: Math.round(progressQuery.data.percentage) })
-                      : t("book.startReading")}
-                </Link>
-              )}
-              <AddToShelfMenu bookId={id} />
-              <BookActionButtons
-                bookId={id}
-                bookTitle={book.title}
-                fileFormat={book.fileFormat}
-                hasProgress={!!progressQuery.data && progressQuery.data.percentage > 0}
-                isFinished={!!progressQuery.data?.finishedAt}
-                onDelete={handleDelete}
-                isDeleting={deleteMutation.isPending}
-                isAdmin={user?.role === "admin"}
-              />
-            </div>
+            {/* Description */}
+            {book.description && (
+              <p
+                className="font-display italic leading-relaxed text-sm mt-3"
+                style={{ color: "var(--text-dim)" }}
+              >
+                {book.description}
+              </p>
+            )}
           </div>
         </div>
+
       </div>
 
       {/* Progress section */}
@@ -260,24 +255,6 @@ function BookDetailPage() {
                 : ""}
             </p>
           </div>
-        </div>
-      )}
-
-      {/* Description */}
-      {book.description && (
-        <div className="mb-5">
-          <h2
-            className="font-display text-sm font-semibold mb-2"
-            style={{ color: "var(--text)" }}
-          >
-            {t("book.description")}
-          </h2>
-          <p
-            className="font-display italic leading-relaxed text-sm whitespace-pre-line"
-            style={{ color: "var(--text-dim)" }}
-          >
-            {book.description}
-          </p>
         </div>
       )}
 

@@ -4,6 +4,7 @@ import { trpc } from "@/trpc";
 import { useAuth } from "@/hooks/use-auth";
 import { BookCard } from "@/components/books/book-card";
 import { BackButton } from "@/components/back-button";
+import { Pencil, RotateCcw } from "lucide-react";
 
 export const Route = createFileRoute("/_app/authors/$id")({
   component: AuthorDetailPage,
@@ -106,91 +107,70 @@ function AuthorDetailPage() {
 
           {/* Info */}
           <div className="flex-1 min-w-0">
-            <h1
-              className="font-display text-lg md:text-2xl font-bold leading-tight"
-              style={{ color: "var(--text)" }}
-            >
-              {author.name}
-            </h1>
-            <p
-              className="font-display text-sm md:text-base mt-0.5"
-              style={{ color: "var(--text-dim)" }}
-            >
-              {t("authors.books", { count: author.books.length })}
-            </p>
-            {formatDate(author.birthDate, i18n.language) && (
-              <p className="text-xs mt-0.5" style={{ color: "var(--text-faint)" }}>
-                {formatDate(author.deathDate, i18n.language)
-                  ? t("authors.lifespan", { birth: formatDate(author.birthDate, i18n.language), death: formatDate(author.deathDate, i18n.language) })
-                  : t("authors.born", { date: formatDate(author.birthDate, i18n.language) })
-                }
-              </p>
-            )}
-
-            {/* Admin actions — hidden on mobile */}
-            {isAdmin && (
-              <div className="hidden md:flex flex-wrap items-center gap-2 mt-4">
-                <Link
-                  to="/authors/$id/edit"
-                  params={{ id }}
-                  className="inline-flex items-center px-5 py-2 rounded-full text-sm font-semibold transition-transform hover:scale-[1.02] border"
-                  style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
+            <div className="flex justify-between items-start gap-2">
+              <div className="min-w-0">
+                <h1
+                  className="font-display text-lg md:text-2xl font-bold leading-tight"
+                  style={{ color: "var(--text)" }}
                 >
-                  {t("authors.edit")}
-                </Link>
-                <button
-                  onClick={() => refreshMutation.mutate({ id })}
-                  disabled={refreshMutation.isPending}
-                  className="inline-flex items-center px-5 py-2 rounded-full text-sm font-semibold transition-transform hover:scale-[1.02] border"
-                  style={{ borderColor: "var(--border)", color: "var(--warm)" }}
+                  {author.name}
+                </h1>
+                <p
+                  className="font-display text-sm md:text-base mt-0.5"
+                  style={{ color: "var(--text-dim)" }}
                 >
-                  {refreshMutation.isPending ? "..." : t("authors.refreshMetadata")}
-                </button>
+                  {t("authors.books", { count: author.books.length })}
+                </p>
+                {formatDate(author.birthDate, i18n.language) && (
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-faint)" }}>
+                    {formatDate(author.deathDate, i18n.language)
+                      ? t("authors.lifespan", { birth: formatDate(author.birthDate, i18n.language), death: formatDate(author.deathDate, i18n.language) })
+                      : t("authors.born", { date: formatDate(author.birthDate, i18n.language) })
+                    }
+                  </p>
+                )}
               </div>
+              {/* Icon actions — top right */}
+              {isAdmin && (
+                <div className="flex gap-1 shrink-0">
+                  <Link
+                    to="/authors/$id/edit"
+                    params={{ id }}
+                    title={t("authors.edit")}
+                    className="p-2.5 rounded-full border transition-colors hover:opacity-80"
+                    style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
+                  >
+                    <Pencil size={16} />
+                  </Link>
+                  <button
+                    onClick={() => refreshMutation.mutate({ id })}
+                    disabled={refreshMutation.isPending}
+                    title={t("authors.refreshMetadata")}
+                    className="p-2.5 rounded-full border transition-colors hover:opacity-80 disabled:opacity-50"
+                    style={{ borderColor: "var(--border)", color: "var(--warm)" }}
+                  >
+                    <RotateCcw size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Bio preview */}
+            {bio ? (
+              <p
+                className="font-display italic leading-relaxed text-sm mt-3"
+                style={{ color: "var(--text-dim)" }}
+              >
+                {bio}
+              </p>
+            ) : (
+              <p className="text-sm italic mt-3" style={{ color: "var(--text-faint)" }}>
+                {t("authors.noBio")}
+              </p>
             )}
           </div>
         </div>
       </div>
-
-      {/* Mobile admin actions — below hero card */}
-      {isAdmin && (
-        <div className="flex md:hidden flex-wrap items-center gap-2 mb-4">
-          <Link
-            to="/authors/$id/edit"
-            params={{ id }}
-            className="inline-flex items-center px-5 py-2 rounded-full text-sm font-semibold transition-transform hover:scale-[1.02] border"
-            style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
-          >
-            {t("authors.edit")}
-          </Link>
-          <button
-            onClick={() => refreshMutation.mutate({ id })}
-            disabled={refreshMutation.isPending}
-            className="inline-flex items-center px-5 py-2 rounded-full text-sm font-semibold transition-transform hover:scale-[1.02] border"
-            style={{ borderColor: "var(--border)", color: "var(--warm)" }}
-          >
-            {refreshMutation.isPending ? "..." : t("authors.refreshMetadata")}
-          </button>
-        </div>
-      )}
-
-      {/* Biography section */}
-      {bio && (
-        <>
-          <h2
-            className="font-display text-sm font-semibold mb-2"
-            style={{ color: "var(--text)" }}
-          >
-            {t("authors.editBio")}
-          </h2>
-          <p
-            className="font-display italic leading-relaxed text-sm mb-5"
-            style={{ color: "var(--text-dim)" }}
-          >
-            {bio}
-          </p>
-        </>
-      )}
 
       {/* Books section */}
       <h2

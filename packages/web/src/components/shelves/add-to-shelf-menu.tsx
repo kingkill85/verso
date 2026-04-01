@@ -2,12 +2,14 @@ import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/trpc";
 import { CheckIcon, renderShelfIcon, translateShelfName } from "@/components/icons";
+import { BookmarkPlus } from "lucide-react";
 
 type AddToShelfMenuProps = {
   bookId: string;
+  compact?: boolean;
 };
 
-export function AddToShelfMenu({ bookId }: AddToShelfMenuProps) {
+export function AddToShelfMenu({ bookId, compact }: AddToShelfMenuProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -50,10 +52,14 @@ export function AddToShelfMenu({ bookId }: AddToShelfMenuProps) {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setOpen(!open)}
-        className="px-5 py-2.5 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
+        title={t("book.addToShelf")}
+        className={compact
+          ? "p-2.5 rounded-full border transition-colors hover:opacity-80"
+          : "px-5 py-2.5 rounded-full text-sm font-medium border transition-colors hover:opacity-80"
+        }
         style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
       >
-        {t("book.addToShelf")}
+        {compact ? <BookmarkPlus size={16} /> : t("book.addToShelf")}
       </button>
 
       {open && (
