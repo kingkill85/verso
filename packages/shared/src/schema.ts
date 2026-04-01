@@ -84,6 +84,30 @@ export const bookAuthors = sqliteTable("book_authors", {
   primaryKey({ columns: [table.bookId, table.authorId] }),
 ]);
 
+export const genres = sqliteTable("genres", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  slug: text("slug", { length: 100 }).notNull().unique(),
+  name: text("name", { length: 200 }).notNull(),
+  isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false),
+  createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+export const bookGenres = sqliteTable("book_genres", {
+  bookId: text("book_id")
+    .notNull()
+    .references(() => books.id, { onDelete: "cascade" }),
+  genreId: text("genre_id")
+    .notNull()
+    .references(() => genres.id, { onDelete: "cascade" }),
+}, (table) => [
+  primaryKey({ columns: [table.bookId, table.genreId] }),
+]);
+
 export const sessions = sqliteTable("sessions", {
   id: text("id")
     .primaryKey()
