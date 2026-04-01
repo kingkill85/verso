@@ -30,6 +30,16 @@ export const publishers = sqliteTable("publishers", {
     .default(sql`(datetime('now'))`),
 });
 
+export const bookSeries = sqliteTable("book_series", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name", { length: 255 }).notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
 export const books = sqliteTable("books", {
   id: text("id")
     .primaryKey()
@@ -57,6 +67,7 @@ export const books = sqliteTable("books", {
   metadataLocked: integer("metadata_locked", { mode: "boolean" }).default(false),
   series: text("series", { length: 255 }),
   seriesIndex: real("series_index"),
+  seriesId: text("series_id").references(() => bookSeries.id, { onDelete: "set null" }),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),

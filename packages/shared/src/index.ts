@@ -13,4 +13,5 @@ export * from "./kindle-validators.js";
 export * from "./author-validators.js";
 export * from "./genre-validators.js";
 export * from "./publisher-validators.js";
+export * from "./series-validators.js";
 export * from "./language.js";

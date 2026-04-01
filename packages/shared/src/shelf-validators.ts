@@ -3,7 +3,7 @@ import { z } from "zod";
 // Smart filter types
 export const smartFilterField = z.enum([
   "title", "author", "genre", "year",
-  "language", "fileFormat", "pageCount", "publisher",
+  "language", "fileFormat", "pageCount", "publisher", "series",
 ]);
 
 export const smartFilterOp = z.enum([

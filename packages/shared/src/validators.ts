@@ -22,6 +22,7 @@ export const bookListInput = z.object({
   genreSlug: z.string().optional(),
   author: z.string().optional(),
   format: z.enum(["epub", "pdf", "mobi"]).optional(),
+  series: z.string().optional(),
   sort: z
     .enum(["title", "author", "recent"])
     .optional()
