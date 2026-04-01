@@ -26,6 +26,7 @@ import { registerSyncRoutes } from "./routes/sync.js";
 import { verifyCalibreInstalled } from "./services/calibre.js";
 import { migrateExistingAuthors, migrateAuthorDescriptions } from "./services/migrate-authors.js";
 import { seedDefaultGenres, migrateExistingGenres } from "./services/seed-genres.js";
+import { migratePublishersAndLanguages } from "./services/migrate-publishers.js";
 import type { Config } from "./config.js";
 import type { AppDatabase } from "./db/client.js";
 
@@ -40,6 +41,9 @@ export async function buildApp(config: Config, externalDb?: AppDatabase) {
   // Seed default genres and migrate existing genre data
   await seedDefaultGenres(db);
   await migrateExistingGenres(db);
+
+  // Normalize publisher and language data
+  await migratePublishersAndLanguages(db);
 
   // Backfill any missing default shelves for all existing users
   const { users } = await import("@verso/shared");
