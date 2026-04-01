@@ -774,9 +774,12 @@ function LanguageCombobox({ value, onChange, t }: {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const displayValue = value ? (LANGUAGE_DISPLAY_NAMES[value] ?? value) : "";
+  const displayValue = value ? (t(`language.${value}`) !== `language.${value}` ? t(`language.${value}`) : value) : "";
 
-  const allLanguages = Object.entries(LANGUAGE_DISPLAY_NAMES).map(([code, name]) => ({ code, name }));
+  const allLanguages = Object.keys(LANGUAGE_DISPLAY_NAMES).map((code) => ({
+    code,
+    name: t(`language.${code}`) !== `language.${code}` ? t(`language.${code}`) : LANGUAGE_DISPLAY_NAMES[code],
+  }));
 
   const filtered = input.trim()
     ? allLanguages.filter(
