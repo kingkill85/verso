@@ -1,6 +1,6 @@
 import { XMLBuilder } from "fast-xml-parser";
 import { eq, and, isNotNull, like, or, sql } from "drizzle-orm";
-import { books, shelves, shelfBooks } from "@verso/shared";
+import { books, shelves, shelfBooks, genres, bookGenres } from "@verso/shared";
 import type { AppDatabase } from "../db/client.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -267,37 +267,36 @@ export async function buildAuthorBooks(
   };
 }
 
-/** Navigation feed listing each genre with book count (excludes null genres). */
+/** Navigation feed listing each genre with book count. */
 export async function buildGenresList(db: AppDatabase, userId: string): Promise<OpdsFeed> {
   const rows = await db
     .select({
-      genre: books.genre,
-      count: sql<number>`count(*)`.as("count"),
+      slug: genres.slug,
+      name: genres.name,
+      count: sql<number>`count(${bookGenres.bookId})`.as("count"),
     })
-    .from(books)
-    .where(isNotNull(books.genre))
-    .groupBy(books.genre)
-    .orderBy(books.genre);
+    .from(genres)
+    .leftJoin(bookGenres, eq(bookGenres.genreId, genres.id))
+    .groupBy(genres.id)
+    .having(sql`count(${bookGenres.bookId}) > 0`)
+    .orderBy(genres.name);
 
   const now = new Date().toISOString();
-  const entries: FeedEntry[] = rows
-    .filter((row) => row.genre != null)
-    .map((row) => {
-      const genre = row.genre!;
-      const encodedGenre = encodeURIComponent(genre);
-      return {
-        id: `${BASE_URL}/genres/${encodedGenre}`,
-        title: `${genre} (${row.count})`,
-        updated: now,
-        links: [
-          {
-            rel: "subsection",
-            href: `${BASE_URL}/genres/${encodedGenre}`,
-            type: "application/atom+xml;profile=opds-catalog;kind=acquisition",
-          },
-        ],
-      };
-    });
+  const entries: FeedEntry[] = rows.map((row) => {
+    const encodedSlug = encodeURIComponent(row.slug);
+    return {
+      id: `${BASE_URL}/genres/${encodedSlug}`,
+      title: `${row.name} (${row.count})`,
+      updated: now,
+      links: [
+        {
+          rel: "subsection",
+          href: `${BASE_URL}/genres/${encodedSlug}`,
+          type: "application/atom+xml;profile=opds-catalog;kind=acquisition",
+        },
+      ],
+    };
+  });
 
   return {
     type: "navigation",
@@ -309,26 +308,42 @@ export async function buildGenresList(db: AppDatabase, userId: string): Promise<
   };
 }
 
-/** Paginated acquisition feed of books in a specific genre. */
+/** Paginated acquisition feed of books in a specific genre (by slug). */
 export async function buildGenreBooks(
   db: AppDatabase,
   userId: string,
-  genre: string,
+  genreSlug: string,
   page: number
 ): Promise<OpdsFeed> {
-  const allBooks = await db.query.books.findMany({
-    where: eq(books.genre, genre),
-    orderBy: (b, { asc }) => [asc(b.title)],
-  });
+  const genre = await db.select().from(genres).where(eq(genres.slug, genreSlug)).get();
+  const encodedSlug = encodeURIComponent(genreSlug);
+  const baseUrl = `${BASE_URL}/genres/${encodedSlug}`;
 
-  const encodedGenre = encodeURIComponent(genre);
-  const baseUrl = `${BASE_URL}/genres/${encodedGenre}`;
-  const { items, nextUrl, prevUrl } = paginate(allBooks, page, baseUrl);
+  if (!genre) {
+    return {
+      type: "acquisition",
+      id: baseUrl,
+      title: genreSlug,
+      updated: new Date().toISOString(),
+      selfUrl: baseUrl,
+      entries: [],
+    };
+  }
+
+  const allBookRows = await db
+    .select({ book: books })
+    .from(bookGenres)
+    .innerJoin(books, eq(books.id, bookGenres.bookId))
+    .where(eq(bookGenres.genreId, genre.id))
+    .orderBy(books.title);
+
+  const bookList = allBookRows.map((r) => r.book);
+  const { items, nextUrl, prevUrl } = paginate(bookList, page, baseUrl);
 
   return {
     type: "acquisition",
     id: baseUrl,
-    title: genre,
+    title: genre.name,
     updated: new Date().toISOString(),
     selfUrl: page > 1 ? `${baseUrl}?page=${page}` : baseUrl,
     entries: items.map(bookToEntry),

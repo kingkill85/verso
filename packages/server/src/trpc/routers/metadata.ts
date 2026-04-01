@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { eq, and } from "drizzle-orm";
-import { books, metadataCache, metadataSearchInput, metadataApplyInput } from "@verso/shared";
+import { books, bookGenres, metadataCache, metadataSearchInput, metadataApplyInput } from "@verso/shared";
 import type { ExternalBook } from "@verso/shared";
 import { router, protectedProcedure, adminProcedure } from "../index.js";
 import { searchExternalMetadata, scoreMatch } from "../../services/metadata-enrichment.js";
@@ -70,7 +70,7 @@ export const metadataRouter = router({
         publisher: meta.publisher,
         year: meta.year,
         description: meta.description,
-        genre: meta.genre,
+        genres: meta.tags ?? (meta.genre ? [meta.genre] : []),
         language: meta.language,
         pageCount: meta.pageCount,
         series: meta.series,
@@ -137,8 +137,8 @@ export const metadataRouter = router({
     });
     if (!book) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
 
-    // Extract coverUrl, handle separately
-    const { coverUrl, ...metadataFields } = input.fields;
+    // Extract coverUrl and genreIds, handle separately
+    const { coverUrl, genreIds, ...metadataFields } = input.fields;
 
     const updateData: Record<string, any> = {
       ...metadataFields,
@@ -177,6 +177,16 @@ export const metadataRouter = router({
       .set(updateData)
       .where(eq(books.id, input.bookId))
       .returning();
+
+    // Sync genre associations
+    if (genreIds !== undefined) {
+      await ctx.db.delete(bookGenres).where(eq(bookGenres.bookId, input.bookId));
+      if (genreIds.length > 0) {
+        await ctx.db.insert(bookGenres).values(
+          genreIds.map((genreId) => ({ bookId: input.bookId, genreId }))
+        );
+      }
+    }
 
     logActivity(ctx.db, {
       type: "metadata.apply",

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createTestContext } from "../test-utils.js";
-import { books, shelves, shelfBooks } from "@verso/shared";
+import { books, shelves, shelfBooks, genres, bookGenres } from "@verso/shared";
+import { eq } from "drizzle-orm";
 import {
   buildRootFeed,
   buildAllBooks,
@@ -45,6 +46,18 @@ describe("opds-server service", () => {
     };
     await ctx.db.insert(books).values({ ...defaults, ...overrides });
     return { ...defaults, ...overrides };
+  }
+
+  async function linkGenre(bookId: string, slug: string, name: string) {
+    const existing = await ctx.db.select().from(genres).where(eq(genres.slug, slug)).get();
+    let genreId: string;
+    if (existing) {
+      genreId = existing.id;
+    } else {
+      const [created] = await ctx.db.insert(genres).values({ slug, name, isDefault: true }).returning();
+      genreId = created.id;
+    }
+    await ctx.db.insert(bookGenres).values({ bookId, genreId }).onConflictDoNothing();
   }
 
   // ─── buildRootFeed ─────────────────────────────────────────────────────────
@@ -208,28 +221,33 @@ describe("opds-server service", () => {
     });
 
     it("returns unique genres with counts", async () => {
-      await insertBook({ genre: "Science Fiction" });
-      await insertBook({ genre: "Science Fiction" });
-      await insertBook({ genre: "Fantasy" });
+      const b1 = await insertBook({ title: "Book 1" });
+      await linkGenre(b1.id, "science-fiction", "Science Fiction");
+      const b2 = await insertBook({ title: "Book 2" });
+      await linkGenre(b2.id, "science-fiction", "Science Fiction");
+      const b3 = await insertBook({ title: "Book 3" });
+      await linkGenre(b3.id, "fantasy", "Fantasy");
       const feed = await buildGenresList(ctx.db, userId);
       const titles = feed.entries.map((e) => e.title);
       expect(titles).toContain("Science Fiction (2)");
       expect(titles).toContain("Fantasy (1)");
     });
 
-    it("excludes null genres", async () => {
-      await insertBook({ genre: null });
-      await insertBook({ genre: "Horror" });
+    it("excludes genres with no books", async () => {
+      await ctx.db.insert(genres).values({ slug: "empty-genre", name: "Empty Genre", isDefault: true });
+      const b = await insertBook({});
+      await linkGenre(b.id, "horror", "Horror");
       const feed = await buildGenresList(ctx.db, userId);
       const titles = feed.entries.map((e) => e.title);
       expect(titles.some((t) => t.startsWith("Horror"))).toBe(true);
-      // No null/empty entry
-      expect(feed.entries).toHaveLength(1);
+      expect(titles.some((t) => t.startsWith("Empty Genre"))).toBe(false);
     });
 
     it("includes all genres in shared library", async () => {
-      await insertBook({ genre: "Genre A" });
-      await insertBook({ genre: "Genre B" });
+      const b1 = await insertBook({ title: "Book A" });
+      await linkGenre(b1.id, "genre-a", "Genre A");
+      const b2 = await insertBook({ title: "Book B" });
+      await linkGenre(b2.id, "genre-b", "Genre B");
       const feed = await buildGenresList(ctx.db, userId);
       const titles = feed.entries.map((e) => e.title);
       expect(titles.some((t) => t.startsWith("Genre A"))).toBe(true);
@@ -241,17 +259,21 @@ describe("opds-server service", () => {
 
   describe("buildGenreBooks", () => {
     it("returns books in the given genre", async () => {
-      await insertBook({ genre: "Science Fiction", title: "Dune" });
-      await insertBook({ genre: "Fantasy", title: "The Hobbit" });
-      const feed = await buildGenreBooks(ctx.db, userId, "Science Fiction", 1);
+      const dune = await insertBook({ title: "Dune" });
+      await linkGenre(dune.id, "science-fiction", "Science Fiction");
+      const hobbit = await insertBook({ title: "The Hobbit" });
+      await linkGenre(hobbit.id, "fantasy", "Fantasy");
+      const feed = await buildGenreBooks(ctx.db, userId, "science-fiction", 1);
       expect(feed.entries).toHaveLength(1);
       expect(feed.entries[0].title).toBe("Dune");
     });
 
     it("includes all books in that genre in shared library", async () => {
-      await insertBook({ genre: "Sci-Fi", title: "Sci-Fi Book A" });
-      await insertBook({ genre: "Sci-Fi", title: "Sci-Fi Book B" });
-      const feed = await buildGenreBooks(ctx.db, userId, "Sci-Fi", 1);
+      const b1 = await insertBook({ title: "Sci-Fi Book A" });
+      await linkGenre(b1.id, "sci-fi", "Sci-Fi");
+      const b2 = await insertBook({ title: "Sci-Fi Book B" });
+      await linkGenre(b2.id, "sci-fi", "Sci-Fi");
+      const feed = await buildGenreBooks(ctx.db, userId, "sci-fi", 1);
       expect(feed.entries).toHaveLength(2);
     });
   });
