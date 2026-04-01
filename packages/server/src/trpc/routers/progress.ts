@@ -6,6 +6,18 @@ import { convertPosition } from "../../services/epub-position.js";
 const SESSION_GAP_MS = 5 * 60 * 1000; // 5 minutes
 
 export const progressRouter = router({
+  allForUser: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select({
+        bookId: readingProgress.bookId,
+        percentage: readingProgress.percentage,
+        finishedAt: readingProgress.finishedAt,
+      })
+      .from(readingProgress)
+      .where(eq(readingProgress.userId, ctx.user.sub));
+    return rows;
+  }),
+
   get: protectedProcedure.input(progressGetInput).query(async ({ ctx, input }) => {
     const progress = await ctx.db.query.readingProgress.findFirst({
       where: and(
