@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { LANGUAGE_DISPLAY_NAMES } from "@verso/shared";
 import { trpc } from "@/trpc";
 import { BookCover } from "@/components/books/book-cover";
 import { AddToShelfMenu } from "@/components/shelves/add-to-shelf-menu";
@@ -76,7 +77,7 @@ function BookDetailPage() {
   const details = [
     { label: t("detail.publisher"), value: book.publisher },
     { label: t("detail.year"), value: book.year ? String(book.year) : null },
-    { label: t("detail.language"), value: book.language?.toUpperCase() },
+    { label: t("detail.language"), value: book.language ? (LANGUAGE_DISPLAY_NAMES[book.language] ?? book.language.toUpperCase()) : null },
     { label: t("detail.isbn"), value: book.isbn },
     { label: t("detail.format"), value: book.fileFormat.toUpperCase() },
     { label: t("detail.fileSize"), value: formatFileSize(book.fileSize) },

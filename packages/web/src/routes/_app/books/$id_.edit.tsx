@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { createFileRoute, Link, useNavigate, useBlocker } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { LANGUAGE_DISPLAY_NAMES } from "@verso/shared";
 import { trpc } from "@/trpc";
 import { BookCover } from "@/components/books/book-cover";
 import { getAccessToken } from "@/lib/auth";
@@ -15,10 +16,10 @@ const FIELDS: { key: string; labelKey: string; type: "text" | "number" | "textar
   // author is handled separately as a multi-pick component
   { key: "description", labelKey: "edit.field.description", type: "textarea", group: "basic" },
   // genre is handled separately as a multi-pick component
-  { key: "language", labelKey: "edit.field.language", type: "text", group: "classification" },
+  // language is handled separately as a combobox component
   { key: "series", labelKey: "edit.field.series", type: "text", half: true, group: "classification" },
   { key: "seriesIndex", labelKey: "edit.field.seriesIndex", type: "number", half: true, group: "classification" },
-  { key: "publisher", labelKey: "edit.field.publisher", type: "text", group: "publication" },
+  // publisher is handled separately as a combobox component
   { key: "year", labelKey: "edit.field.year", type: "number", half: true, group: "publication" },
   { key: "isbn", labelKey: "edit.field.isbn", type: "text", half: true, group: "publication" },
   { key: "pageCount", labelKey: "edit.field.pages", type: "number", group: "publication" },
@@ -70,6 +71,15 @@ function BookEditPage() {
   const [selectedGenres, setSelectedGenres] = useState<{ id: string; slug: string; name: string }[]>([]);
   const [initialGenreIds, setInitialGenreIds] = useState<string[]>([]);
 
+  // Publisher combobox state
+  const [publisherValue, setPublisherValue] = useState("");
+  const [initialPublisher, setInitialPublisher] = useState("");
+  const publishersQuery = trpc.publishers.list.useQuery({});
+
+  // Language dropdown state
+  const [languageValue, setLanguageValue] = useState("");
+  const [initialLanguage, setInitialLanguage] = useState("");
+
   // Initialize form from book data ONCE, merge metadata selections on top
   useEffect(() => {
     if (!bookQuery.data || initialized) return;
@@ -90,6 +100,16 @@ function BookEditPage() {
     setSelectedGenres(bookGenres);
     setInitialGenreIds(bookGenres.map((g: any) => g.id));
 
+    // Handle publisher separately
+    const pubStr = metadataApply?.fields?.publisher ?? bookQuery.data.publisher ?? "";
+    setPublisherValue(pubStr);
+    setInitialPublisher(pubStr);
+
+    // Handle language separately
+    const langStr = metadataApply?.fields?.language ?? bookQuery.data.language ?? "";
+    setLanguageValue(langStr);
+    setInitialLanguage(langStr);
+
     setInitialValues(v);
     setValues(metadataApply ? { ...v, ...metadataApply.fields } : v);
     setInitialized(true);
@@ -101,8 +121,10 @@ function BookEditPage() {
     const currentGenreIds = selectedGenres.map((g) => g.id).sort().join(",");
     const origGenreIds = [...initialGenreIds].sort().join(",");
     if (currentGenreIds !== origGenreIds) return true;
+    if (publisherValue !== initialPublisher) return true;
+    if (languageValue !== initialLanguage) return true;
     return Object.keys(values).some((k) => values[k] !== initialValues[k]);
-  }, [values, initialValues, coverUrl, authorTags, initialAuthorTags, selectedGenres, initialGenreIds]);
+  }, [values, initialValues, coverUrl, authorTags, initialAuthorTags, selectedGenres, initialGenreIds, publisherValue, initialPublisher, languageValue, initialLanguage]);
 
   useEffect(() => {
     if (!isDirty || saving) return;
@@ -144,6 +166,14 @@ function BookEditPage() {
     const authorStr = authorTags.join(", ");
     if (authorStr !== (bookQuery.data.author ?? "")) {
       fields.author = authorStr || null;
+    }
+    // Include publisher
+    if (publisherValue !== (bookQuery.data.publisher ?? "")) {
+      fields.publisher = publisherValue.trim() || null;
+    }
+    // Include language
+    if (languageValue !== (bookQuery.data.language ?? "")) {
+      fields.language = languageValue || null;
     }
     // Include genre IDs
     fields.genreIds = selectedGenres.map((g) => g.id);
@@ -218,6 +248,14 @@ function BookEditPage() {
               <div key={group.id} className="rounded-xl p-5" style={{ backgroundColor: "var(--card)" }}>
                 <p className="text-xs font-medium uppercase tracking-wider mb-4" style={{ color: "var(--text-faint)" }}>{group.label}</p>
                 <div className="flex flex-col gap-3">
+                  {group.id === "publication" && (
+                    <PublisherCombobox
+                      value={publisherValue}
+                      onChange={setPublisherValue}
+                      suggestions={publishersQuery.data ?? []}
+                      t={t}
+                    />
+                  )}
                   {renderFieldRows(groupFields, values, set, t)}
                   {group.id === "basic" && (
                     <AuthorMultiPick
@@ -228,11 +266,18 @@ function BookEditPage() {
                     />
                   )}
                   {group.id === "classification" && (
-                    <GenreMultiPick
-                      selectedGenres={selectedGenres}
-                      onChange={setSelectedGenres}
-                      t={t}
-                    />
+                    <>
+                      <LanguageCombobox
+                        value={languageValue}
+                        onChange={setLanguageValue}
+                        t={t}
+                      />
+                      <GenreMultiPick
+                        selectedGenres={selectedGenres}
+                        onChange={setSelectedGenres}
+                        t={t}
+                      />
+                    </>
                   )}
                 </div>
               </div>
@@ -645,6 +690,168 @@ function AuthorMultiPick({ tags, onChange, suggestions, t }: {
               onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
             >
               {name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PublisherCombobox({ value, onChange, suggestions, t }: {
+  value: string;
+  onChange: (value: string) => void;
+  suggestions: { id: string; name: string; bookCount: number }[];
+  t: (key: string) => string;
+}) {
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const filtered = value.trim()
+    ? suggestions.filter(
+        (s) => s.name.toLowerCase().includes(value.toLowerCase()) && s.name !== value
+      )
+    : [];
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={containerRef}>
+      <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-dim)" }}>
+        {t("edit.field.publisher")}
+      </label>
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setShowSuggestions(true); }}
+        onFocus={() => setShowSuggestions(true)}
+        className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+        style={{ backgroundColor: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }}
+      />
+      {showSuggestions && filtered.length > 0 && (
+        <div
+          className="mt-1 rounded-lg border shadow-lg overflow-hidden max-h-40 overflow-y-auto"
+          style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
+        >
+          {filtered.slice(0, 8).map((pub) => (
+            <button
+              key={pub.id}
+              type="button"
+              onClick={() => { onChange(pub.name); setShowSuggestions(false); }}
+              className="w-full text-left px-3 py-2 text-sm hover:opacity-80 transition-colors"
+              style={{ color: "var(--text)" }}
+              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "var(--bg)")}
+              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+            >
+              {pub.name}
+              <span className="ml-2 text-xs" style={{ color: "var(--text-faint)" }}>
+                ({pub.bookCount})
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LanguageCombobox({ value, onChange, t }: {
+  value: string;
+  onChange: (value: string) => void;
+  t: (key: string) => string;
+}) {
+  const [input, setInput] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const displayValue = value ? (LANGUAGE_DISPLAY_NAMES[value] ?? value) : "";
+
+  const allLanguages = Object.entries(LANGUAGE_DISPLAY_NAMES).map(([code, name]) => ({ code, name }));
+
+  const filtered = input.trim()
+    ? allLanguages.filter(
+        (l) =>
+          l.name.toLowerCase().includes(input.toLowerCase()) ||
+          l.code.toLowerCase().includes(input.toLowerCase())
+      )
+    : allLanguages;
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={containerRef}>
+      <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-dim)" }}>
+        {t("edit.field.language")}
+      </label>
+      {showSuggestions ? (
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          autoFocus
+          placeholder={t("edit.field.language")}
+          className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+          style={{ backgroundColor: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => { setInput(""); setShowSuggestions(true); }}
+          className="w-full rounded-lg border px-3 py-2 text-sm text-left outline-none"
+          style={{ backgroundColor: "var(--bg)", borderColor: "var(--border)", color: value ? "var(--text)" : "var(--text-faint)" }}
+        >
+          {displayValue || t("edit.field.language")}
+        </button>
+      )}
+      {showSuggestions && (
+        <div
+          className="mt-1 rounded-lg border shadow-lg overflow-hidden max-h-40 overflow-y-auto"
+          style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
+        >
+          {value && (
+            <button
+              type="button"
+              onClick={() => { onChange(""); setShowSuggestions(false); }}
+              className="w-full text-left px-3 py-2 text-sm hover:opacity-80 transition-colors italic"
+              style={{ color: "var(--text-faint)" }}
+              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "var(--bg)")}
+              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+            >
+              {t("common.clear")}
+            </button>
+          )}
+          {filtered.map((lang) => (
+            <button
+              key={lang.code}
+              type="button"
+              onClick={() => { onChange(lang.code); setShowSuggestions(false); setInput(""); }}
+              className="w-full text-left px-3 py-2 text-sm hover:opacity-80 transition-colors"
+              style={{ color: "var(--text)" }}
+              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "var(--bg)")}
+              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+            >
+              {lang.name}
+              <span className="ml-2 text-xs" style={{ color: "var(--text-faint)" }}>
+                ({lang.code})
+              </span>
             </button>
           ))}
         </div>
