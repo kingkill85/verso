@@ -20,5 +20,5 @@ export const authorUpdateInput = z.object({
 export const authorUpdateDescriptionInput = z.object({
   authorId: z.string().uuid(),
   locale: z.string().min(2).max(10),
-  description: z.string().min(1),
+  description: z.string(),
 });

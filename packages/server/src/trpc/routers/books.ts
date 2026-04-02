@@ -169,27 +169,31 @@ export const booksRouter = router({
 
     // EPUB write-back (non-fatal)
     if (existing.fileFormat === "epub") {
-      const { coverUrl: _, ...metaFields } = input;
-      // If cover was updated, write temp file for embedding
-      let tempCoverPath: string | null = null;
-      if (coverImageBuffer) {
-        tempCoverPath = path.join(tmpdir(), `verso-cover-${id}-${Date.now()}.jpg`);
-        await writeFile(tempCoverPath, coverImageBuffer);
-      }
+      try {
+        const { coverUrl: _, ...metaFields } = input;
+        // If cover was updated, write temp file for embedding
+        let tempCoverPath: string | null = null;
+        if (coverImageBuffer) {
+          tempCoverPath = path.join(tmpdir(), `verso-cover-${id}-${Date.now()}.jpg`);
+          await writeFile(tempCoverPath, coverImageBuffer);
+        }
 
-      await epubWriteback({
-        db: ctx.db,
-        bookId: id,
-        filePath: ctx.storage.fullPath(existing.filePath),
-        oldMd5: existing.md5Hash,
-        bookTitle: book.title ?? existing.title,
-        userId: ctx.user.sub,
-        metadata: metaFields,
-        coverPath: tempCoverPath,
-      });
+        await epubWriteback({
+          db: ctx.db,
+          bookId: id,
+          filePath: ctx.storage.fullPath(existing.filePath),
+          oldMd5: existing.md5Hash,
+          bookTitle: book.title ?? existing.title,
+          userId: ctx.user.sub,
+          metadata: metaFields,
+          coverPath: tempCoverPath,
+        });
 
-      if (tempCoverPath) {
-        await unlink(tempCoverPath).catch(() => {});
+        if (tempCoverPath) {
+          await unlink(tempCoverPath).catch(() => {});
+        }
+      } catch (err) {
+        console.error("EPUB write-back failed (non-fatal):", err);
       }
     }
 

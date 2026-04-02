@@ -109,7 +109,20 @@ export const authorsRouter = router({
       )
       .get();
 
-    if (existing) {
+    if (!input.description.trim()) {
+      // Empty description — delete the row
+      if (existing) {
+        ctx.db
+          .delete(authorDescriptions)
+          .where(
+            and(
+              eq(authorDescriptions.authorId, input.authorId),
+              eq(authorDescriptions.locale, input.locale),
+            )
+          )
+          .run();
+      }
+    } else if (existing) {
       ctx.db
         .update(authorDescriptions)
         .set({ description: input.description, manuallyEdited: true })
