@@ -28,71 +28,85 @@ export async function searchWikidata(name: string): Promise<WikidataResult | nul
 }
 
 /**
- * Use English Wikipedia's search API to find the article, then get its
- * Wikidata entity ID from the page properties.
+ * Search Wikipedia across all app locales (en first, then de, es, fr, …).
+ * For each locale, find the best article match, resolve its Wikidata entity,
+ * and verify it's a human. Returns on the first valid hit.
  */
 async function searchViaWikipedia(name: string): Promise<WikidataResult | null> {
-  try {
-    // Search English Wikipedia for the name
-    const searchParams = new URLSearchParams({
-      action: "query",
-      list: "search",
-      srsearch: name,
-      srlimit: "1",
-      format: "json",
-    });
-    const searchRes = await fetch(`https://en.wikipedia.org/w/api.php?${searchParams}`);
-    if (!searchRes.ok) return null;
-    const searchData = await searchRes.json();
-    const pageTitle = searchData.query?.search?.[0]?.title;
-    if (!pageTitle) return null;
+  for (const locale of APP_LOCALES) {
+    try {
+      const searchParams = new URLSearchParams({
+        action: "query",
+        list: "search",
+        srsearch: name,
+        srlimit: "1",
+        format: "json",
+      });
+      const searchRes = await fetch(`https://${locale}.wikipedia.org/w/api.php?${searchParams}`);
+      if (!searchRes.ok) continue;
+      const searchData = await searchRes.json();
+      const pageTitle = searchData.query?.search?.[0]?.title;
+      if (!pageTitle) continue;
 
-    // Get the Wikidata entity ID from the Wikipedia page
-    const propsParams = new URLSearchParams({
-      action: "query",
-      titles: pageTitle,
-      prop: "pageprops",
-      ppprop: "wikibase_item",
-      format: "json",
-    });
-    const propsRes = await fetch(`https://en.wikipedia.org/w/api.php?${propsParams}`);
-    if (!propsRes.ok) return null;
-    const propsData = await propsRes.json();
-    const pages = propsData.query?.pages;
-    if (!pages) return null;
-    const page = Object.values(pages)[0] as any;
-    const entityId = page?.pageprops?.wikibase_item;
-    if (!entityId) return null;
+      // Skip results where the page title doesn't match the search name.
+      // Wikipedia's search does full-text matching, so "Georg Mascolo" can
+      // return "Abdallah bin Laden" because Mascolo is mentioned in the body.
+      if (!titleMatchesName(pageTitle, name)) continue;
 
-    // Fetch entity details from Wikidata
-    return fetchEntityDetails(entityId);
-  } catch {
-    return null;
+      // Get the Wikidata entity ID from the Wikipedia page
+      const propsParams = new URLSearchParams({
+        action: "query",
+        titles: pageTitle,
+        prop: "pageprops",
+        ppprop: "wikibase_item",
+        format: "json",
+      });
+      const propsRes = await fetch(`https://${locale}.wikipedia.org/w/api.php?${propsParams}`);
+      if (!propsRes.ok) continue;
+      const propsData = await propsRes.json();
+      const pages = propsData.query?.pages;
+      if (!pages) continue;
+      const page = Object.values(pages)[0] as any;
+      const entityId = page?.pageprops?.wikibase_item;
+      if (!entityId) continue;
+
+      // Fetch entity details — returns null if not a human (P31 ≠ Q5)
+      const result = await fetchEntityDetails(entityId);
+      if (result) return result;
+    } catch {
+      continue;
+    }
   }
+  return null;
 }
 
 /**
- * Direct Wikidata entity search (original approach).
+ * Direct Wikidata entity search across all app locales.
+ * Tries each language until a valid human entity is found.
  */
 async function searchViaWikidata(name: string): Promise<WikidataResult | null> {
-  try {
-    const searchParams = new URLSearchParams({
-      action: "wbsearchentities",
-      search: name,
-      language: "en",
-      type: "item",
-      limit: "1",
-      format: "json",
-    });
-    const searchRes = await fetch(`${WIKIDATA_API}?${searchParams}`);
-    if (!searchRes.ok) return null;
-    const searchData = await searchRes.json();
-    if (!searchData.search?.length) return null;
+  for (const locale of APP_LOCALES) {
+    try {
+      const searchParams = new URLSearchParams({
+        action: "wbsearchentities",
+        search: name,
+        language: locale,
+        type: "item",
+        limit: "1",
+        format: "json",
+      });
+      const searchRes = await fetch(`${WIKIDATA_API}?${searchParams}`);
+      if (!searchRes.ok) continue;
+      const searchData = await searchRes.json();
+      if (!searchData.search?.length) continue;
 
-    return fetchEntityDetails(searchData.search[0].id);
-  } catch {
-    return null;
+      const result = await fetchEntityDetails(searchData.search[0].id);
+      if (result) return result;
+    } catch {
+      continue;
+    }
   }
+  return null;
 }
 
 /**
@@ -111,6 +125,10 @@ async function fetchEntityDetails(entityId: string): Promise<WikidataResult | nu
     const entityData = await entityRes.json();
     const entity = entityData.entities?.[entityId];
     if (!entity) return null;
+
+    // Verify the entity is a human (P31 = Q5) to avoid matching places, books, etc.
+    const instanceOf = entity.claims?.P31?.[0]?.mainsnak?.datavalue?.value?.id;
+    if (instanceOf !== "Q5") return null;
 
     // Extract sitelinks for our app locales
     const sitelinks: Record<string, string> = {};
@@ -160,6 +178,20 @@ export function getCommonsImageUrl(filename: string): string {
 
 function createMd5Hash(input: string): string {
   return createHash("md5").update(input).digest("hex");
+}
+
+/**
+ * Check whether a Wikipedia page title plausibly matches the author name.
+ * Wikipedia search does full-text matching, so searching "Georg Mascolo" can
+ * return an article that merely mentions him. We require that the last name
+ * appears in the title (case-insensitive) to filter out false positives.
+ */
+function titleMatchesName(pageTitle: string, searchName: string): boolean {
+  const titleLower = pageTitle.toLowerCase();
+  const nameParts = searchName.toLowerCase().split(/\s+/).filter(Boolean);
+  // Check that the last name (last word) appears in the title
+  const lastName = nameParts[nameParts.length - 1];
+  return titleLower.includes(lastName);
 }
 
 /**
