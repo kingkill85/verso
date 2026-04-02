@@ -6,7 +6,7 @@ type ReaderBottomBarProps = {
 export function ReaderBottomBar({ percentage, visible }: ReaderBottomBarProps) {
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 h-10 flex items-center px-4 z-30 transition-opacity duration-300"
+      className="fixed bottom-0 left-0 right-0 min-h-10 flex items-center px-4 pb-[env(safe-area-inset-bottom)] z-30 transition-opacity duration-300"
       style={{
         backgroundColor: "var(--sidebar-bg)",
         backdropFilter: "blur(8px)",
