@@ -19,7 +19,7 @@ export function TopBar({ sidebarOpen, onMenuClick }: { sidebarOpen: boolean; onM
   };
 
   return (
-    <header className="sticky top-0 z-30 flex items-center gap-2 lg:gap-4 px-3 lg:px-6 min-h-12 lg:min-h-14 border-b safe-top"
+    <header className="sticky top-0 z-30 flex items-center gap-2 lg:gap-4 px-3 lg:px-6 min-h-12 lg:min-h-14 border-b"
       style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
       <button onClick={onMenuClick} className="hidden lg:block p-2 -ml-2 rounded-lg" style={{ color: "var(--text-dim)" }}>
         {sidebarOpen ? <XIcon size={20} /> : <MenuIcon size={20} />}

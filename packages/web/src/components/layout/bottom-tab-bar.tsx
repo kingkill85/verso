@@ -55,9 +55,9 @@ export function BottomTabBar() {
   const moreActive = isActive("/stats") || isActive("/account") || isActive("/shelves") || isActive("/upload") || isActive("/import") || isActive("/admin");
 
   const tabs = [
-    { to: "/home", label: t("nav.home"), icon: <HomeIcon size={22} />, active: isActive("/home") },
-    { to: "/library", label: t("nav.library"), icon: <BookOpenIcon size={22} />, active: isActive("/library") },
-    { to: "/authors", label: t("nav.authors"), icon: <PenIcon size={22} />, active: isActive("/authors") },
+    { to: "/home", label: t("nav.home"), icon: <HomeIcon size={20} />, active: isActive("/home") },
+    { to: "/library", label: t("nav.library"), icon: <BookOpenIcon size={20} />, active: isActive("/library") },
+    { to: "/authors", label: t("nav.authors"), icon: <PenIcon size={20} />, active: isActive("/authors") },
   ];
 
   if (isReader) return null;
@@ -70,7 +70,7 @@ export function BottomTabBar() {
       )}
 
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50 border-t flex items-center justify-around lg:hidden safe-bottom"
+        className="fixed bottom-0 left-0 right-0 z-50 border-t flex items-center justify-around lg:hidden"
         style={{
           backgroundColor: "var(--surface)",
           borderColor: "var(--border)",
@@ -80,11 +80,11 @@ export function BottomTabBar() {
           <Link
             key={tab.to}
             to={tab.to}
-            className="flex items-center justify-center py-2.5 min-w-0 flex-1 transition-colors"
+            className="flex flex-col items-center gap-0.5 py-1.5 px-3 min-w-0 flex-1 transition-colors"
             style={{ color: tab.active ? "var(--warm)" : "var(--text-faint)" }}
-            title={tab.label}
           >
             {tab.icon}
+            <span className="text-[10px] font-medium truncate">{tab.label}</span>
           </Link>
         ))}
 
@@ -92,11 +92,11 @@ export function BottomTabBar() {
         <div className="relative flex-1" ref={menuRef}>
           <button
             onClick={() => setMoreOpen((v) => !v)}
-            className="flex items-center justify-center py-2.5 w-full transition-colors"
+            className="flex flex-col items-center gap-0.5 py-1.5 px-3 w-full transition-colors"
             style={{ color: moreActive || moreOpen ? "var(--warm)" : "var(--text-faint)" }}
-            title={t("nav.more")}
           >
-            <MoreHorizontalIcon size={22} />
+            <MoreHorizontalIcon size={20} />
+            <span className="text-[10px] font-medium">{t("nav.more")}</span>
           </button>
 
           {/* More menu — bottom sheet style */}
