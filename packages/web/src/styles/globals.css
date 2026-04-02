@@ -126,3 +126,17 @@
     transform: translateY(0);
   }
 }
+
+/* Safe area utilities — env() doesn't work in Tailwind arbitrary values */
+@utility safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+@utility safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@utility safe-top-margin {
+  margin-top: env(safe-area-inset-top, 0px);
+}
+@utility safe-bottom-margin {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}

@@ -60,7 +60,7 @@ export function ReaderTopBar({
   const { t } = useTranslation();
   return (
     <div
-      className="fixed top-0 left-0 right-0 min-h-12 flex items-center justify-between px-3 pt-[env(safe-area-inset-top)] z-30 transition-opacity duration-300"
+      className="fixed top-0 left-0 right-0 min-h-12 flex items-center justify-between px-3 safe-top z-30 transition-opacity duration-300"
       style={{
         backgroundColor: "var(--sidebar-bg)",
         backdropFilter: "blur(8px)",

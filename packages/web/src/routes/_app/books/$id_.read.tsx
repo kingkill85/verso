@@ -257,7 +257,7 @@ function ReaderPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-50" style={{ backgroundColor: "var(--bg)" }}>
+    <div className="fixed inset-0 z-50 safe-top safe-bottom" style={{ backgroundColor: "var(--bg)" }}>
       <div ref={containerRef} className="absolute inset-0 z-0" />
 
 
