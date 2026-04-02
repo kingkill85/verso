@@ -160,46 +160,51 @@ function BookEditPage() {
 
   const handleSave = () => {
     if (!bookQuery.data) return;
-    setSaving(true);
-    const fields: Record<string, any> = { id };
-    for (const { key, type } of FIELDS) {
-      const val = values[key].trim();
-      const original = (bookQuery.data as any)[key];
-      const originalStr = original != null ? String(original) : "";
-      if (val === originalStr) continue;
-      if (val === "") {
-        fields[key] = null;
-      } else if (type === "number" || NUM_FIELDS.has(key)) {
-        const num = parseFloat(val);
-        if (!isNaN(num)) fields[key] = num;
-      } else {
-        fields[key] = val;
+    try {
+      setSaving(true);
+      const fields: Record<string, any> = { id };
+      for (const { key, type } of FIELDS) {
+        const val = (values[key] ?? "").trim();
+        const original = (bookQuery.data as any)[key];
+        const originalStr = original != null ? String(original) : "";
+        if (val === originalStr) continue;
+        if (val === "") {
+          fields[key] = null;
+        } else if (type === "number" || NUM_FIELDS.has(key)) {
+          const num = parseFloat(val);
+          if (!isNaN(num)) fields[key] = num;
+        } else {
+          fields[key] = val;
+        }
       }
+      // Include author from tags (flush any pending input)
+      const finalTags = authorPendingInput.trim()
+        ? [...authorTags, authorPendingInput.trim()]
+        : authorTags;
+      const authorStr = finalTags.join(", ");
+      if (authorStr !== (bookQuery.data.author ?? "")) {
+        fields.author = authorStr || null;
+      }
+      // Include series
+      if (seriesValue !== (bookQuery.data.series ?? "")) {
+        fields.series = seriesValue.trim() || null;
+      }
+      // Include publisher
+      if (publisherValue !== (bookQuery.data.publisher ?? "")) {
+        fields.publisher = publisherValue.trim() || null;
+      }
+      // Include language
+      if (languageValue !== (bookQuery.data.language ?? "")) {
+        fields.language = languageValue || null;
+      }
+      // Include genre IDs
+      fields.genreIds = selectedGenres.map((g) => g.id);
+      if (coverUrl) fields.coverUrl = coverUrl;
+      updateMutation.mutate(fields as any);
+    } catch (err) {
+      console.error("Save failed:", err);
+      setSaving(false);
     }
-    // Include author from tags (flush any pending input)
-    const finalTags = authorPendingInput.trim()
-      ? [...authorTags, authorPendingInput.trim()]
-      : authorTags;
-    const authorStr = finalTags.join(", ");
-    if (authorStr !== (bookQuery.data.author ?? "")) {
-      fields.author = authorStr || null;
-    }
-    // Include series
-    if (seriesValue !== (bookQuery.data.series ?? "")) {
-      fields.series = seriesValue.trim() || null;
-    }
-    // Include publisher
-    if (publisherValue !== (bookQuery.data.publisher ?? "")) {
-      fields.publisher = publisherValue.trim() || null;
-    }
-    // Include language
-    if (languageValue !== (bookQuery.data.language ?? "")) {
-      fields.language = languageValue || null;
-    }
-    // Include genre IDs
-    fields.genreIds = selectedGenres.map((g) => g.id);
-    if (coverUrl) fields.coverUrl = coverUrl;
-    updateMutation.mutate(fields as any);
   };
 
   const set = (key: string, val: string) => setValues((p) => ({ ...p, [key]: val }));
