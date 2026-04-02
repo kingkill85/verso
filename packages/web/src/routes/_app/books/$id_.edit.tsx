@@ -17,6 +17,7 @@ const FIELDS: { key: string; labelKey: string; type: "text" | "number" | "textar
   { key: "description", labelKey: "edit.field.description", type: "textarea", group: "basic" },
   // genre is handled separately as a multi-pick component
   // language is handled separately as a combobox component
+  { key: "series", labelKey: "edit.field.series", type: "text", half: true, group: "classification" },
   { key: "seriesIndex", labelKey: "edit.field.seriesIndex", type: "number", half: true, group: "classification" },
   // publisher is handled separately as a combobox component
   { key: "year", labelKey: "edit.field.year", type: "number", half: true, group: "publication" },
@@ -64,7 +65,6 @@ function BookEditPage() {
   // Author multi-pick state
   const [authorTags, setAuthorTags] = useState<string[]>([]);
   const [initialAuthorTags, setInitialAuthorTags] = useState<string[]>([]);
-  const [authorPendingInput, setAuthorPendingInput] = useState("");
   const authorsQuery = trpc.authors.list.useQuery({});
 
   // Genre multi-pick state
@@ -75,11 +75,6 @@ function BookEditPage() {
   const [publisherValue, setPublisherValue] = useState("");
   const [initialPublisher, setInitialPublisher] = useState("");
   const publishersQuery = trpc.publishers.list.useQuery({});
-
-  // Series combobox state
-  const [seriesValue, setSeriesValue] = useState("");
-  const [initialSeries, setInitialSeries] = useState("");
-  const seriesQuery = trpc.series.list.useQuery({});
 
   // Language dropdown state
   const [languageValue, setLanguageValue] = useState("");
@@ -110,11 +105,6 @@ function BookEditPage() {
     setPublisherValue(pubStr);
     setInitialPublisher(pubStr);
 
-    // Handle series separately
-    const serStr = metadataApply?.fields?.series ?? bookQuery.data.series ?? "";
-    setSeriesValue(serStr);
-    setInitialSeries(serStr);
-
     // Handle language separately
     const langStr = metadataApply?.fields?.language ?? bookQuery.data.language ?? "";
     setLanguageValue(langStr);
@@ -127,15 +117,14 @@ function BookEditPage() {
 
   const isDirty = useMemo(() => {
     if (coverUrl) return true;
-    if (authorTags.join(", ") !== initialAuthorTags.join(", ") || authorPendingInput.trim()) return true;
+    if (authorTags.join(", ") !== initialAuthorTags.join(", ")) return true;
     const currentGenreIds = selectedGenres.map((g) => g.id).sort().join(",");
     const origGenreIds = [...initialGenreIds].sort().join(",");
     if (currentGenreIds !== origGenreIds) return true;
     if (publisherValue !== initialPublisher) return true;
-    if (seriesValue !== initialSeries) return true;
     if (languageValue !== initialLanguage) return true;
     return Object.keys(values).some((k) => values[k] !== initialValues[k]);
-  }, [values, initialValues, coverUrl, authorTags, initialAuthorTags, authorPendingInput, selectedGenres, initialGenreIds, publisherValue, initialPublisher, seriesValue, initialSeries, languageValue, initialLanguage]);
+  }, [values, initialValues, coverUrl, authorTags, initialAuthorTags, selectedGenres, initialGenreIds, publisherValue, initialPublisher, languageValue, initialLanguage]);
 
   useEffect(() => {
     if (!isDirty || saving) return;
@@ -153,58 +142,43 @@ function BookEditPage() {
       utils.books.list.invalidate();
       navigate({ to: "/books/$id", params: { id }, replace: true });
     },
-    onError: () => {
-      setSaving(false);
-    },
   });
 
   const handleSave = () => {
     if (!bookQuery.data) return;
-    try {
-      setSaving(true);
-      const fields: Record<string, any> = { id };
-      for (const { key, type } of FIELDS) {
-        const val = (values[key] ?? "").trim();
-        const original = (bookQuery.data as any)[key];
-        const originalStr = original != null ? String(original) : "";
-        if (val === originalStr) continue;
-        if (val === "") {
-          fields[key] = null;
-        } else if (type === "number" || NUM_FIELDS.has(key)) {
-          const num = parseFloat(val);
-          if (!isNaN(num)) fields[key] = num;
-        } else {
-          fields[key] = val;
-        }
+    setSaving(true);
+    const fields: Record<string, any> = { id };
+    for (const { key, type } of FIELDS) {
+      const val = values[key].trim();
+      const original = (bookQuery.data as any)[key];
+      const originalStr = original != null ? String(original) : "";
+      if (val === originalStr) continue;
+      if (val === "") {
+        fields[key] = null;
+      } else if (type === "number" || NUM_FIELDS.has(key)) {
+        const num = parseFloat(val);
+        if (!isNaN(num)) fields[key] = num;
+      } else {
+        fields[key] = val;
       }
-      // Include author from tags (flush any pending input)
-      const finalTags = authorPendingInput.trim()
-        ? [...authorTags, authorPendingInput.trim()]
-        : authorTags;
-      const authorStr = finalTags.join(", ");
-      if (authorStr !== (bookQuery.data.author ?? "")) {
-        fields.author = authorStr || null;
-      }
-      // Include series
-      if (seriesValue !== (bookQuery.data.series ?? "")) {
-        fields.series = seriesValue.trim() || null;
-      }
-      // Include publisher
-      if (publisherValue !== (bookQuery.data.publisher ?? "")) {
-        fields.publisher = publisherValue.trim() || null;
-      }
-      // Include language
-      if (languageValue !== (bookQuery.data.language ?? "")) {
-        fields.language = languageValue || null;
-      }
-      // Include genre IDs
-      fields.genreIds = selectedGenres.map((g) => g.id);
-      if (coverUrl) fields.coverUrl = coverUrl;
-      updateMutation.mutate(fields as any);
-    } catch (err) {
-      console.error("Save failed:", err);
-      setSaving(false);
     }
+    // Include author from tags
+    const authorStr = authorTags.join(", ");
+    if (authorStr !== (bookQuery.data.author ?? "")) {
+      fields.author = authorStr || null;
+    }
+    // Include publisher
+    if (publisherValue !== (bookQuery.data.publisher ?? "")) {
+      fields.publisher = publisherValue.trim() || null;
+    }
+    // Include language
+    if (languageValue !== (bookQuery.data.language ?? "")) {
+      fields.language = languageValue || null;
+    }
+    // Include genre IDs
+    fields.genreIds = selectedGenres.map((g) => g.id);
+    if (coverUrl) fields.coverUrl = coverUrl;
+    updateMutation.mutate(fields as any);
   };
 
   const set = (key: string, val: string) => setValues((p) => ({ ...p, [key]: val }));
@@ -240,11 +214,11 @@ function BookEditPage() {
           </Link>
           <button
             onClick={handleSave}
-            disabled={!isDirty || saving}
+            disabled={!isDirty || updateMutation.isPending}
             className="px-5 py-2 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-50"
             style={{ backgroundColor: "var(--warm)" }}
           >
-            {saving ? t("edit.saving") : t("edit.save")}
+            {updateMutation.isPending ? t("edit.saving") : t("edit.save")}
           </button>
         </div>
       </div>
@@ -287,19 +261,12 @@ function BookEditPage() {
                     <AuthorMultiPick
                       tags={authorTags}
                       onChange={setAuthorTags}
-                      onPendingInputChange={setAuthorPendingInput}
                       suggestions={authorsQuery.data?.map((a) => a.name) ?? []}
                       t={t}
                     />
                   )}
                   {group.id === "classification" && (
                     <>
-                      <SeriesCombobox
-                        value={seriesValue}
-                        onChange={setSeriesValue}
-                        suggestions={seriesQuery.data ?? []}
-                        t={t}
-                      />
                       <LanguageCombobox
                         value={languageValue}
                         onChange={setLanguageValue}
@@ -611,18 +578,13 @@ function GenreMultiPick({ selectedGenres, onChange, t }: {
   );
 }
 
-function AuthorMultiPick({ tags, onChange, onPendingInputChange, suggestions, t }: {
+function AuthorMultiPick({ tags, onChange, suggestions, t }: {
   tags: string[];
   onChange: (tags: string[]) => void;
-  onPendingInputChange?: (value: string) => void;
   suggestions: string[];
   t: (key: string) => string;
 }) {
   const [input, setInput] = useState("");
-  const updateInput = (value: string) => {
-    setInput(value);
-    onPendingInputChange?.(value);
-  };
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -640,7 +602,7 @@ function AuthorMultiPick({ tags, onChange, onPendingInputChange, suggestions, t 
     if (!trimmed) return;
     if (tags.some((t) => t.toLowerCase() === trimmed.toLowerCase())) return;
     onChange([...tags, trimmed]);
-    updateInput("");
+    setInput("");
     setShowSuggestions(false);
     inputRef.current?.focus();
   };
@@ -704,7 +666,7 @@ function AuthorMultiPick({ tags, onChange, onPendingInputChange, suggestions, t 
           ref={inputRef}
           type="text"
           value={input}
-          onChange={(e) => { updateInput(e.target.value); setShowSuggestions(true); }}
+          onChange={(e) => { setInput(e.target.value); setShowSuggestions(true); }}
           onFocus={() => setShowSuggestions(true)}
           onKeyDown={handleKeyDown}
           placeholder={tags.length === 0 ? t("edit.field.author") : ""}
@@ -794,73 +756,6 @@ function PublisherCombobox({ value, onChange, suggestions, t }: {
               {pub.name}
               <span className="ml-2 text-xs" style={{ color: "var(--text-faint)" }}>
                 ({pub.bookCount})
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SeriesCombobox({ value, onChange, suggestions, t }: {
-  value: string;
-  onChange: (value: string) => void;
-  suggestions: { id: string; name: string; bookCount: number }[];
-  t: (key: string) => string;
-}) {
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const filtered = value.trim()
-    ? suggestions.filter(
-        (s) => s.name.toLowerCase().includes(value.toLowerCase()) && s.name !== value
-      )
-    : [];
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setShowSuggestions(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div ref={containerRef}>
-      <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-dim)" }}>
-        {t("edit.field.series")}
-      </label>
-      <input
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={(e) => { onChange(e.target.value); setShowSuggestions(true); }}
-        onFocus={() => setShowSuggestions(true)}
-        className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-        style={{ backgroundColor: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }}
-      />
-      {showSuggestions && filtered.length > 0 && (
-        <div
-          className="mt-1 rounded-lg border shadow-lg overflow-hidden max-h-40 overflow-y-auto"
-          style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
-        >
-          {filtered.slice(0, 8).map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => { onChange(s.name); setShowSuggestions(false); }}
-              className="w-full text-left px-3 py-2 text-sm hover:opacity-80 transition-colors"
-              style={{ color: "var(--text)" }}
-              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "var(--bg)")}
-              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-            >
-              {s.name}
-              <span className="ml-2 text-xs" style={{ color: "var(--text-faint)" }}>
-                ({s.bookCount})
               </span>
             </button>
           ))}
