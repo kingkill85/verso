@@ -153,6 +153,9 @@ function BookEditPage() {
       utils.books.list.invalidate();
       navigate({ to: "/books/$id", params: { id }, replace: true });
     },
+    onError: () => {
+      setSaving(false);
+    },
   });
 
   const handleSave = () => {
