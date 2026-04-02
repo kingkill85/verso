@@ -70,11 +70,10 @@ export function BottomTabBar() {
       )}
 
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50 border-t flex items-center justify-around lg:hidden"
+        className="fixed bottom-0 left-0 right-0 z-50 border-t flex items-center justify-around lg:hidden pb-[env(safe-area-inset-bottom)]"
         style={{
           backgroundColor: "var(--surface)",
           borderColor: "var(--border)",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
         {tabs.map((tab) => (
