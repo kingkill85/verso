@@ -240,11 +240,11 @@ function BookEditPage() {
           </Link>
           <button
             onClick={handleSave}
-            disabled={!isDirty || updateMutation.isPending}
+            disabled={!isDirty || saving}
             className="px-5 py-2 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-50"
             style={{ backgroundColor: "var(--warm)" }}
           >
-            {updateMutation.isPending ? t("edit.saving") : t("edit.save")}
+            {saving ? t("edit.saving") : t("edit.save")}
           </button>
         </div>
       </div>
