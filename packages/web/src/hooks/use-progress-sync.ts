@@ -18,7 +18,15 @@ export function useProgressSync({
   enabled,
   getTimeMinutes,
 }: UseProgressSyncOptions) {
-  const syncMutation = trpc.progress.sync.useMutation();
+  const utils = trpc.useUtils();
+  const syncMutation = trpc.progress.sync.useMutation({
+    onSuccess: () => {
+      utils.progress.get.invalidate({ bookId });
+      utils.progress.allForUser.invalidate();
+      utils.books.currentlyReading.invalidate();
+      utils.shelves.list.invalidate();
+    },
+  });
   const mutateRef = useRef(syncMutation.mutate);
   mutateRef.current = syncMutation.mutate;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

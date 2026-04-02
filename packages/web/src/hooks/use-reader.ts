@@ -265,11 +265,11 @@ export function useReader({ bookId, format = "epub", initialCfi, initialPercenta
         } else if (initialPercentage && initialPercentage > 0) {
           await view.goToFraction(initialPercentage / 100);
         } else {
-          await view.init({ showTextStart: true });
+          await view.init({});
         }
       } catch (e) {
         console.warn("Failed to navigate to initial position, falling back to start", e);
-        try { await view.init({ showTextStart: true }); } catch { /* ok */ }
+        try { await view.init({}); } catch { /* ok */ }
       }
 
       if (!cancelled) setIsLoaded(true);
