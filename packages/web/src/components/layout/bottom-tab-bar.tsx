@@ -24,6 +24,7 @@ export function BottomTabBar() {
   const navigate = useNavigate();
   const location = useLocation();
   const isActive = (path: string) => location.pathname.startsWith(path);
+  const isReader = location.pathname.endsWith("/read");
   const [moreOpen, setMoreOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -59,6 +60,8 @@ export function BottomTabBar() {
     { to: "/authors", label: t("nav.authors"), icon: <PenIcon size={20} />, active: isActive("/authors") },
   ];
 
+  if (isReader) return null;
+
   return (
     <>
       {/* Backdrop */}
@@ -78,7 +81,7 @@ export function BottomTabBar() {
           <Link
             key={tab.to}
             to={tab.to}
-            className="flex flex-col items-center gap-0.5 py-2 px-3 min-w-0 flex-1 transition-colors"
+            className="flex flex-col items-center gap-0.5 py-1.5 px-3 min-w-0 flex-1 transition-colors"
             style={{ color: tab.active ? "var(--warm)" : "var(--text-faint)" }}
           >
             {tab.icon}
@@ -90,7 +93,7 @@ export function BottomTabBar() {
         <div className="relative flex-1" ref={menuRef}>
           <button
             onClick={() => setMoreOpen((v) => !v)}
-            className="flex flex-col items-center gap-0.5 py-2 px-3 w-full transition-colors"
+            className="flex flex-col items-center gap-0.5 py-1.5 px-3 w-full transition-colors"
             style={{ color: moreActive || moreOpen ? "var(--warm)" : "var(--text-faint)" }}
           >
             <MoreHorizontalIcon size={20} />

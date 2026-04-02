@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useTheme } from "@/hooks/use-theme";
 import { trpc } from "@/trpc";
 
 export const Route = createFileRoute("/_auth")({
@@ -8,6 +9,7 @@ export const Route = createFileRoute("/_auth")({
 });
 
 function AuthLayout() {
+  useTheme(); // Apply system theme on auth pages
   const { isAuthenticated, isLoading } = useAuth();
   const hasUsersQuery = trpc.auth.hasUsers.useQuery();
   const location = useLocation();
