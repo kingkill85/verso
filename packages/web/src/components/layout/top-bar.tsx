@@ -21,12 +21,13 @@ export function TopBar({ sidebarOpen, onMenuClick }: { sidebarOpen: boolean; onM
   return (
     <header className="sticky top-0 z-30 flex items-center gap-4 px-6 h-14 border-b"
       style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
-      <button onClick={onMenuClick} className="p-2 -ml-2 rounded-lg" style={{ color: "var(--text-dim)" }}>
+      <button onClick={onMenuClick} className="hidden lg:block p-2 -ml-2 rounded-lg" style={{ color: "var(--text-dim)" }}>
         {sidebarOpen ? <XIcon size={20} /> : <MenuIcon size={20} />}
       </button>
 
-      <Link to="/home" className="font-display text-xl font-bold shrink-0" style={{ color: "var(--warm)" }}>
-        Verso
+      <Link to="/home" className="font-display font-bold shrink-0" style={{ color: "var(--warm)" }}>
+        <span className="text-lg lg:text-xl">V</span>
+        <span className="hidden lg:inline text-xl">erso</span>
       </Link>
 
       <form onSubmit={handleSubmit} className="flex-1 lg:max-w-2xl">

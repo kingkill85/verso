@@ -87,30 +87,149 @@ function BookDetailPage() {
     <div className="max-w-4xl mx-auto animate-in fade-in">
       <BackButton />
 
-      {/* Hero section — always side by side */}
+      {/* Hero section */}
       <div
         className="rounded-xl p-4 md:p-6 mb-5"
         style={{ backgroundColor: "var(--card)" }}
       >
-        <div className="flex gap-4 md:gap-6">
+        {/* Mobile: stacked layout */}
+        <div className="flex flex-col items-center gap-4 md:hidden">
           {/* Cover + Read button */}
-          <div className="shrink-0 flex flex-col items-stretch gap-2">
-            <div className="relative block md:hidden">
+          <div className="flex flex-col items-center gap-2">
+            <div className="relative">
               <BookCover
                 bookId={book.id}
                 title={book.title}
                 author={book.author}
                 coverPath={book.coverPath}
                 updatedAt={book.updatedAt}
-                size="lg"
+                size="xl"
               />
               {progressQuery.data?.finishedAt && (
-                <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.7)" }}>
-                  <Check size={12} strokeWidth={3} color="white" />
+                <div className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.7)" }}>
+                  <Check size={14} strokeWidth={3} color="white" />
                 </div>
               )}
             </div>
-            <div className="relative hidden md:block">
+            {(book.fileFormat === "epub" || book.fileFormat === "pdf") && (
+              <Link
+                to="/books/$id/read"
+                params={{ id }}
+                search={{ cfi: undefined }}
+                className="inline-flex items-center justify-center px-5 py-2 rounded-full text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
+                style={{ backgroundColor: "var(--warm)" }}
+              >
+                {progressQuery.data?.finishedAt
+                  ? t("book.readAgain")
+                  : progressQuery.data?.percentage
+                    ? t("book.continueReading", { percent: Math.round(progressQuery.data.percentage) })
+                    : t("book.startReading")}
+              </Link>
+            )}
+          </div>
+
+          {/* Title & Author */}
+          <div className="text-center w-full">
+            <h1
+              className="font-display text-xl font-bold leading-tight"
+              style={{ color: "var(--text)" }}
+            >
+              {book.title}
+            </h1>
+            <p
+              className="font-display italic text-sm mt-0.5"
+              style={{ color: "var(--text-dim)" }}
+            >
+              {book.author.split(",").map((name, i, arr) => {
+                const trimmed = name.trim();
+                const match = authorsQuery.data?.find(
+                  (a) => a.name.toLowerCase() === trimmed.toLowerCase()
+                );
+                return (
+                  <span key={trimmed}>
+                    {match ? (
+                      <Link
+                        to="/authors/$id"
+                        params={{ id: match.id }}
+                        className="hover:underline"
+                        style={{ color: "var(--warm)" }}
+                      >
+                        {trimmed}
+                      </Link>
+                    ) : (
+                      trimmed
+                    )}
+                    {i < arr.length - 1 && ", "}
+                  </span>
+                );
+              })}
+            </p>
+          </div>
+
+          {/* Series & Genres */}
+          {(book.series || genreChips.length > 0) && (
+            <div className="flex flex-wrap justify-center gap-1.5">
+              {book.series && (
+                <Link
+                  to="/search"
+                  search={{ q: "", series: book.series }}
+                  className="px-2 py-0.5 rounded-full text-[11px] font-medium hover:opacity-80 transition-opacity"
+                  style={{
+                    backgroundColor: "var(--bg)",
+                    color: "var(--text-dim)",
+                  }}
+                >
+                  {t("book.seriesInfo", { index: book.seriesIndex || "?", series: book.series })}
+                </Link>
+              )}
+              {genreChips.map((genre) => (
+                <Link
+                  key={genre.id}
+                  to="/search"
+                  search={{ q: "", genre: genre.slug }}
+                  className="px-2 py-0.5 rounded-full text-[11px] font-medium hover:opacity-80 transition-opacity"
+                  style={{
+                    backgroundColor: "var(--bg)",
+                    color: "var(--text-dim)",
+                  }}
+                >
+                  {t(`genre.${genre.slug}`) !== `genre.${genre.slug}` ? t(`genre.${genre.slug}`) : genre.name}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* Description */}
+          {book.description && (
+            <p
+              className="font-display italic leading-relaxed text-sm text-center"
+              style={{ color: "var(--text-dim)" }}
+            >
+              {book.description}
+            </p>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex flex-wrap justify-center gap-2">
+            <AddToShelfMenu bookId={id} compact />
+            <BookActionButtons
+              bookId={id}
+              bookTitle={book.title}
+              fileFormat={book.fileFormat}
+              hasProgress={!!progressQuery.data && progressQuery.data.percentage > 0}
+              isFinished={!!progressQuery.data?.finishedAt}
+              onDelete={handleDelete}
+              isDeleting={deleteMutation.isPending}
+              isAdmin={user?.role === "admin"}
+            />
+          </div>
+        </div>
+
+        {/* Desktop: side by side layout */}
+        <div className="hidden md:flex gap-6">
+          {/* Cover + Read button */}
+          <div className="shrink-0 flex flex-col items-stretch gap-2">
+            <div className="relative">
               <BookCover
                 bookId={book.id}
                 title={book.title}
@@ -147,13 +266,13 @@ function BookDetailPage() {
             <div className="flex justify-between items-start gap-2">
               <div className="min-w-0">
                 <h1
-                  className="font-display text-lg md:text-2xl font-bold leading-tight"
+                  className="font-display text-2xl font-bold leading-tight"
                   style={{ color: "var(--text)" }}
                 >
                   {book.title}
                 </h1>
                 <p
-                  className="font-display italic text-sm md:text-base mt-0.5"
+                  className="font-display italic text-base mt-0.5"
                   style={{ color: "var(--text-dim)" }}
                 >
                   {book.author.split(",").map((name, i, arr) => {

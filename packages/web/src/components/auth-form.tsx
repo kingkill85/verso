@@ -71,7 +71,7 @@ export function AuthForm({
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             required
-            className="w-full rounded-[10px] border px-4 py-2.5 text-sm outline-none transition-colors focus:border-[var(--warm)]"
+            className="w-full rounded-[10px] border px-4 py-2.5 text-base outline-none transition-colors focus:border-[var(--warm)]"
             style={{
               backgroundColor: "var(--card)",
               borderColor: "var(--border)",
@@ -92,7 +92,7 @@ export function AuthForm({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full rounded-[10px] border px-4 py-2.5 text-sm outline-none transition-colors focus:border-[var(--warm)]"
+            className="w-full rounded-[10px] border px-4 py-2.5 text-base outline-none transition-colors focus:border-[var(--warm)]"
             style={{
               backgroundColor: "var(--card)",
               borderColor: "var(--border)",
@@ -114,7 +114,7 @@ export function AuthForm({
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={8}
-            className="w-full rounded-[10px] border px-4 py-2.5 text-sm outline-none transition-colors focus:border-[var(--warm)]"
+            className="w-full rounded-[10px] border px-4 py-2.5 text-base outline-none transition-colors focus:border-[var(--warm)]"
             style={{
               backgroundColor: "var(--card)",
               borderColor: "var(--border)",

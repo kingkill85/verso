@@ -15,10 +15,10 @@ export function ContinueReadingRow() {
   );
 
   return (
-    <div className="mb-8">
-      <div className="flex items-center justify-between mb-3">
+    <div className="mb-6 md:mb-8">
+      <div className="flex items-center justify-between mb-2 md:mb-3">
         <h2
-          className="font-display text-base font-bold"
+          className="font-display text-sm md:text-base font-bold"
           style={{ color: "var(--text)" }}
         >
           {t("home.continueReading")}
@@ -34,7 +34,49 @@ export function ContinueReadingRow() {
           </Link>
         )}
       </div>
-      <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+      {/* Mobile: cover-only scroll row */}
+      <div className="flex md:hidden gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+        {query.data.map((item) => (
+          <Link
+            key={item.id}
+            to="/books/$id/read"
+            params={{ id: item.id }}
+            search={{ cfi: undefined }}
+            className="shrink-0 transition-transform hover:translate-y-[-2px]"
+            style={{ width: 90 }}
+          >
+            <BookCover
+              bookId={item.id}
+              title={item.title}
+              author={item.author}
+              coverPath={item.coverPath}
+              size="md"
+            />
+            <div className="mt-1.5">
+              <div
+                className="h-[3px] rounded-full overflow-hidden"
+                style={{ backgroundColor: "var(--progress-bg)" }}
+              >
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${item.percentage}%`,
+                    backgroundColor: "var(--warm)",
+                  }}
+                />
+              </div>
+              <p
+                className="text-[10px] mt-0.5 line-clamp-1"
+                style={{ color: "var(--text-faint)" }}
+              >
+                {Math.round(item.percentage)}%
+              </p>
+            </div>
+          </Link>
+        ))}
+      </div>
+      {/* Desktop: card layout with title/author */}
+      <div className="hidden md:flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
         {query.data.map((item) => (
           <Link
             key={item.id}

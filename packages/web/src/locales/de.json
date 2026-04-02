@@ -1,5 +1,6 @@
 {
   "home.welcome": "Willkommen zurück, {{name}}",
+  "home.hi": "Hallo, {{name}}",
   "home.dashboard": "Dein persönliches Lese-Dashboard",
   "home.continueReading": "Weiterlesen",
   "home.recentlyAdded": "Kürzlich hinzugefügt",
@@ -47,6 +48,8 @@
   "admin.backToNewest": "Zurück zu neuesten",
   "nav.shelves": "Bücherregale",
   "nav.logout": "Abmelden",
+  "nav.account": "Konto",
+  "nav.more": "Mehr",
   "nav.exportLibrary": "Bibliothek exportieren",
   "library.title": "Bibliothek",
   "library.book": "{{count}} Buch",

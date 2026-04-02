@@ -1,5 +1,6 @@
 {
   "home.welcome": "Bem-vindo de volta, {{name}}",
+  "home.hi": "Olá, {{name}}",
   "home.dashboard": "Seu painel de leitura pessoal",
   "home.continueReading": "Continuar lendo",
   "home.recentlyAdded": "Adicionados recentemente",
@@ -47,6 +48,8 @@
   "admin.backToNewest": "Voltar aos mais recentes",
   "nav.shelves": "Prateleiras",
   "nav.logout": "Sair",
+  "nav.account": "Conta",
+  "nav.more": "Mais",
   "nav.exportLibrary": "Exportar biblioteca",
   "library.title": "Biblioteca",
   "library.book": "{{count}} livro",

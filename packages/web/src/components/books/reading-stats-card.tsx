@@ -40,7 +40,27 @@ export function ReadingStatsCard() {
   return (
     <div className="mb-6 md:mb-8">
       <div className="rounded-xl p-4 md:p-5" style={{ backgroundColor: "var(--card)" }}>
-        <div className="flex items-center text-center">
+        {/* Mobile: 2x2 grid */}
+        <div className="grid grid-cols-2 gap-3 text-center md:hidden">
+          {items.map((item) => (
+            <div key={item.label}>
+              <div
+                className="text-xl font-bold"
+                style={{ color: "var(--warm)" }}
+              >
+                {item.value}
+              </div>
+              <div
+                className="text-[10px] mt-0.5"
+                style={{ color: "var(--text-dim)" }}
+              >
+                {item.label}
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Desktop: single row with dividers */}
+        <div className="hidden md:flex items-center text-center">
           {items.map((item, i) => (
             <Fragment key={item.label}>
               {i > 0 && (
@@ -51,13 +71,13 @@ export function ReadingStatsCard() {
               )}
               <div className="flex-1 min-w-0">
                 <div
-                  className="text-xl md:text-2xl font-bold"
+                  className="text-2xl font-bold"
                   style={{ color: "var(--warm)" }}
                 >
                   {item.value}
                 </div>
                 <div
-                  className="text-[10px] md:text-[11px] mt-0.5"
+                  className="text-[11px] mt-0.5"
                   style={{ color: "var(--text-dim)" }}
                 >
                   {item.label}

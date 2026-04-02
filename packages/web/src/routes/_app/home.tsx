@@ -27,22 +27,6 @@ function HomePage() {
 
   return (
     <div>
-      {/* Header — responsive */}
-      <div className="mb-4 md:mb-6">
-        <h1
-          className="font-display text-xl md:text-[26px] font-bold"
-          style={{ color: "var(--text)" }}
-        >
-          {t("home.welcome", { name: user?.displayName ?? "" })}
-        </h1>
-        <p
-          className="hidden md:block text-sm mt-0.5"
-          style={{ color: "var(--text-dim)" }}
-        >
-          {t("home.dashboard")}
-        </p>
-      </div>
-
       {/* Continue Reading */}
       <ContinueReadingRow />
 

@@ -82,11 +82,97 @@ function AuthorDetailPage() {
         className="rounded-xl p-4 md:p-6 mb-5"
         style={{ backgroundColor: "var(--card)" }}
       >
-        <div className="flex gap-4 md:gap-6">
-          {/* Photo / Initials — contained inside the card */}
+        {/* Mobile: stacked layout */}
+        <div className="flex flex-col items-center gap-4 md:hidden">
+          {/* Photo / Initials */}
+          <div
+            className="w-32 h-32 rounded-xl flex items-center justify-center text-4xl font-bold text-white overflow-hidden"
+            style={{ backgroundColor: hashColor(author.name) }}
+          >
+            {author.imagePath ? (
+              <img
+                src={`/api/authors/${author.id}/photo`}
+                alt={author.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                  (e.target as HTMLImageElement).parentElement!.textContent = getInitials(author.name);
+                }}
+              />
+            ) : (
+              getInitials(author.name)
+            )}
+          </div>
+
+          {/* Name & Meta */}
+          <div className="text-center w-full">
+            <h1
+              className="font-display text-xl font-bold leading-tight"
+              style={{ color: "var(--text)" }}
+            >
+              {author.name}
+            </h1>
+            <p
+              className="font-display text-sm mt-0.5"
+              style={{ color: "var(--text-dim)" }}
+            >
+              {t("authors.books", { count: author.books.length })}
+            </p>
+            {formatDate(author.birthDate, i18n.language) && (
+              <p className="text-xs mt-0.5" style={{ color: "var(--text-faint)" }}>
+                {formatDate(author.deathDate, i18n.language)
+                  ? t("authors.lifespan", { birth: formatDate(author.birthDate, i18n.language), death: formatDate(author.deathDate, i18n.language) })
+                  : t("authors.born", { date: formatDate(author.birthDate, i18n.language) })
+                }
+              </p>
+            )}
+          </div>
+
+          {/* Bio */}
+          {bio ? (
+            <p
+              className="font-display italic leading-relaxed text-sm text-center"
+              style={{ color: "var(--text-dim)" }}
+            >
+              {bio}
+            </p>
+          ) : (
+            <p className="text-sm italic text-center" style={{ color: "var(--text-faint)" }}>
+              {t("authors.noBio")}
+            </p>
+          )}
+
+          {/* Actions */}
+          {isAdmin && (
+            <div className="flex gap-1">
+              <Link
+                to="/authors/$id/edit"
+                params={{ id }}
+                title={t("authors.edit")}
+                className="p-2.5 rounded-full border transition-colors hover:opacity-80"
+                style={{ borderColor: "var(--border)", color: "var(--text-dim)" }}
+              >
+                <Pencil size={16} />
+              </Link>
+              <button
+                onClick={() => refreshMutation.mutate({ id })}
+                disabled={refreshMutation.isPending}
+                title={t("authors.refreshMetadata")}
+                className="p-2.5 rounded-full border transition-colors hover:opacity-80 disabled:opacity-50"
+                style={{ borderColor: "var(--border)", color: "var(--warm)" }}
+              >
+                <RotateCcw size={16} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop: side-by-side layout */}
+        <div className="hidden md:flex gap-6">
+          {/* Photo / Initials */}
           <div className="shrink-0">
             <div
-              className="w-20 h-20 md:w-32 md:h-32 rounded-xl flex items-center justify-center text-xl md:text-4xl font-bold text-white overflow-hidden"
+              className="w-32 h-32 rounded-xl flex items-center justify-center text-4xl font-bold text-white overflow-hidden"
               style={{ backgroundColor: hashColor(author.name) }}
             >
               {author.imagePath ? (
@@ -110,13 +196,13 @@ function AuthorDetailPage() {
             <div className="flex justify-between items-start gap-2">
               <div className="min-w-0">
                 <h1
-                  className="font-display text-lg md:text-2xl font-bold leading-tight"
+                  className="font-display text-2xl font-bold leading-tight"
                   style={{ color: "var(--text)" }}
                 >
                   {author.name}
                 </h1>
                 <p
-                  className="font-display text-sm md:text-base mt-0.5"
+                  className="font-display text-base mt-0.5"
                   style={{ color: "var(--text-dim)" }}
                 >
                   {t("authors.books", { count: author.books.length })}
@@ -155,7 +241,7 @@ function AuthorDetailPage() {
               )}
             </div>
 
-            {/* Bio preview */}
+            {/* Bio */}
             {bio ? (
               <p
                 className="font-display italic leading-relaxed text-sm mt-3"

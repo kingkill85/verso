@@ -1,5 +1,6 @@
 {
   "home.welcome": "Welkom terug, {{name}}",
+  "home.hi": "Hoi, {{name}}",
   "home.dashboard": "Je persoonlijke leesdashboard",
   "home.continueReading": "Verder lezen",
   "home.recentlyAdded": "Recent toegevoegd",
@@ -47,6 +48,8 @@
   "admin.backToNewest": "Terug naar nieuwste",
   "nav.shelves": "Boekenplanken",
   "nav.logout": "Uitloggen",
+  "nav.account": "Account",
+  "nav.more": "Meer",
   "nav.exportLibrary": "Bibliotheek exporteren",
   "library.title": "Bibliotheek",
   "library.book": "{{count}} boek",

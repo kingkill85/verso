@@ -69,7 +69,7 @@ function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full rounded-[10px] border px-4 py-2.5 text-sm outline-none transition-colors focus:border-[var(--warm)]"
+            className="w-full rounded-[10px] border px-4 py-2.5 text-base outline-none transition-colors focus:border-[var(--warm)]"
             style={{
               backgroundColor: "var(--card)",
               borderColor: "var(--border)",
@@ -90,7 +90,7 @@ function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full rounded-[10px] border px-4 py-2.5 text-sm outline-none transition-colors focus:border-[var(--warm)]"
+            className="w-full rounded-[10px] border px-4 py-2.5 text-base outline-none transition-colors focus:border-[var(--warm)]"
             style={{
               backgroundColor: "var(--card)",
               borderColor: "var(--border)",

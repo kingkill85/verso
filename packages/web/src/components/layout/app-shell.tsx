@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { Sidebar } from "./sidebar";
 import { TopBar } from "./top-bar";
+import { BottomTabBar } from "./bottom-tab-bar";
 
 const SIDEBAR_KEY = "verso-sidebar-open";
 
@@ -46,24 +47,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* Mobile: overlay */}
-        {sidebarOpen && (
-          <>
-            <div
-              className="fixed inset-0 top-14 bg-black/50 z-40 lg:hidden"
-              onClick={() => setSidebarOpen(false)}
-            />
-            <div
-              className="fixed top-14 left-0 bottom-0 w-64 z-50 lg:hidden"
-              style={{ backgroundColor: "var(--sidebar-bg)" }}
-            >
-              <Sidebar onClose={() => setSidebarOpen(false)} />
-            </div>
-          </>
-        )}
-
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-4 pb-20 lg:p-6 lg:pb-6">{children}</main>
       </div>
+
+      {/* Mobile: bottom tab bar */}
+      <BottomTabBar />
     </div>
   );
 }

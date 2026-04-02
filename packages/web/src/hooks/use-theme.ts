@@ -9,7 +9,7 @@ function getSystemTheme(): "light" | "dark" {
 export function useTheme() {
   const [theme, setThemeState] = useState<Theme>(() => {
     const stored = localStorage.getItem("verso-theme") as Theme | null;
-    return stored || "dark";
+    return stored || "system";
   });
 
   const [systemTheme, setSystemTheme] = useState<"light" | "dark">(getSystemTheme);
