@@ -34,9 +34,14 @@ function SearchPage() {
     { enabled: !!series },
   );
 
-  const books = series
+  const allBooks = series
     ? seriesQuery.data?.books ?? []
     : searchQuery.data?.books ?? [];
+
+  // Client-side format filter for series view
+  const books = series && selectedFormat
+    ? allBooks.filter((b) => b.fileFormat.toUpperCase() === selectedFormat)
+    : allBooks;
 
   const isLoading = series ? seriesQuery.isLoading : searchQuery.isLoading;
 
@@ -96,15 +101,19 @@ function SearchPage() {
         </p>
       </div>
 
-      {(genreOptions.length > 0 || formats.length > 0) && (
+      {(!series && genreOptions.length > 0 || formats.length > 0) && (
         <div className="flex flex-col gap-3 mb-6">
-          <FilterChips
-            options={genreOptions}
-            selected={selectedGenreSlug ? [...genreSlugMap.entries()].find(([, slug]) => slug === selectedGenreSlug)?.[0] ?? null : null}
-            onSelect={(display) => setSelectedGenreSlug(display ? genreSlugMap.get(display) ?? null : null)}
-            label={t("search.genre")}
-          />
-          <FilterChips options={formats} selected={selectedFormat} onSelect={setSelectedFormat} label={t("search.format")} />
+          {!series && genreOptions.length > 0 && (
+            <FilterChips
+              options={genreOptions}
+              selected={selectedGenreSlug ? [...genreSlugMap.entries()].find(([, slug]) => slug === selectedGenreSlug)?.[0] ?? null : null}
+              onSelect={(display) => setSelectedGenreSlug(display ? genreSlugMap.get(display) ?? null : null)}
+              label={t("search.genre")}
+            />
+          )}
+          {formats.length > 0 && (
+            <FilterChips options={formats} selected={selectedFormat} onSelect={setSelectedFormat} label={t("search.format")} />
+          )}
         </div>
       )}
 
