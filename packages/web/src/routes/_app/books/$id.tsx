@@ -206,8 +206,8 @@ function BookDetailPage() {
                     search={{ q: "", series: book.series }}
                     className="px-2 py-0.5 rounded-full text-[11px] font-medium hover:opacity-80 transition-opacity"
                     style={{
-                      backgroundColor: "var(--warm-glow)",
-                      color: "var(--warm)",
+                      backgroundColor: "var(--bg)",
+                      color: "var(--text-dim)",
                     }}
                   >
                     {t("book.seriesInfo", { index: book.seriesIndex || "?", series: book.series })}
