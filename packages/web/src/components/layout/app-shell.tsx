@@ -47,7 +47,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <main className="flex-1 overflow-auto p-4 pb-16 lg:p-6 lg:pb-6">{children}</main>
+        <main className="flex-1 overflow-auto p-4 pb-14 lg:p-6 lg:pb-6">{children}</main>
       </div>
 
       {/* Mobile: bottom tab bar */}

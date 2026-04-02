@@ -19,7 +19,7 @@ export function TopBar({ sidebarOpen, onMenuClick }: { sidebarOpen: boolean; onM
   };
 
   return (
-    <header className="sticky top-0 z-30 flex items-center gap-4 px-4 lg:px-6 min-h-14 border-b safe-top"
+    <header className="sticky top-0 z-30 flex items-center gap-2 lg:gap-4 px-3 lg:px-6 min-h-12 lg:min-h-14 border-b safe-top"
       style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
       <button onClick={onMenuClick} className="hidden lg:block p-2 -ml-2 rounded-lg" style={{ color: "var(--text-dim)" }}>
         {sidebarOpen ? <XIcon size={20} /> : <MenuIcon size={20} />}
@@ -36,7 +36,7 @@ export function TopBar({ sidebarOpen, onMenuClick }: { sidebarOpen: boolean; onM
           placeholder={t("search.placeholder")}
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          className="w-full rounded-[10px] border px-3 py-1.5 text-sm outline-none transition-colors"
+          className="w-full rounded-lg lg:rounded-[10px] border px-3 py-1.5 text-sm outline-none transition-colors"
           style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", color: "var(--text)" }}
         />
       </form>
@@ -44,9 +44,9 @@ export function TopBar({ sidebarOpen, onMenuClick }: { sidebarOpen: boolean; onM
       <div className="hidden lg:block flex-1" />
 
       <button onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-        className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+        className="w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center transition-colors shrink-0"
         style={{ color: "var(--text-dim)" }} title={t("theme.toggle")}>
-        {resolvedTheme === "dark" ? <SunIcon size={20} /> : <MoonIcon size={20} />}
+        {resolvedTheme === "dark" ? <SunIcon size={18} /> : <MoonIcon size={18} />}
       </button>
     </header>
   );
