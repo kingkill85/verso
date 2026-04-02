@@ -37,7 +37,7 @@ export const booksRouter = router({
     const conditions: SQL[] = [];
     if (search) {
       const term = "%" + escapeLike(search) + "%";
-      conditions.push(sql`(${books.title} LIKE ${term} ESCAPE '\\' OR ${books.author} LIKE ${term} ESCAPE '\\')`);
+      conditions.push(sql`(${books.title} LIKE ${term} ESCAPE '\\' OR ${books.author} LIKE ${term} ESCAPE '\\' OR ${books.series} LIKE ${term} ESCAPE '\\')`);
     }
     if (genreSlug) {
       conditions.push(
@@ -467,8 +467,38 @@ export const booksRouter = router({
       `);
     }
 
+    // Supplement FTS results with series name matches (FTS doesn't index series)
+    if (useFts) {
+      const seriesTerm = "%" + escapeLike(query) + "%";
+      const seriesRows = ctx.db.all<any>(sql`
+        SELECT b.*
+        FROM books b
+        WHERE b.series LIKE ${seriesTerm} ESCAPE '\\'
+        LIMIT ${limit}
+      `);
+      const existingIds = new Set(rows.map((r: any) => r.id));
+      for (const row of seriesRows) {
+        if (!existingIds.has(row.id)) {
+          rows.push(row);
+          existingIds.add(row.id);
+        }
+      }
+      // Update total count to include series matches
+      if (seriesRows.length > 0 && countRow) {
+        const seriesCount = ctx.db.get<{ total: number }>(sql`
+          SELECT count(*) AS total FROM books b
+          WHERE b.series LIKE ${seriesTerm} ESCAPE '\\'
+          AND b.id NOT IN (
+            SELECT bb.id FROM books_fts JOIN books bb ON bb.rowid = books_fts.rowid
+            WHERE books_fts MATCH ${escapeFts5(query)}
+          )
+        `);
+        countRow.total += seriesCount?.total ?? 0;
+      }
+    }
+
     // Map snake_case columns to camelCase to match Drizzle schema
-    const bookResults = rows.map((row) => ({
+    const bookResults = rows.map((row: any) => ({
       id: row.id,
       title: row.title,
       author: row.author,
@@ -484,6 +514,8 @@ export const booksRouter = router({
       fileSize: row.file_size,
       pageCount: row.page_count,
       addedBy: row.added_by,
+      series: row.series,
+      seriesIndex: row.series_index,
       metadataLocked: row.metadata_locked,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
