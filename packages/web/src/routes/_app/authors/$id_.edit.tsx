@@ -108,11 +108,21 @@ function AuthorEditPage() {
       }
 
       for (const [locale, desc] of Object.entries(descriptions)) {
-        if (desc.trim() && desc !== initialDescs[locale]) {
+        if (desc !== initialDescs[locale]) {
           await updateDescMutation.mutateAsync({
             authorId: id,
             locale,
             description: desc.trim(),
+          });
+        }
+      }
+      // Send deletions for descriptions that were cleared
+      for (const locale of Object.keys(initialDescs)) {
+        if (initialDescs[locale]?.trim() && !descriptions[locale]?.trim()) {
+          await updateDescMutation.mutateAsync({
+            authorId: id,
+            locale,
+            description: "",
           });
         }
       }
